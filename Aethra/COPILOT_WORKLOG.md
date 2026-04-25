@@ -656,6 +656,16 @@ Active steps:
   - Removed the old in-rail toggle button row; command rail content now starts directly with media/tools/help actions.
 - Files touched in this UI pass: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
 - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the play/pause and top-chrome/rail toggle updates.
+- Extended transport bar auto-hide behavior beyond fullscreen:
+  - Bottom controls now hide after 1 second of pointer inactivity in both windowed and fullscreen modes.
+  - Removed fullscreen-only guards from the existing transport auto-hide timer path so show/hide and timer restart behavior is shared.
+- Added hover hold behavior for bottom controls:
+  - `TransportBar` now handles `PointerEntered`/`PointerExited`.
+  - Added `_isPointerOverTransportBar` in `MainWindow.xaml.cs`.
+  - Auto-hide timer no longer collapses the bar while pointer is over it, even when stationary.
+  - On pointer exit, the 1-second hide countdown restarts.
+- Files touched in this follow-up: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after transport auto-hide + hover hold updates.
 
 ## Roadmap
 

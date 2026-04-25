@@ -502,7 +502,9 @@
               VerticalAlignment="Bottom"
               Height="156"
               Padding="24,10,20,18"
-              Background="{StaticResource AethraChromeBrush}">
+              Background="{StaticResource AethraChromeBrush}"
+              PointerEntered="TransportBar_PointerEntered"
+              PointerExited="TransportBar_PointerExited">
             <Grid.RowDefinitions>
                 <RowDefinition Height="46"/>
                 <RowDefinition Height="*"/>

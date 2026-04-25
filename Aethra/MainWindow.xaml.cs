@@ -35,6 +35,7 @@ namespace Aethra
         private bool _hasLastFullscreenPointerPosition;
         private DateTime _fullscreenControlsHiddenAtUtc = DateTime.MinValue;
         private bool _isPlaybackPaused = true;
+        private bool _isPointerOverTransportBar;
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
 
@@ -53,6 +54,7 @@ namespace Aethra
             _windowSubclassProc = WindowSubclassProc;
             this.Activated += MainWindow_Activated;
             this.Closed += MainWindow_Closed;
+            ShowFullscreenControls();
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs args)
@@ -609,7 +611,7 @@ namespace Aethra
 
             TopChrome.Visibility = Visibility.Visible;
             CommandRail.Visibility = Visibility.Visible;
-            TransportBar.Visibility = Visibility.Visible;
+            ShowFullscreenControls();
             UpdateEmbeddedPanelOffset();
             ApplyTitleBarInsets();
             UpdateCursorVisibility();
@@ -780,9 +782,6 @@ namespace Aethra
 
         private void RootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
-            if (!_isFullscreen)
-                return;
-
             var position = e.GetCurrentPoint(RootGrid).Position;
             var justHidden = DateTime.UtcNow - _fullscreenControlsHiddenAtUtc < TimeSpan.FromMilliseconds(250);
 
@@ -812,21 +811,34 @@ namespace Aethra
         {
             _fullscreenControlsIdleTimer.Stop();
 
-            if (_isFullscreen)
+            if (_isPointerOverTransportBar)
             {
-                _fullscreenControlsHiddenAtUtc = DateTime.UtcNow;
-                TransportBar.Visibility = Visibility.Collapsed;
-                UpdateCursorVisibility();
+                _fullscreenControlsIdleTimer.Start();
+                return;
             }
+
+            _fullscreenControlsHiddenAtUtc = DateTime.UtcNow;
+            TransportBar.Visibility = Visibility.Collapsed;
+            UpdateCursorVisibility();
         }
 
         private void ShowFullscreenControls()
         {
-            if (!_isFullscreen)
-                return;
-
             TransportBar.Visibility = Visibility.Visible;
             UpdateCursorVisibility();
+            _fullscreenControlsIdleTimer.Stop();
+            _fullscreenControlsIdleTimer.Start();
+        }
+
+        private void TransportBar_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            _isPointerOverTransportBar = true;
+            ShowFullscreenControls();
+        }
+
+        private void TransportBar_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            _isPointerOverTransportBar = false;
             _fullscreenControlsIdleTimer.Stop();
             _fullscreenControlsIdleTimer.Start();
         }
