@@ -203,7 +203,7 @@ Active steps:
 - Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the minimal libplacebo build and the mpv local-dependency build. No native binaries were copied into Aethra yet.
 - Created `Aethra\NativeRuntime\x64` and copied the no-unresolved-dependency native runtime bundle into the project as a side-by-side candidate bundle.
 - Copied bundle DLLs: `libmpv-2.dll`, local FFmpeg DLLs, local `libplacebo-362.dll`, ANGLE `libEGL.dll`/`libGLESv2.dll`, `libass-9.dll`, subtitle/font/text shaping dependencies, `libc++.dll`, and required compression/text runtime DLLs.
-- Left the old root-level prototype `Aethra\libmpv-2.dll` untouched. The app is not yet wired to prefer `NativeRuntime\x64`.
+- Removed the old root-level prototype `Aethra\libmpv-2.dll`; the app resolves mpv from `NativeRuntime\x64`.
 - Updated `Aethra.csproj` so `NativeRuntime\x64\*.dll` is copied to output with `CopyToOutputDirectory=PreserveNewest`.
 - Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the project runtime-bundle location, copied DLL list, source paths, and a reminder that every non-system DLL still needs license/source/provenance coverage before public distribution.
 - Verified `Aethra\NativeRuntime\x64\libmpv-2.dll` plus `libGLESv2.dll` resolve all recursive non-system imports from the copied project folder with no unresolved DLLs.
@@ -211,7 +211,7 @@ Active steps:
 - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the side-by-side native runtime bundle.
 - Added `Native\NativeRuntimeLoader.cs` to register `NativeRuntime\x64` as a DLL search directory and resolve `libmpv-2.dll` from that folder before any app-owned mpv P/Invoke.
 - `App.OnLaunched` now calls `NativeRuntimeLoader.Install(typeof(MpvContext).Assembly)` before constructing `MainWindow`, so both the app-owned native interop and the temporary Hanuman wrapper resolve mpv from the side-by-side runtime bundle.
-- Removed the old ad hoc `libmpv.2` resolver from `MainWindow.xaml.cs`; the old root-level prototype `libmpv-2.dll` is still present but should no longer win the resolver path.
+- Removed the old ad hoc `libmpv.2` resolver from `MainWindow.xaml.cs`; the old root-level prototype `libmpv-2.dll` is gone and should no longer win the resolver path.
 - Updated `TempMpv` so it copies `NativeRuntime\x64\*.dll`, installs `NativeRuntimeLoader`, and probes the same runtime bundle as the app.
 - Added `NativeMpvContext.TrySetOptionString` and changed optional script/input options (`osc`, `input-default-bindings`, `input-vo-keyboard`) to use it. The new lean mpv build has Lua/OSC disabled, so `osc=no` is not a supported option and must not fail startup.
 - Reran `TempMpv` against the new source-built runtime bundle:
@@ -707,7 +707,7 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 
 - Keep the GPU renderer as the primary path.
 - Keep software fallback for now, but stop broadening it unless needed for diagnostics or recovery.
-- Remove old root-level prototype native binaries once the runtime is confirmed fully resolved from `NativeRuntime\x64`.
+- Keep native runtime resolution fully rooted in `NativeRuntime\x64`; do not reintroduce root-level prototype native binaries.
 - Rebuild the native media bundle for the free/GPL GitHub direction: mpv `-Dgpl=true`, FFmpeg `--enable-gpl`, Lua enabled, shader/script support enabled, and notices updated.
 - Validate true fullscreen, resize, snap, drag/drop reload, seek, long playback, and no `GPU renderer task failed` lines.
 
@@ -728,5 +728,6 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 
 - 2026-04-25 rebrand: renamed the app to Aethra across project identity, namespace, resource keys, commands, manifests, docs, and visible title chrome. Brand line: "Bright media. Pure playback." Tagline: "Clarity in every frame." The app project is now `Aethra/Aethra.csproj` and the solution is `Aethra.slnx`.
 - 2026-04-25 repo reset: created a clean standalone repo root at `C:\Users\rjh\source\repos\Aethra`, copied the renamed solution/app/smoke harness plus required local native runtime assets, and initialized a fresh Git repository on `main`.
+- 2026-04-25 GitHub bootstrap: connected the clean repo to `https://github.com/hedglen/Aethra.git`, pushed `main`, then fixed the remote-clone build by removing the stale root `libmpv-2.dll` project item and tracking the intended `NativeRuntime\x64` DLL bundle.
 - The repository had existing local edits before this worklog was added, including settings-panel files and main-window changes.
 - The app project now targets `net10.0-windows10.0.19041.0`. `TempMpv` still targets `net8.0` as a console smoke harness; decide separately whether to migrate it.

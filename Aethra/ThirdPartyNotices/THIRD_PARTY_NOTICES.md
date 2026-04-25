@@ -222,7 +222,7 @@ ninja -C /c/Users/rjh/source/native-deps/mpv/build-aethra-localdeps libmpv-2.dll
 #### Aethra Native Runtime Bundle
 
 - Project folder: `NativeRuntime\x64`
-- Status: copied into the project as a side-by-side candidate runtime bundle. The old root-level prototype `libmpv-2.dll` remains untouched for now.
+- Status: copied into the project as the side-by-side runtime bundle. The old root-level prototype `libmpv-2.dll` is removed; runtime resolution should come from `NativeRuntime\x64`.
 - Project output behavior: `NativeRuntime\x64\*.dll` is included as content with `CopyToOutputDirectory=PreserveNewest`.
 - The app is not yet wired to prefer this folder; that should be done in a separate reviewed step by adding a native DLL search path/resolver before the first mpv P/Invoke.
 

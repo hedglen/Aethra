@@ -67,6 +67,11 @@ project.assets.json
 *.[Ee]rr
 *.rsuser
 
+# Native media runtime intentionally ships with the repo for now.
+!Aethra/NativeRuntime/
+!Aethra/NativeRuntime/x64/
+!Aethra/NativeRuntime/**/*.dll
+
 # IDEs & Tools (Rider, ReSharper, VS Code)
 .idea/
 *.DotSettings.user
