@@ -34,12 +34,14 @@ namespace Aethra
         private Windows.Foundation.Point _lastFullscreenPointerPosition;
         private bool _hasLastFullscreenPointerPosition;
         private DateTime _fullscreenControlsHiddenAtUtc = DateTime.MinValue;
+        private bool _isPlaybackPaused = true;
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
 
         public MainWindow()
         {
             InitializeComponent();
+            ApplyPlayPauseVisualState();
             CommandRail.Loaded += CommandRail_Loaded;
             SetCommandRailExpanded(false);
             _fullscreenControlsIdleTimer = new DispatcherTimer
@@ -675,14 +677,18 @@ namespace Aethra
 
         private void TogglePlayback()
         {
+            _isPlaybackPaused = !_isPlaybackPaused;
             _gpuPlayer?.TogglePause();
             _softwarePlayer?.TogglePause();
+            ApplyPlayPauseVisualState();
         }
 
         private void PausePlayback()
         {
+            _isPlaybackPaused = true;
             _gpuPlayer?.Pause();
             _softwarePlayer?.Pause();
+            ApplyPlayPauseVisualState();
         }
 
         private void SeekRelative(double seconds)
@@ -717,6 +723,22 @@ namespace Aethra
             MediaTitleText.Text = GetDisplayMediaName(path);
             _gpuPlayer?.LoadFile(path);
             _softwarePlayer?.LoadFile(path);
+            _isPlaybackPaused = false;
+            ApplyPlayPauseVisualState();
+        }
+
+        private void ApplyPlayPauseVisualState()
+        {
+            if (_isPlaybackPaused)
+            {
+                PlayPauseIcon.Glyph = "\uE769";
+                PlayPauseButton.BorderBrush = (Brush)Application.Current.Resources["AethraAccentBrush"];
+            }
+            else
+            {
+                PlayPauseIcon.Glyph = "\uE768";
+                PlayPauseButton.BorderBrush = (Brush)Application.Current.Resources["AethraVideoBrush"];
+            }
         }
 
         private static string GetDisplayMediaName(string path)

@@ -35,11 +35,11 @@
             <Setter Property="Width" Value="64"/>
             <Setter Property="Height" Value="64"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Background" Value="{StaticResource AethraTextBrush}"/>
+            <Setter Property="Background" Value="{StaticResource AethraVideoBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource AethraAccentBrush}"/>
             <Setter Property="BorderThickness" Value="4"/>
             <Setter Property="CornerRadius" Value="32"/>
-            <Setter Property="Foreground" Value="#111111"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
         </Style>
 
         <Style x:Key="RailButtonStyle" TargetType="Button">
@@ -608,10 +608,11 @@
                                    FontWeight="SemiBold"/>
                     </Button>
 
-                    <Button Style="{StaticResource PrimaryPlayButtonStyle}"
+                    <Button x:Name="PlayPauseButton"
+                            Style="{StaticResource PrimaryPlayButtonStyle}"
                             Click="PlayPauseButton_Click"
                             ToolTipService.ToolTip="Play or pause">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE768;" FontSize="28"/>
+                        <FontIcon x:Name="PlayPauseIcon" FontFamily="Segoe Fluent Icons" Glyph="&#xE769;" FontSize="28"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
