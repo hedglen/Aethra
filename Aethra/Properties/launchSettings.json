@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Aethra (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Aethra (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

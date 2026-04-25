@@ -1,0 +1,77 @@
+# ========================================================
+# Visual Studio & User-specific files
+# ========================================================
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# ========================================================
+# Build results
+# ========================================================
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# ========================================================
+# WinUI 3 / AppX / MSIX Packaging files
+# ========================================================
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appxsym
+*.msixsym
+*.msixupload
+*.appxupload
+
+# ========================================================
+# NuGet Packages
+# ========================================================
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.assets.json
+
+# ========================================================
+# C# / .NET Tooling
+# ========================================================
+*.cache
+*.com2sec
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.lib
+*.exp
+*.tlb
+*.[Oo]ut
+*.[Ee]rr
+*.rsuser
+
+# IDEs & Tools (Rider, ReSharper, VS Code)
+.idea/
+*.DotSettings.user
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

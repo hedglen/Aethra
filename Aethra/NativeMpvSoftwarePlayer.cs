@@ -1,0 +1,229 @@
+using Aethra.Native;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System;
+using System.Collections.Concurrent;
+using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Aethra;
+
+internal sealed class NativeMpvSoftwarePlayer : IDisposable
+{
+    private const int FrameWidth = 640;
+    private const int FrameHeight = 360;
+    private const int BytesPerPixel = 4;
+
+    private readonly DispatcherQueue _dispatcherQueue;
+    private readonly Action<WriteableBitmap> _frameReady;
+    private readonly ConcurrentQueue<string[]> _commands = new();
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly Task _playerTask;
+    private int _frameRequested = 1;
+    private int _presentationQueued;
+    private bool _disposed;
+    private WriteableBitmap? _bitmap;
+    private double _position;
+    private double _duration;
+
+    internal NativeMpvSoftwarePlayer(DispatcherQueue dispatcherQueue, Action<WriteableBitmap> frameReady)
+    {
+        _dispatcherQueue = dispatcherQueue;
+        _frameReady = frameReady;
+        _playerTask = Task.Run(() => RunAsync(_cancellationTokenSource.Token));
+    }
+
+    internal event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
+
+    internal void LoadFile(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        EnqueueCommand("loadfile", path, "replace");
+    }
+
+    internal void TogglePause()
+    {
+        EnqueueCommand("cycle", "pause");
+    }
+
+    internal void Pause()
+    {
+        EnqueueCommand("set", "pause", "yes");
+    }
+
+    internal void Seek(double seconds)
+    {
+        EnqueueCommand("seek", seconds.ToString(CultureInfo.InvariantCulture));
+    }
+
+    internal void SeekToPercent(double percent)
+    {
+        if (double.IsNaN(percent) || double.IsInfinity(percent))
+            return;
+
+        var clamped = Math.Clamp(percent, 0.0, 100.0);
+        EnqueueCommand("seek", clamped.ToString(CultureInfo.InvariantCulture), "absolute-percent");
+    }
+
+    internal void AddVolume(int amount)
+    {
+        EnqueueCommand("add", "volume", amount.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _cancellationTokenSource.Cancel();
+        _ = _playerTask.ContinueWith(
+            static (_, state) => ((CancellationTokenSource)state!).Dispose(),
+            _cancellationTokenSource,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        _disposed = true;
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var context = new NativeMpvContext();
+            using var renderer = new NativeMpvSoftwareRenderer(context);
+            using var frame = new NativeMpvSoftwareFrame(FrameWidth, FrameHeight);
+
+            context.SetOptionString("config", "no");
+            context.SetOptionString("idle", "yes");
+            context.SetOptionString("terminal", "no");
+            context.SetOptionString("vo", "libmpv");
+            context.TrySetOptionString("osc", "no");
+            context.SetOptionString("osd-level", "0");
+            context.TrySetOptionString("input-default-bindings", "no");
+            context.TrySetOptionString("input-vo-keyboard", "no");
+            context.SetWakeupCallback(() => Interlocked.Exchange(ref _frameRequested, 1));
+            context.Initialize();
+            context.ObserveProperty(1, "time-pos", MpvNative.MpvFormat.Double);
+            context.ObserveProperty(2, "duration", MpvNative.MpvFormat.Double);
+
+            renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
+            renderer.Create();
+            EnqueueCommand("loadfile", @"C:\Users\rjh\Videos\test.mp4", "replace");
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                DrainCommands(context);
+                context.DrainEvents(HandleMpvEvent);
+
+                if (Interlocked.Exchange(ref _frameRequested, 0) == 1 && renderer.Render(frame))
+                {
+                    QueueFramePresentation(frame);
+                    renderer.ReportSwap();
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(15), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private void HandleMpvEvent(MpvNative.MpvEvent mpvEvent)
+    {
+        if (mpvEvent.EventId != MpvNative.MpvEventId.PropertyChange || mpvEvent.Data == IntPtr.Zero)
+            return;
+
+        var property = Marshal.PtrToStructure<MpvNative.MpvEventProperty>(mpvEvent.Data);
+        if (property.Format != MpvNative.MpvFormat.Double || property.Data == IntPtr.Zero)
+            return;
+
+        var value = Marshal.PtrToStructure<double>(property.Data);
+        if (double.IsNaN(value) || double.IsInfinity(value))
+            return;
+
+        if (mpvEvent.ReplyUserData == 1)
+            _position = Math.Max(0, value);
+        else if (mpvEvent.ReplyUserData == 2)
+            _duration = Math.Max(0, value);
+        else
+            return;
+
+        QueueProgressChanged();
+    }
+
+    private void EnqueueCommand(params string[] args)
+    {
+        if (_disposed)
+            return;
+
+        _commands.Enqueue(args);
+        Interlocked.Exchange(ref _frameRequested, 1);
+    }
+
+    private void DrainCommands(NativeMpvContext context)
+    {
+        while (_commands.TryDequeue(out var command))
+        {
+            context.Command(command);
+        }
+    }
+
+    private void QueueFramePresentation(NativeMpvSoftwareFrame frame)
+    {
+        if (Interlocked.Exchange(ref _presentationQueued, 1) == 1)
+            return;
+
+        var pixels = CopyFrame(frame);
+        if (!_dispatcherQueue.TryEnqueue(() => PresentFrame(frame.Width, frame.Height, pixels)))
+            Interlocked.Exchange(ref _presentationQueued, 0);
+    }
+
+    private void PresentFrame(int width, int height, byte[] pixels)
+    {
+        try
+        {
+            _bitmap ??= new WriteableBitmap(width, height);
+
+            using var stream = _bitmap.PixelBuffer.AsStream();
+            stream.Seek(0, SeekOrigin.Begin);
+            stream.Write(pixels, 0, pixels.Length);
+            _bitmap.Invalidate();
+            _frameReady(_bitmap);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _presentationQueued, 0);
+        }
+    }
+
+    private void QueueProgressChanged()
+    {
+        if (_duration <= 0)
+            return;
+
+        var progress = new NativeMpvPlaybackProgress(_position, _duration);
+        _dispatcherQueue.TryEnqueue(() => ProgressChanged?.Invoke(this, progress));
+    }
+
+    private static byte[] CopyFrame(NativeMpvSoftwareFrame frame)
+    {
+        var rowBytes = frame.Width * BytesPerPixel;
+        var pixels = new byte[rowBytes * frame.Height];
+
+        for (var row = 0; row < frame.Height; row++)
+        {
+            Marshal.Copy(
+                frame.Buffer + row * frame.Stride,
+                pixels,
+                row * rowBytes,
+                rowBytes);
+        }
+
+        return pixels;
+    }
+}

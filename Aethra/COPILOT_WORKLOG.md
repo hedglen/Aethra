@@ -1,0 +1,732 @@
+# Aethra Copilot Worklog
+
+Purpose: keep short handoff context for future Copilot/Codex sessions so work can continue without rediscovering the current state.
+
+## Project Ground Rules
+
+- Native Windows 11 media player.
+- C# with WinUI 3, unpackaged Windows App SDK.
+- Media engine is libmpv through app-owned native interop/PInvoke.
+- Windows-only, x64-focused.
+- Dark, minimal Fluent UI with custom chrome.
+- MVVM with CommunityToolkit.Mvvm when view models are introduced.
+- Plan before edits, take one small step at a time, run `dotnet build` after each step, and stop for review.
+- Do not add dependencies or broad refactors without a concrete request. Repo-readiness scaffolding (README, LICENSE, CONTRIBUTING, CI, CHANGELOG, etc.) is now in scope per `COPILOT_INSTRUCTIONS.md` and may be added in small reviewed steps.
+- Repo license: GPL-3.0-or-later. This unlocks GPL-licensed mpv/FFmpeg builds for broader codec/filter coverage.
+- Open-source distribution rule: Aethra is free and published on GitHub; prioritize the best native playback/GPU renderer while keeping third-party notices, source links, and build provenance current. No telemetry, analytics, or remote logging.
+
+## Current Focus
+
+Native single-window player architecture.
+
+The app is being built from the ground up as a native Windows 11 player. The target architecture is one WinUI main window, mpv render API video output, normal WinUI controls for all UI, WinUI-first input, and backend mpv profiles for config/shaders/playback options. Existing wrapper and `wid` embedding code is temporary prototype code to replace one reviewed step at a time.
+
+Visual direction: start from the clean, quiet, native feel of the modern Windows Media Player, but make Aethra much more configurable and useful for serious playback.
+
+## Current Plan: Best GPU Renderer Path
+
+Course correction as of 2026-04-25: Aethra will be free and published on GitHub. Stop optimizing around future proprietary/commercial LGPL-only distribution. Keep the repo license-compatible and notices clean, but choose the best native playback and GPU rendering stack available.
+
+Renderer decision:
+
+- Keep the architecture native: one WinUI window, mpv render API, WinUI controls in the same visual tree, and WinUI-first input.
+- Prefer mpv + libplacebo GPU rendering for quality, shaders, scaling, HDR/tone-mapping paths, and long-term configurability.
+- The current source-built runtime exposes mpv OpenGL rendering and does not expose mpv's D3D11 render API. Offscreen mpv OpenGL rendering through ANGLE already works on this machine.
+- Continue the visible renderer path through OpenGL via ANGLE unless a source rebuild proves a better WinUI-compatible GPU path.
+- GPL-compatible native features are allowed if they materially improve playback/rendering, provided Aethra's repository license remains compatible. Do not use FFmpeg `--enable-nonfree` or opaque binaries without a separate explicit decision.
+- Keep the current software renderer as a fallback until the visible GPU path is proven.
+
+Active steps:
+
+1. Keep the current working app path intact while the GPU renderer is built beside it.
+2. Re-evaluate the native runtime with the new open-source target: decide whether to rebuild mpv/FFmpeg/libplacebo with fuller GPU/playback features now that GPL-compatible dependencies are allowed.
+3. Finish the visible OpenGL/ANGLE-to-WinUI bridge so mpv-rendered frames appear in `GpuVideoSurface`.
+4. Switch playback to the GPU path behind a single local flag and verify seek, left-click play/pause, keyboard shortcuts, drag/drop, settings, resize, and fullscreen.
+5. Remove wrapper-era and software-only fallback code only after one reviewed GPU playback cycle.
+6. Build out settings against real backend profiles one category at a time.
+
+## Done
+
+- Step 0 of the GPU render path: wrote the render API probe.
+- Added `RenderApiTypeD3D11 = "direct3d11"` constant and `mpv_error_string` import to `Native/MpvNative.cs`. Both additive.
+- Added `Native/NativeMpvRenderApiProbe.cs`: a small helper that spins up a fresh mpv context for each API candidate, initializes it quietly (same options the software smoke runner uses), attempts `mpv_render_context_create` with that API type (plus a stub `MpvOpenGlInitParams` for the OpenGL case), and reports whether mpv accepted it. `ProbeAll()` runs the trio `direct3d11` / `opengl` / `sw` and returns a list of `NativeMpvRenderApiProbeResult` records.
+- Updated `TempMpv/Program.cs` to print the probe table and a one-line recommendation before the existing software smoke. The recommendation follows the plan's fallback order: D3D11 preferred, OpenGL if D3D11 is rejected, software if neither.
+- Files touched: `Aethra/Native/MpvNative.cs`, `Aethra/Native/NativeMpvRenderApiProbe.cs` (new), `TempMpv/Program.cs`.
+- Build: not run from this session. Needs `dotnet build .\Aethra.slnx -p:Platform=x64` locally, and then `dotnet run --project TempMpv` to capture the probe output. Record the recommended API in the next worklog entry so Step 1 can target it.
+- First run of `dotnet run --project .\TempMpv` failed with `System.DllNotFoundException: Unable to load DLL 'libmpv-2.dll'`: `TempMpv.exe` runs out of its own bin folder but `libmpv-2.dll` was only copied into the main `Aethra` project's output. Fixed `TempMpv/TempMpv.csproj` to link `..\Aethra\libmpv-2.dll` with `CopyToOutputDirectory="PreserveNewest"` and to pin `<PlatformTarget>x64</PlatformTarget>` so the 64-bit DLL is resolved.
+- Probe ran against `C:\Users\rjh\Videos\test.mp4` with Endpne.LibMPV.Windows 0.41.0:
+  - `direct3d11`: REJECTED, error -19 (`MPV_ERROR_NOT_IMPLEMENTED`) - D3D11 backend is NOT compiled into this libmpv build.
+  - `opengl`: REJECTED, error -18 (`MPV_ERROR_UNSUPPORTED`) - this is NOT the same signal as -19. The api-type string was recognized; init failed because the probe passes a stub `get_proc_address` that returns null for every entry point, so mpv cannot resolve GL symbols. OpenGL backend IS compiled in.
+  - `sw`: ACCEPTED (baseline).
+- Tightened `TempMpv/Program.cs` so the printout distinguishes "NOT COMPILED IN" (error -19) from "RECOGNIZED (init failed - needs real context)" (any other negative error), and so the recommendation picks the first api type that is not -19. Rerunning the probe now prints "opengl (fall back to OpenGL via ANGLE per the plan)" as the recommendation.
+- Decision required before Step 1: the plan's fallback branch calls for OpenGL via ANGLE. ANGLE ships as `libEGL.dll` + `libGLESv2.dll` native binaries. Per project rules, adding new dependencies needs explicit approval. The alternative is to rebuild libmpv from source with D3D11 support, which is a larger detour. Waiting for the user to pick before proceeding.
+
+
+- Added the initial settings overlay surface in `MainWindow.xaml`.
+- Added `SettingsPanel.xaml` with Video, Shaders, and Audio categories.
+- Wired settings open/close from the toolbar button, `S`, `Escape`, and right-click.
+- Converted `SettingsPanel.CloseRequested` to a standard `EventHandler`.
+- Updated the matching `MainWindow` close handler signature.
+- Fixed an existing nullability warning in `OverlayWindow.xaml.cs`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the first settings-panel stabilization step.
+- Moved this worklog into the `Aethra` project folder so it appears in Solution Explorer.
+- Added `COPILOT_INSTRUCTIONS.md` in the project folder as the start-here guide for future Copilot/Codex sessions.
+- Fixed settings toggle input by subclassing the main HWND after mpv initializes and routing `S`, `Escape`, and right-click messages to the settings panel.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the input fix.
+- Removed the unused separate `OverlayWindow` XAML/code-behind and removed its project entries.
+- Updated the stale main-window comment that referenced `OverlayWindow`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after removing `OverlayWindow`.
+- Updated `COPILOT_INSTRUCTIONS.md` with the ground-up native architecture direction: one WinUI window, mpv render API, app-owned interop, no player wrapper architecture, and required worklog updates.
+- Decided to create the native libmpv backend skeleton first while the old playback path still builds.
+- Added `Native\MpvNative.cs` with app-owned PInvoke contracts for libmpv core calls, event callbacks, and render API calls. It is not wired into playback yet.
+- Updated `COPILOT_INSTRUCTIONS.md` with the Windows Media Player-inspired visual baseline and the requirement for deeper, approachable configurability.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the native interop skeleton.
+- Added `Native\MpvNativeException.cs` for native mpv error reporting.
+- Added `Native\NativeMpvContext.cs` as a managed wrapper around `MpvNative` for context lifetime, options, string properties, UTF-8 command marshaling, wakeup callbacks, property observation, and nonblocking event polling. It is not wired into playback yet.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the managed native wrapper.
+- Decided to prove the render API architecture with a temporary software render path before adding GPU bridge complexity.
+- Added `Native\NativeMpvSoftwareFrame.cs` for an aligned unmanaged `bgr0` software frame buffer.
+- Added `Native\NativeMpvSoftwareRenderer.cs` for temporary `MPV_RENDER_API_TYPE_SW` render-context lifetime, frame update callbacks, nonblocking update checks, and rendering into `NativeMpvSoftwareFrame`. It is not wired into `MainWindow` yet.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the temporary software render backend.
+- Added `Native\NativeMpvSoftwareSmokeResult.cs`.
+- Added `Native\NativeMpvSoftwareSmokeRunner.cs`, a backend-only async smoke path that creates `NativeMpvContext`, disables UI/audio side effects, creates the temporary software renderer, loads a media file, pumps mpv events, and attempts to render one offscreen frame. It is not wired into `MainWindow` yet.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the offscreen smoke runner.
+- Repurposed the existing `TempMpv` console project as a native smoke harness by linking the app-owned native backend source files. This avoids Windows App SDK startup and does not affect the main solution build.
+- Ran the native software smoke harness against `C:\Users\rjh\Videos\test.mp4`: `FileLoaded=True`, `FrameRendered=True`, `ShutdownReceived=False`, elapsed about 72 ms, 320x180 frame, stride 1280, buffer length 230400.
+- Verified the main solution still builds with `dotnet build .\Aethra.slnx -p:Platform=x64` and zero warnings/errors. Verified `TempMpv` also builds with zero warnings/errors.
+- Replaced the visible `VideoContainer` child-HWND surface with a normal WinUI `Image` hosted inside the main visual tree.
+- Added `NativeMpvSoftwarePlayer.cs`, a temporary UI-facing bridge that runs the app-owned native mpv software render loop on a background task and presents frames to WinUI through `WriteableBitmap`.
+- Switched `MainWindow` startup, keyboard commands, and drag/drop loading to the temporary native software player instead of the old `wid` playback path.
+- Added `NativeMpvSoftwareRenderer.ReportSwap()` for the visible render loop.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after wiring the temporary visible WinUI software frame host.
+- User confirmed the temporary native WinUI video surface works: video renders, audio plays, and settings open from the available inputs.
+- Named the top chrome host in `MainWindow.xaml` and padded it with `AppWindow.TitleBar.RightInset` so the settings gear sits clear of the native minimize/maximize/close buttons.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the title-bar inset fix.
+- Removed the visible top-right settings gear from `MainWindow.xaml`; settings remain available through `S`, right-click, and `Escape` until the proper UI command surface is designed.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after removing the gear button.
+- Added the first Windows Media Player-inspired shell pass in `MainWindow.xaml`: dark title strip, back button, Aethra identity, bottom timeline shelf, title text, centered transport controls, right-side action cluster, and an ellipsis as the future settings/menu entry point.
+- Wired the new visible play/pause, seek back, seek forward, fullscreen, back, and ellipsis controls in `MainWindow.xaml.cs` while keeping `S`, right-click, and `Escape` settings access.
+- Kept this as a visual/control-shell step only; the comprehensive settings redesign remains next.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the first Media Player-style shell pass.
+- Added `NativeMpvSoftwarePlayer.SeekToPercent(double percent)` that clamps to 0-100 and enqueues `seek <percent> absolute-percent` on the backend command queue.
+- Wired `Slider.ValueChanged` on `NativeProgressBar` in `MainWindow.xaml` to `NativeProgressBar_ValueChanged`, which calls `SeekToPercent` so click and drag on the seek bar jump playback to that position.
+- Added a `_suppressSliderValueChanged` guard in `MainWindow.xaml.cs` around the programmatic `NativeProgressBar.Value` assignment in `UpdateProgressBar` to prevent playback-driven updates from triggering seek feedback once the progress-tick path is reconnected.
+- Set `StepFrequency="0.01"`, `SmallChange="0.1"`, `LargeChange="5"` on `NativeProgressBar` so the slider reports fine-grained values when clicked or dragged.
+- Files touched: `Aethra/NativeMpvSoftwarePlayer.cs`, `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the seek-bar click fix.
+- Added `FullSettingsPanel.xaml` + `FullSettingsPanel.xaml.cs`: a full-screen UserControl with a dark WMP-style header, a left `NavigationView` listing Playback, Video, Audio, Subtitles, Input, Library, Shaders, Profiles, and Advanced, and a scrollable content pane. Each category is scaffolded with real-looking, WinUI-native controls (`ComboBox`, `ToggleSwitch`, `RadioButton`, `Slider`, `TextBox`) grouped under subheaders. Placeholder "Coming soon" blocks mark areas not yet designed (keybinding editor, folder watching, custom shader chain, profile management). Raises `CloseRequested`.
+- Extended `SettingsPanel.xaml` with a bordered "All settings" entry button under the header that raises a new `OpenAllSettingsRequested` event on `SettingsPanel`. Existing flyout behavior (Video / Shaders / Audio nav) is unchanged.
+- Hosted the full-screen panel via a new `FullSettingsHost` grid in `MainWindow.xaml`, layered above the video surface and transport bar and initially `Collapsed`.
+- Wired `MainWindow`: `Settings_OpenAllSettingsRequested` collapses the flyout and shows the full-screen host; `FullSettings_CloseRequested` hides it. `Escape` (both WinUI and the HWND subclass path) now closes the full-screen panel first, then the flyout. Right-click is suppressed when the full-screen panel is visible so it doesn't stack the flyout on top.
+- Registered `FullSettingsPanel.xaml` as a `<Page>` in `Aethra.csproj` mirroring the existing `SettingsPanel.xaml` entries so `InitializeComponent` is generated.
+- Files touched: `Aethra/FullSettingsPanel.xaml` (new), `Aethra/FullSettingsPanel.xaml.cs` (new), `Aethra/SettingsPanel.xaml`, `Aethra/SettingsPanel.xaml.cs`, `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/Aethra.csproj`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the full-screen settings shell.
+- Added `NativeMpvPlaybackProgress.cs` and wired `NativeMpvSoftwarePlayer` to observe native mpv `time-pos` and `duration` properties, raising `ProgressChanged` on the dispatcher.
+- Updated `MainWindow.xaml.cs` so the seek bar and time labels update from native playback progress; button seeks and keyboard seeks now keep the bar in sync with the video.
+- Replaced the bottom seek-back/seek-forward glyphs with stable back/forward arrow glyphs so the forward button no longer appears as a telephone icon.
+- Files touched: `Aethra/NativeMpvPlaybackProgress.cs` (new), `Aethra/NativeMpvSoftwarePlayer.cs`, `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after reconnecting live progress updates and replacing the seek glyphs.
+- Replaced the bottom seek arrow glyphs with explicit time-jump labels (`↶10` and `30↷`) so they read as seek controls rather than track skip controls.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the seek icon adjustment.
+- Added `VideoContainer_PointerPressed` so a left-click anywhere on the video surface toggles play/pause without affecting clicks on transport controls or settings overlays.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding video left-click play/pause.
+- Added commercial-readiness guidance to `COPILOT_INSTRUCTIONS.md`: no GPL-only/nonfree native dependencies without explicit owner approval, use LGPL-clean libmpv/FFmpeg builds, keep DLLs replaceable, and update notices when native binaries change.
+- Added `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` to track native dependency notices, required next binaries, and current commercial-distribution concerns.
+- Included `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` as project content so it appears in Solution Explorer.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding commercial-readiness guardrails.
+- Decided to build distribution `libmpv-2.dll` from official mpv source instead of relying on opaque third-party prebuilts.
+- Updated `COPILOT_INSTRUCTIONS.md` to require official-source libmpv distribution builds from `https://github.com/mpv-player/mpv` using `-Dlibmpv=true`, `-Dgpl=false`, and LGPL-clean FFmpeg.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the official mpv source URL, official Windows build docs, official license reference, and the planned MSYS2 CLANG64 source-build route.
+- Checked local build environment: MSYS2 is not installed at `C:\msys64`, so the next source-build step needs MSYS2 installation before cloning/building mpv.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after recording the official-source mpv build decision.
+- Installed MSYS2 through `winget install --id MSYS2.MSYS2 --exact --silent --accept-package-agreements --accept-source-agreements`.
+- Updated MSYS2 with two `pacman -Syu --noconfirm` passes.
+- Installed the CLANG64 build environment and ANGLE package with pacman: `git`, `base-devel`, `mingw-w64-clang-x86_64-toolchain`, `meson`, `ninja`, `pkgconf`, `python`, `cmake`, `nasm`, `yasm`, and `mingw-w64-clang-x86_64-angleproject`.
+- Verified local tools: `clang 22.1.4`, `meson 1.11.1`, `ninja 1.13.2`, `cmake 4.3.2`, `git 2.54.0`.
+- Verified local ANGLE files exist at `C:\msys64\clang64\bin\libEGL.dll`, `C:\msys64\clang64\bin\libGLESv2.dll`, and `C:\msys64\clang64\share\licenses\angleproject\LICENSE`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the installed MSYS2/ANGLE state. No third-party binaries have been copied into the Aethra project yet.
+- Cloned official mpv source to `C:\Users\rjh\source\native-deps\mpv` outside the Aethra app/repo tree.
+- Recorded mpv source commit `e046cd0736b7e651bb74fc577596a33fe9635468` (`2026-04-24 20:19:50 +0200`, `context_menu.lua: add background_alpha script-opt`).
+- Inspected mpv Windows build docs, `meson.options`, and `Copyright`; confirmed `-Dgpl=false` is necessary but linked libraries such as FFmpeg can still make the final binary GPL.
+- Checked MSYS2 CLANG64 FFmpeg metadata: `mingw-w64-clang-x86_64-ffmpeg 8.1-3` is `GPL-3.0-or-later`, so it must not be used for Aethra's commercial distribution build.
+- Checked selected dependency metadata: `libplacebo` reports `LGPL2.1`, `libass` reports `ISC`, and `luajit` reports `MIT`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the mpv checkout/commit and dependency licensing checkpoints.
+- User provided FFmpeg's official legal checklist: `https://www.ffmpeg.org/legal.html`.
+- Updated `COPILOT_INSTRUCTIONS.md` so future FFmpeg work must follow the official LGPL checklist: no `--enable-gpl`, no `--enable-nonfree`, dynamic DLL linking, matching source distribution, configure/build notes, notice/About/EULA language, no conflicting reverse-engineering prohibition, and no obfuscated DLL names.
+- Added an FFmpeg LGPL compliance checklist to `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` for future binary/source packaging.
+- Cloned official FFmpeg source to `C:\Users\rjh\source\native-deps\ffmpeg`.
+- Recorded FFmpeg source commit `45fe315cf02c2ebb334b5320a3c0dd4df301bad6` (`2026-04-24 16:04:48 -0300`, `tests/fate/mpegts: add tests for LCEVC samples`).
+- Configured FFmpeg from source with shared libraries enabled and static libraries, programs, docs, and debug symbols disabled:
+  `./configure --prefix=/c/Users/rjh/source/native-deps/ffmpeg-lgpl-install --pkg-config=pkg-config --cc=clang --cxx=clang++ --ar=llvm-ar --ranlib=llvm-ranlib --nm=llvm-nm --enable-shared --disable-static --disable-programs --disable-doc --disable-debug --enable-ffprobe`.
+- Verified the FFmpeg configure summary reports `License: LGPL version 2.1 or later`.
+- Built and installed the local LGPL-clean FFmpeg build to `C:\Users\rjh\source\native-deps\ffmpeg-lgpl-install`.
+- Verified installed FFmpeg DLLs exist: `avcodec-62.dll`, `avdevice-62.dll`, `avfilter-11.dll`, `avformat-62.dll`, `avutil-60.dll`, `swresample-6.dll`, and `swscale-9.dll`.
+- Verified `ffprobe.exe -hide_banner -L` reports LGPL redistribution terms.
+- Verified `ffbuild/config.mak` has `CONFIG_SHARED=yes`, `!CONFIG_STATIC=yes`, `!CONFIG_GPL=yes`, and `!CONFIG_NONFREE=yes`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the local FFmpeg source/build/install provenance. No FFmpeg binaries have been copied into the Aethra project yet.
+- Installed local MSYS2 CLANG64 mpv build dependencies `mingw-w64-clang-x86_64-libplacebo 7.360.1-1` and `mingw-w64-clang-x86_64-libass 0.17.4-3`.
+- Configured official mpv source in `C:\Users\rjh\source\native-deps\mpv\build-aethra-lgpl` with the local LGPL-clean FFmpeg pkg-config path first in `PKG_CONFIG_PATH`.
+- Final successful mpv configure command:
+  `meson setup build-aethra-lgpl -Dlibmpv=true -Dgpl=false -Ddefault_library=shared -Dbuild-date=false -Dlua=disabled -Djavascript=disabled -Ddvdnav=disabled -Dcdda=disabled -Dlibbluray=disabled -Drubberband=disabled -Duchardet=disabled -Dzimg=disabled -Dlcms2=disabled -Dvulkan=disabled -Dd3d11=disabled -Degl=disabled -Degl-angle=enabled -Degl-angle-lib=enabled -Degl-angle-win32=enabled -Dgl=enabled -Dplain-gl=enabled -Dgl-win32=enabled -Dgl-dxinterop=disabled -Dd3d-hwaccel=enabled -Dwasapi=enabled`.
+- mpv Meson summary for this configure: `libmpv: YES`, `opengl: YES`, `d3d11: NO`, `vulkan: NO`, `lua: NO`, `javascript: NO`, with `gpl=false`.
+- Meson enabled features include `egl-angle`, `egl-angle-lib`, `egl-angle-win32`, `ffmpeg`, `gl`, `gl-win32`, `libass`, `libplacebo`, `wasapi`, and `win32-desktop`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the mpv configure command and dependency state. `libmpv-2.dll` has not been built or copied into Aethra yet.
+- Built `libmpv-2.dll` from the configured source tree with `ninja -C /c/Users/rjh/source/native-deps/mpv/build-aethra-lgpl libmpv-2.dll`.
+- Build output: `C:\Users\rjh\source\native-deps\mpv\build-aethra-lgpl\libmpv-2.dll`, size `12,350,976` bytes. Import library: `C:\Users\rjh\source\native-deps\mpv\build-aethra-lgpl\libmpv.dll.a`.
+- Inspected direct imports with `llvm-objdump -p`. Direct non-system imports are the local FFmpeg DLLs plus `libass-9.dll`, `libplacebo-360.dll`, `libiconv-2.dll`, `libarchive-13.dll`, `zlib1.dll`, `libjpeg-8.dll`, `libshaderc_shared.dll`, and `libEGL.dll`.
+- Ran a recursive DLL import walk using search paths `build-aethra-lgpl`, `ffmpeg-lgpl-install\bin`, `C:\msys64\clang64\bin`, and `C:\Windows\System32`.
+- Recursive dependency walk found a large non-system set including FFmpeg, libass, libplacebo, ANGLE, libarchive, OpenSSL, freetype/fontconfig/harfbuzz stack, shaderc/SPIR-V, Vulkan loader, and compression/runtime libraries.
+- Important blocker: `libdovi.dll` imports unresolved `dovi.dll`; do not copy this native set into Aethra yet.
+- Important cleanup signal: MSYS2 `libplacebo-360.dll` brings in `libdovi`, `lcms2`, `shaderc`, `spirv-cross`, and `vulkan-1.dll` even though the mpv configure disables Vulkan and lcms2 at mpv level.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the build output and dependency inspection summary. No new native binaries were copied into Aethra.
+- Created a second mpv build directory, `C:\Users\rjh\source\native-deps\mpv\build-aethra-trimmed`, to preserve the first successful build while trying a smaller dependency set.
+- Configured the trimmed build with additional optional features disabled: `libarchive`, `jpeg`, `shaderc`, `spirv-cross`, `d3d-hwaccel`, `d3d9-hwaccel`, and `gl-dxinterop-d3d9`.
+- Built trimmed `libmpv-2.dll` successfully. Output: `C:\Users\rjh\source\native-deps\mpv\build-aethra-trimmed\libmpv-2.dll`, size `11,670,016` bytes.
+- Trim result: direct imports from `libmpv-2.dll` no longer include `libarchive-13.dll`, `libjpeg-8.dll`, or direct `libshaderc_shared.dll`.
+- Remaining direct non-system imports are local FFmpeg DLLs plus `libass-9.dll`, `libplacebo-360.dll`, `libiconv-2.dll`, `zlib1.dll`, and `libEGL.dll`.
+- Recursive dependency walk still finds `libdovi.dll`, `libshaderc_shared.dll`, `libspirv-cross-c-shared.dll`, `vulkan-1.dll`, and unresolved `dovi.dll` through MSYS2 `libplacebo-360.dll`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the trimmed build command, output, and dependency result. No native binaries were copied into Aethra.
+- Cloned official `libplacebo` source to `C:\Users\rjh\source\native-deps\libplacebo`.
+- Recorded libplacebo source commit `409c9a822527693dcb5f60c5e37a74a85fae7204` (`2026-04-15T22:26:55Z`, `vulkan/context: use `VK_KHR_internally_synchronized_queues``).
+- Initialized libplacebo source submodules with `git submodule update --init`.
+- Configured minimal local libplacebo in `C:\Users\rjh\source\native-deps\libplacebo\build-aethra-minimal` with shared output, demos/tests/bench/fuzz off, OpenGL enabled, built-in GL proc loading enabled, and Vulkan/D3D11/shaderc/glslang/lcms/Dolby Vision/libdovi/xxhash/unwind disabled.
+- Built and installed minimal libplacebo to `C:\Users\rjh\source\native-deps\libplacebo-minimal-install`.
+- Minimal libplacebo output: `C:\Users\rjh\source\native-deps\libplacebo-minimal-install\bin\libplacebo-362.dll`, size `4,184,064` bytes.
+- Verified `libplacebo.pc` reports `Version: 7.362.0`, `pl_has_opengl=1`, `pl_has_vulkan=0`, `pl_has_shaderc=0`, `pl_has_glslang=0`, `pl_has_lcms=0`, `pl_has_dovi=0`, and `pl_has_libdovi=0`.
+- Verified direct imports from `libplacebo-362.dll` are only `libc++.dll` plus Windows runtime/system DLLs.
+- Configured mpv in `C:\Users\rjh\source\native-deps\mpv\build-aethra-localdeps` with `PKG_CONFIG_PATH` pointing first to local minimal libplacebo, then local LGPL-clean FFmpeg.
+- mpv Meson confirmed `Run-time dependency libplacebo found: YES 7.362.0`.
+- Built `C:\Users\rjh\source\native-deps\mpv\build-aethra-localdeps\libmpv-2.dll`, size `11,649,024` bytes.
+- Direct non-system imports are local FFmpeg DLLs plus `libass-9.dll`, `libplacebo-362.dll`, `libiconv-2.dll`, `zlib1.dll`, and `libEGL.dll`.
+- Recursive dependency walk found no unresolved DLLs.
+- Recursive dependency walk no longer includes `libdovi.dll`, `libshaderc_shared.dll`, `libspirv-cross-c-shared.dll`, `vulkan-1.dll`, or `liblcms2-2.dll`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the minimal libplacebo build and the mpv local-dependency build. No native binaries were copied into Aethra yet.
+- Created `Aethra\NativeRuntime\x64` and copied the no-unresolved-dependency native runtime bundle into the project as a side-by-side candidate bundle.
+- Copied bundle DLLs: `libmpv-2.dll`, local FFmpeg DLLs, local `libplacebo-362.dll`, ANGLE `libEGL.dll`/`libGLESv2.dll`, `libass-9.dll`, subtitle/font/text shaping dependencies, `libc++.dll`, and required compression/text runtime DLLs.
+- Left the old root-level prototype `Aethra\libmpv-2.dll` untouched. The app is not yet wired to prefer `NativeRuntime\x64`.
+- Updated `Aethra.csproj` so `NativeRuntime\x64\*.dll` is copied to output with `CopyToOutputDirectory=PreserveNewest`.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` with the project runtime-bundle location, copied DLL list, source paths, and a reminder that every non-system DLL still needs license/source/provenance coverage before public distribution.
+- Verified `Aethra\NativeRuntime\x64\libmpv-2.dll` plus `libGLESv2.dll` resolve all recursive non-system imports from the copied project folder with no unresolved DLLs.
+- Initial build with the runtime bundle as `Content` produced a WinAppSDK PRI warning because native DLL names were scanned as resources. Changed the runtime DLL wildcard to `None Include="NativeRuntime\x64\*.dll"` with `CopyToOutputDirectory=PreserveNewest`, which still copies the DLLs but avoids PRI indexing.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the side-by-side native runtime bundle.
+- Added `Native\NativeRuntimeLoader.cs` to register `NativeRuntime\x64` as a DLL search directory and resolve `libmpv-2.dll` from that folder before any app-owned mpv P/Invoke.
+- `App.OnLaunched` now calls `NativeRuntimeLoader.Install(typeof(MpvContext).Assembly)` before constructing `MainWindow`, so both the app-owned native interop and the temporary Hanuman wrapper resolve mpv from the side-by-side runtime bundle.
+- Removed the old ad hoc `libmpv.2` resolver from `MainWindow.xaml.cs`; the old root-level prototype `libmpv-2.dll` is still present but should no longer win the resolver path.
+- Updated `TempMpv` so it copies `NativeRuntime\x64\*.dll`, installs `NativeRuntimeLoader`, and probes the same runtime bundle as the app.
+- Added `NativeMpvContext.TrySetOptionString` and changed optional script/input options (`osc`, `input-default-bindings`, `input-vo-keyboard`) to use it. The new lean mpv build has Lua/OSC disabled, so `osc=no` is not a supported option and must not fail startup.
+- Reran `TempMpv` against the new source-built runtime bundle:
+  - `direct3d11`: NOT COMPILED IN, error `-19` (`operation not implemented`).
+  - `opengl`: RECOGNIZED but probe init failed with error `-18` because the probe still supplies a stub GL get-proc callback; this confirms the OpenGL render backend is compiled in.
+  - `sw`: ACCEPTED.
+  - Recommendation remains OpenGL via ANGLE.
+  - Software smoke succeeded: `FileLoaded=True`, `FrameRendered=True`, elapsed about `55 ms`, 320x180 frame.
+- Added the WinUI-side GPU video surface placeholder: `GpuVideoSurface` is a `SwapChainPanel` inside `VideoContainer`, beside the existing software `Image` (`VideoFrame`).
+- Added `UseGpuVideoSurface = false` and `ApplyVideoSurfaceMode()` in `MainWindow.xaml.cs`, so the software renderer remains selected and visible while the GPU surface exists collapsed for the next OpenGL/ANGLE host step.
+- This was intentionally UI scaffolding only: no GPU rendering is started yet, and the working software renderer path remains unchanged.
+- Added ANGLE/EGL scaffolding:
+  - `Native\AngleNative.cs` contains P/Invoke bindings for the small EGL/OpenGL ES surface needed now.
+  - `Native\AngleEglInfo.cs` records EGL/GLES smoke-test details.
+  - `Native\AngleEglContext.cs` creates an offscreen EGL pbuffer context, makes it current, exposes vendor/version info, and tears it down safely.
+- Updated `TempMpv` to run an ANGLE/EGL smoke before the mpv probe.
+- Verified `TempMpv` ANGLE smoke against the bundled `NativeRuntime\x64` DLLs:
+  - EGL `1.5`
+  - EGL vendor `Google Inc. (NVIDIA)`
+  - ANGLE version `2.1.25748`
+  - GLES client `3`
+  - GL renderer `ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Ti ..., Direct3D11 ...)`
+  - GL version `OpenGL ES 3.0.0`
+- Reran the mpv probe in the same harness; result is unchanged and expected: D3D11 render API not compiled in, OpenGL render API recognized but needs a real context, software render accepted.
+- Software smoke still succeeds with `FileLoaded=True` and `FrameRendered=True`.
+- Added mpv OpenGL offscreen render smoke:
+  - Extended `AngleNative` with `eglGetProcAddress`, `eglSwapBuffers`, `glGetError`, and `GL_RGBA8`.
+  - Extended `AngleEglContext` with `MakeCurrent()` and `SwapBuffers()`.
+  - Added `Native\NativeMpvOpenGlRenderer.cs`, which creates `mpv_render_context` with `MPV_RENDER_API_TYPE_OPENGL`, uses ANGLE's `eglGetProcAddress`, renders into the current pbuffer/default framebuffer, and reports swap.
+  - Added `Native\NativeMpvOpenGlSmokeRunner.cs` and `Native\NativeMpvOpenGlSmokeResult.cs`.
+  - Updated `TempMpv` to run the OpenGL smoke after the software smoke.
+- Verified `TempMpv` OpenGL smoke against the source-built runtime bundle:
+  - `FileLoaded=True`
+  - `FrameRendered=True`
+  - `ShutdownReceived=False`
+  - elapsed about `132 ms`
+  - render target `320x180`
+  - `GlError=0x0`
+- This proves mpv's OpenGL render API can render through ANGLE on this machine. The visible app still uses the software renderer; no visible playback path was changed in this step.
+- Added visible-target scaffolding for WinUI composition:
+  - `Native\D3D11Native.cs` defines the minimal D3D11/DXGI/SwapChainPanel COM interop needed to create a BGRA D3D11 device and DXGI composition swap chain.
+  - `Native\D3D11SwapChainPanelHost.cs` can create a D3D11 device, get the DXGI factory, create a `CreateSwapChainForComposition` swap chain, query `ISwapChainPanelNative`, and attach the swap chain to a `SwapChainPanel`.
+- The D3D11/SwapChainPanel host is not instantiated by the app yet. `UseGpuVideoSurface` remains `false`, and the visible player still uses the working software renderer.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the D3D11/SwapChainPanel scaffold.
+- Extended the WinUI composition scaffold with a guarded attach/present smoke path:
+  - Added a minimal `IDXGISwapChain1` COM interface and `Present()` support in `D3D11SwapChainPanelHost`.
+  - Added `_gpuSurfaceSmokeHost`, `RunGpuSurfaceSmoke => false`, and `SmokeAttachGpuSurface()` in `MainWindow.xaml.cs`.
+  - `SmokeAttachGpuSurface()` can attach `D3D11SwapChainPanelHost` to `GpuVideoSurface` and call `Present()` once, but it is disabled by default and not visible in normal app runs.
+  - `UseGpuVideoSurface` remains `false`; the visible app still uses the working software renderer.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the guarded attach/present smoke path.
+- Changed the guarded swap-chain attach smoke from a hardcoded disabled property to an environment-variable trigger: set `AETHRA_GPU_SURFACE_SMOKE=1` before app launch to run `SmokeAttachGpuSurface()`. Normal runs keep it disabled.
+- Attempted to launch the app from this shell with `AETHRA_GPU_SURFACE_SMOKE=1` using `dotnet run --project .\Aethra\Aethra.csproj -p:Platform=x64`, but the process exits before app code runs because Windows App SDK auto-initialization fails with `REGDB_E_CLASSNOTREG` (`Class not registered`) in `DeploymentManagerCS.AutoInitialize`. This is a local launch-method/runtime registration issue, not a result from `SmokeAttachGpuSurface()`.
+- Action for the next manual Visual Studio run: use the Package launch profile, set `AETHRA_GPU_SURFACE_SMOKE=1` in the debug environment if possible, and confirm whether the app starts without crashing. If it starts, the hidden swap-chain attach/present path did not fail.
+- Course correction recorded: Aethra is now intended to be free and published on GitHub, so future work should prioritize the best native mpv/libplacebo GPU renderer instead of optimizing around proprietary/commercial LGPL-only constraints.
+- Updated `COPILOT_INSTRUCTIONS.md` with the new open-source distribution rules: GPL-compatible dependencies are allowed when the Aethra repo/license remains compatible; FFmpeg `--enable-nonfree`, opaque binaries, and unclear-provenance native builds still require explicit owner approval.
+- Updated this worklog's current plan to focus on the best GPU renderer path: keep the working software renderer as fallback, continue with the proven OpenGL/ANGLE render API path unless a better WinUI-compatible rebuild is proven, and consider fuller GPL-compatible runtime features before locking the native bundle.
+- Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` so the old LGPL-clean work is preserved as historical provenance/baseline rather than the active product constraint.
+- Files touched: `COPILOT_INSTRUCTIONS.md`, `COPILOT_WORKLOG.md`, `ThirdPartyNotices\THIRD_PARTY_NOTICES.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the course-correction documentation step.
+- Rewrote `COPILOT_INSTRUCTIONS.md` to align with the open-source GitHub direction and the "free, easy, best of everything" target:
+  - Pinned target framework to .NET 10 (`net10.0-windows10.0.19041.0`); existing `net8.0-...` target is now flagged as a leftover to migrate in a reviewed step.
+  - Set the repo license to GPL-3.0-or-later. This unlocks `-Dgpl=true` for mpv and `--enable-gpl` for FFmpeg in future native rebuilds for broader codec/filter coverage.
+  - Made keyboard and mouse co-equal first-class input surfaces; called out 12-button gaming mice (Corsair Scimitar) explicitly so mouse-button-as-binding-target is treated as core, not optional. Replaced the old "keyboard everything, mouse secondary" stance.
+  - Expanded explicit playback scope: local files, network streams (HTTP/HLS/DASH/RTSP/RTMP/SMB), yt-dlp integration, lua scripts and user shaders (with `~~/scripts` and `~~/shaders` folders), DVD/Blu-ray. Out-of-scope items (DRM streaming services, recording, editing, transcoding) listed for clarity.
+  - Added a Quality Bar section: HDR10/HDR10+ passthrough, libplacebo HDR-to-SDR tone mapping, Dolby Vision passthrough (libdovi deferred), 10/12-bit pipeline, high-quality scalers and motion interpolation, frame-perfect display sync, WASAPI shared/exclusive, Atmos/DTS:X passthrough, libass subtitles. Noted that managed-side overhead for these features is effectively zero because the work happens in native libs.
+  - Added native Windows integrations as first-class UI requirements: SMTC, jump lists, taskbar thumb buttons, file associations, "Open with", prevent-sleep, per-monitor window state, mini-player/PiP, multi-monitor awareness.
+  - Added a Configuration section: single on-disk store with `mpv.conf`/`input.conf`-compatible files plus `scripts/`/`shaders/` folders, GUI and hand-edits round-trip, `%APPDATA%\Aethra\` default with portable-mode opt-in.
+  - Added a Testing section acknowledging `TempMpv` as the native smoke harness; added the smoke run command alongside the build command.
+  - Lifted the "no broad architecture / logging / DI / docs" moratorium for repo-readiness work: README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, GitHub Actions CI, CHANGELOG (Keep-a-Changelog + SemVer) are now in scope to add in small reviewed steps. Update mechanism, code-signing, and release pipeline left as open questions for the first public release.
+  - Added an explicit no-telemetry, no-analytics, no-remote-logging stance.
+  - Reworded the Win32 input rule to acknowledge HWND subclassing of the main window as a sanctioned exception (which the worklog already used for `S`/`Escape`/right-click), with the requirement that interop go through named helpers.
+  - Reworded settings UX to require search/filter, per-pane reset-to-defaults, exportable/importable profiles, and an Advanced pane for raw mpv property strings.
+- Files touched: `COPILOT_INSTRUCTIONS.md`, `COPILOT_WORKLOG.md`.
+- Build: not run (instructions/worklog only). No code changed.
+- Implemented the first visible GPU playback path using libmpv's OpenGL render API over ANGLE:
+  - Added `Native\AngleSwapChainPanelContext.cs`, adapted from the established SkiaSharp WinUI ANGLE pattern: create an EGL window surface from a WinUI `SwapChainPanel` via `EGLNativeWindowTypeProperty`, make it current on the render thread, query surface dimensions, set the GL viewport, and swap buffers.
+  - Extended `Native\AngleNative.cs` with ANGLE window-surface, platform-display, surface-query, and `glViewport` bindings.
+  - Extended `Native\NativeMpvOpenGlRenderer.cs` so visible rendering can pass `MPV_RENDER_PARAM_FLIP_Y` for the default framebuffer and redraw even when a resize/request wants the previous frame.
+  - Added `NativeMpvOpenGlPlayer.cs`, a UI-facing GPU player that mirrors the software player's commands/progress events while rendering mpv frames into the ANGLE-backed `GpuVideoSurface`.
+  - Switched `MainWindow.xaml.cs` to use the GPU player by default through `UseGpuVideoSurface = true`, while keeping the software player one flag away.
+  - Routed play/pause, seek, volume, seek-bar click, video left-click, drag/drop load, and progress updates through whichever native player is active.
+  - Updated `TempMpv.csproj` so the console smoke harness excludes UI-only `SwapChainPanel` files while still testing the offscreen ANGLE/mpv path.
+- Web/source references checked for this step:
+  - mpv `render.h` / `render_gl.h`: render API recommends render API over `wid`, requires an OpenGL context current on the render thread, and documents `MPV_RENDER_PARAM_OPENGL_FBO` plus `MPV_RENDER_PARAM_FLIP_Y` for default framebuffer rendering.
+  - SkiaSharp WinUI `AngleSwapChainPanel`/`GlesContext`: confirmed the `PropertySet` + `EGLNativeWindowTypeProperty` pattern for creating an ANGLE EGL window surface from `SwapChainPanel`.
+- Verified `dotnet run --project .\TempMpv\TempMpv.csproj -p:Platform=x64` still passes:
+  - ANGLE EGL initializes over Direct3D11 on the NVIDIA RTX 3070 Ti.
+  - mpv probe still recommends OpenGL via ANGLE.
+  - software smoke renders a frame.
+  - OpenGL smoke renders a frame with `GlError=0x0`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the visible GPU path wiring.
+- Attempted `dotnet run --project .\Aethra\Aethra.csproj -p:Platform=x64`; it still exits before app code runs because Windows App SDK auto-initialization fails with `REGDB_E_CLASSNOTREG`. This does not validate or invalidate the GPU surface path. Use Visual Studio's Package launch profile to test the actual window.
+- User tested Visual Studio packaged startup and reported the app crashed immediately.
+- Checked Windows Application event log: recent packaged crashes fault in `Microsoft.UI.Xaml.dll` with exception code `0xc000027b`, consistent with an exception escaping a XAML event boundary during startup. Older unpackaged shell launches still show the known Windows App SDK `REGDB_E_CLASSNOTREG` failure before app code.
+- Added startup crash containment around the GPU initialization path in `MainWindow.xaml.cs`:
+  - Replaced the static GPU-surface flag with an instance `_useGpuVideoSurface` flag.
+  - Added `TryInitializeVisiblePlayer()` around `SmokeAttachGpuSurface()` and `InitializeNativeGpuPlayer()`.
+  - If ANGLE/SwapChainPanel GPU startup throws, the app now disposes any partial GPU objects, switches the surface back to the software `Image`, and starts `NativeMpvSoftwarePlayer`.
+  - Added `Debug.WriteLine` output with the GPU startup exception for Visual Studio Output inspection.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the crash-containment fallback.
+- User reran from Visual Studio Package profile. App played via fallback and Output captured the exact GPU failure:
+  - `GPU renderer startup failed. Falling back to software rendering. System.InvalidOperationException: eglCreateWindowSurface failed with EGL error 0x300B.`
+  - `0x300B` is `EGL_BAD_NATIVE_WINDOW`, so ANGLE rejected the `SwapChainPanel` native-window object handed to `eglCreateWindowSurface`.
+- Delayed GPU startup to improve the native-window handoff:
+  - `MainWindow` now subscribes to `GpuVideoSurface.Loaded` in addition to `VideoContainer.Loaded`.
+  - GPU initialization is queued one dispatcher tick after `GpuVideoSurface.Loaded`.
+  - `TryInitializeVisiblePlayer()` now waits until `GpuVideoSurface.ActualWidth` and `ActualHeight` are non-zero before creating the ANGLE window surface.
+  - Added `_visiblePlayerInitialized` so fallback/software initialization runs only once.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after delaying GPU surface creation.
+- User reran after the delay and confirmed the same GPU failure persisted: `eglCreateWindowSurface failed with EGL error 0x300B`.
+- Corrected the renderer strategy: current mpv's public render API exposes OpenGL and software, not a public D3D11 render API. The better WinUI route is still mpv OpenGL render API through ANGLE, but using a D3D11 composition swap-chain backbuffer as the EGL surface instead of ANGLE's `SwapChainPanel` window-surface shortcut.
+- Inspected mpv's own `video\out\opengl\context_angle.c`; its D3D11 ANGLE path gets the DXGI swap-chain backbuffer and calls `eglCreatePbufferFromClientBuffer(EGL_D3D_TEXTURE_ANGLE, backbuffer, ...)`.
+- Added `Native\AngleD3D11SwapChainContext.cs`:
+  - Creates a `D3D11SwapChainPanelHost`.
+  - Attaches a D3D11 composition swap chain to `GpuVideoSurface`.
+  - Creates an ANGLE EGL device from the same D3D11 device via `eglCreateDeviceANGLE`.
+  - Creates an EGL display from that device.
+  - Gets the swap-chain backbuffer and creates an EGL pbuffer from it with `eglCreatePbufferFromClientBuffer`.
+  - Presents through the D3D11 composition swap chain.
+- Extended `Native\AngleNative.cs` with `eglCreatePbufferFromClientBuffer` and required ANGLE constants.
+- Extended `Native\D3D11SwapChainPanelHost.cs` to expose a D3D11 device pointer and swap-chain backbuffer pointer.
+- Added a minimal `ID3D11Texture2D` COM interface id in `Native\D3D11Native.cs`.
+- Updated `NativeMpvOpenGlPlayer.cs` to use `AngleD3D11SwapChainContext` instead of `AngleSwapChainPanelContext`.
+- Updated `TempMpv.csproj` to exclude the new UI/composition-only ANGLE bridge from the console smoke harness.
+- Verified `dotnet run --project .\TempMpv\TempMpv.csproj -p:Platform=x64` still passes: ANGLE smoke, mpv probe, software smoke, and OpenGL smoke all succeed.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the D3D11-backbuffer ANGLE bridge.
+- User reran from Visual Studio Package profile. The old `eglCreateWindowSurface` error is gone. New GPU startup failure:
+  - `System.Runtime.InteropServices.InvalidComObjectException: COM object that has been separated from its underlying RCW cannot be used.`
+  - Failure site: `IDXGIFactory2.CreateSwapChainForComposition(ID3D11Device device, ...)`.
+- Fixed D3D11 COM ownership in `Native\D3D11SwapChainPanelHost.cs`:
+  - `EnsureDevice()` was querying `IDXGIDevice` from the same D3D11 device RCW, then calling `Marshal.FinalReleaseComObject(dxgiDevice)`.
+  - Because the `IDXGIDevice` RCW points to the same underlying COM identity as `_device`, `FinalReleaseComObject` separated the D3D11 device wrapper before the swap chain was created.
+  - Changed that cleanup to `Marshal.ReleaseComObject(dxgiDevice)` so the main `_device` RCW remains usable.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the COM lifetime fix.
+- User reran from Visual Studio Package profile. New GPU startup failure:
+  - `System.InvalidOperationException: create composition swap chain failed.`
+  - Inner COM exception `0x887A0001`: `The data area passed to a system call is too small.`
+  - Failure site remains `IDXGIFactory2.CreateSwapChainForComposition`.
+- Tightened the DXGI swap-chain creation interop:
+  - Changed `IDXGIFactory2.CreateSwapChainForComposition` to take a raw `IntPtr` device pointer instead of an `ID3D11Device` RCW, avoiding fragile COM marshaling at the call boundary.
+  - `D3D11SwapChainPanelHost.CreateSwapChain()` now gets an explicit `IUnknown` pointer for `_device`, passes that pointer, then releases it after the call.
+  - Added `DXGI_USAGE_SHADER_INPUT` to the backbuffer usage flags, matching the ANGLE/mpv D3D11 backbuffer pattern that wraps the swap-chain buffer as an EGL texture target.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the swap-chain interop adjustment.
+- User reran from Visual Studio Package profile and the same `CreateSwapChainForComposition` failure persisted with `0x887A0001`.
+- Narrowed the swap-chain creation call further:
+  - Changed `IDXGIFactory2.CreateSwapChainForComposition` to take a raw `IntPtr` descriptor pointer instead of a marshaled `ref DXGI_SWAP_CHAIN_DESC1`.
+  - `D3D11SwapChainPanelHost.CreateSwapChain()` now allocates unmanaged memory, writes `DXGI_SWAP_CHAIN_DESC1` into it with `Marshal.StructureToPtr`, passes the pointer, and frees it after the call.
+  - Temporarily returned `BufferUsage` to the conservative composition-swap-chain baseline (`DXGI_USAGE_RENDER_TARGET_OUTPUT`) to isolate swap-chain creation before adding ANGLE-specific shader-input usage back.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the descriptor-pointer adjustment.
+- User reran from Visual Studio Package profile and the same `CreateSwapChainForComposition` failure persisted with `0x887A0001`.
+- Checked native DXGI headers under MSYS2 and found a concrete constant mismatch:
+  - Native `DXGI_SCALING_STRETCH = 0`.
+  - `D3D11Native.DxgiScalingStretch` was incorrectly set to `1`, which is `DXGI_SCALING_NONE`.
+- Corrected `D3D11Native.DxgiScalingStretch` to `0` so the composition swap-chain descriptor uses the intended `DXGI_SCALING_STRETCH` value.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the DXGI scaling constant fix.
+- User reran from Visual Studio Package profile. Video did not play, Output showed a first-chance `System.InvalidOperationException` from `Aethra.dll`, and the app exited without the earlier `GPU renderer startup failed...` fallback line.
+- Diagnosis: GPU startup likely gets past the synchronous constructor path now, then fails inside the background `NativeMpvOpenGlPlayer.RunAsync` task where exceptions were not reported back to `MainWindow`.
+- Added a GPU render-task failure callback:
+  - `NativeMpvOpenGlPlayer` now accepts an `Action<Exception>` failure callback and catches non-cancellation render-loop exceptions.
+  - Background GPU failures are queued back to the WinUI dispatcher.
+  - `MainWindow` now logs `GPU renderer task failed. Falling back to software rendering. ...`, disposes the failed GPU player, switches back to the WinUI software `Image` surface, and starts `NativeMpvSoftwarePlayer`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after routing background GPU failures to software fallback.
+- User reran from Visual Studio Package profile. The failure callback worked and Output captured the next GPU issue:
+  - `GPU renderer task failed. Falling back to software rendering. System.InvalidOperationException: eglMakeCurrent failed with EGL error 0x3002.`
+  - Failure site: `AngleD3D11SwapChainContext.MakeCurrent()` at the start of `NativeMpvOpenGlPlayer.RunAsync`.
+- Diagnosis: `0x3002` is `EGL_BAD_ACCESS`, consistent with the EGL context/surface being current on another thread. `AngleD3D11SwapChainContext.Create()` validated the context by making it current during construction on the UI thread, then the background render task tried to make the same context current.
+- Fixed the EGL thread ownership handoff:
+  - After validation, `AngleD3D11SwapChainContext.Create()` now clears the current EGL context with `eglMakeCurrent(display, 0, 0, 0)` before returning.
+  - The background render task should now be able to take ownership with its first `MakeCurrent()`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after clearing the UI-thread EGL binding.
+- User reran from Visual Studio Package profile. The `eglMakeCurrent` issue is gone. New GPU render failure:
+  - `GPU renderer task failed. Falling back to software rendering. System.InvalidCastException: Unable to cast COM object of type 'System.__ComObject' to interface type 'Aethra.Native.IDXGISwapChain1'.`
+  - Failure site: `D3D11SwapChainPanelHost.Present()`.
+- Diagnosis: the composition swap chain is created and attached, and ANGLE can get the backbuffer, but calling `Present` through a managed `IDXGISwapChain1` RCW triggers a fresh `QueryInterface` for `IDXGISwapChain1` and fails with `E_NOINTERFACE`.
+- Removed the fragile swap-chain RCW path:
+  - `D3D11SwapChainPanelHost` now keeps the raw swap-chain COM pointer returned by `CreateSwapChainForComposition`.
+  - `GetBackBuffer` and `Present` call the swap-chain vtable directly through delegates at the inherited `IDXGISwapChain` slots.
+  - This avoids the failing managed `IDXGISwapChain1` cast while keeping ownership/lifetime explicit.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the raw swap-chain vtable patch.
+- User reran from Visual Studio Package profile. The swap-chain RCW cast failure is gone. New GPU render failure:
+  - `GPU renderer task failed. Falling back to software rendering. System.InvalidOperationException: eglMakeCurrent failed with EGL error 0x3002.`
+  - Failure site moved to `NativeMpvOpenGlPlayer.RenderFrame(...)`, not the initial `Run` setup.
+- Diagnosis: `NativeMpvOpenGlPlayer.RunAsync` used `await Task.Delay(...).ConfigureAwait(false)` inside the GPU loop. After the first await, the continuation can resume on a different ThreadPool thread while the EGL context remains current on the previous thread, causing `EGL_BAD_ACCESS`.
+- Pinned visible GPU rendering to one background thread:
+  - Replaced `Task.Run(() => RunAsync(...))` with `Task.Factory.StartNew(..., TaskCreationOptions.LongRunning, TaskScheduler.Default)`.
+  - Changed the GPU loop from `async Task RunAsync` to synchronous `Run`.
+  - Replaced the awaited delay with `cancellationToken.WaitHandle.WaitOne(TimeSpan.FromMilliseconds(8))` so the render thread stays stable without blocking the WinUI dispatcher.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after pinning the GPU render loop to one thread.
+- User reran from Visual Studio Package profile. Output showed no GPU failure line and no exception stack, then the process exited with code `0`.
+- Added narrow diagnostics only, with no rendering behavior change:
+  - `MainWindow` now logs when the visible GPU player starts, when the software fallback starts, and when the main window closes.
+  - `NativeMpvOpenGlPlayer` now logs ANGLE/D3D11 surface creation size, render-loop thread start, mpv GPU render-context creation, first render attempt, first presented GPU frame, and render-loop exit.
+  - The goal is to distinguish "GPU succeeded but no visible picture", "GPU is idling before rendering", and "the window is closing before playback state is observable".
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the diagnostic breadcrumbs.
+- User reran from Visual Studio Package profile and reported video playing. Output captured the full GPU success breadcrumb sequence with no exception lines and no software fallback:
+  - `GPU renderer startup: initializing visible player.`
+  - `GPU renderer startup: creating ANGLE/D3D11 surface 2856x1522.`
+  - `GPU renderer loop started on thread 5.`
+  - `GPU renderer context created.`
+  - `GPU renderer first render attempt.`
+  - `GPU renderer first frame presented.`
+  - `MainWindow closing.`
+  - `The program '[18236] Aethra.exe' has exited with code 0 (0x0).`
+- This is the first successful end-to-end visible GPU playback through the app-owned native stack: D3D11 composition swap chain attached to `GpuVideoSurface`, ANGLE EGL device on the same D3D11 device, EGL pbuffer wrapping the DXGI backbuffer, mpv `MPV_RENDER_API_TYPE_OPENGL` rendering through ANGLE, render loop pinned to a single LongRunning thread, swap-chain `Present` via raw vtable.
+- User reported the displayed video was upside down. Root cause: `NativeMpvOpenGlPlayer.RenderFrame` was calling `renderer.Render(..., flipY: true, ...)`, but the path mpv → ANGLE GL → D3D11 backbuffer → SwapChainPanel composition does not need the FLIP_Y compensation. mpv's own `context_angle.c` D3D11/ANGLE swap-buffer path does not set FLIP_Y, and the offscreen OpenGL/software smoke runners also produce correct frames with the default `flipY: false`. `MPV_RENDER_PARAM_FLIP_Y = 1` flips an image that's already in the right orientation for this composition path, producing the inverted display.
+- Changed the visible call site in `NativeMpvOpenGlPlayer.RenderFrame` from `flipY: true` to `flipY: false`. The renderer's `Render(...)` `flipY` parameter signature is unchanged (still defaults to `false`).
+- Files touched: `Aethra/NativeMpvOpenGlPlayer.cs`.
+- Build: not run from this session; needs `dotnet build .\Aethra.slnx -p:Platform=x64` and a Visual Studio Package profile rerun to confirm the displayed video is right-side up.
+- User confirmed video plays right-side up after the FLIP_Y fix. Two issues remain: audio appears slightly out of sync, and resizing the window does not resize the video (the original-size frame is clipped by the larger panel).
+- Implemented swap-chain resize support to fix the resize-clipping issue. The swap-chain backbuffer was fixed at the size the GPU player created it with; growing the SwapChainPanel did not grow the backbuffer, so frames continued rendering at the original size and DXGI clipped them inside the larger panel.
+  - `D3D11SwapChainPanelHost.ResizeBuffers(int width, int height)` calls `IDXGISwapChain::ResizeBuffers` via vtable slot 13, preserving buffer count, format, and flags.
+  - `AngleD3D11SwapChainContext.Resize(int width, int height)` runs on the render thread and walks the full chain: clear current EGL binding → destroy old EGL pbuffer surface → release old D3D11 backbuffer → call the host's `ResizeBuffers` → fetch the new backbuffer → create a new EGL pbuffer wrapping it → make the new surface current. Mirrors the construction sequence in reverse-then-forward.
+  - `NativeMpvOpenGlPlayer` now owns a small lock-guarded pending-size box (`_pendingWidth`, `_pendingHeight`) instead of the previous `readonly` width/height fields. `RequestResize(int width, int height)` is the thread-safe entry point for the UI thread; the render thread drains the pending size at the top of every render-loop iteration via `ApplyPendingResize()`, calls `_angleContext.Resize(...)`, updates the cached width/height, and bumps the frame-request flag. Multiple SizeChanged events during a drag-resize coalesce naturally because only the last pending size matters.
+  - `MainWindow.GpuVideoSurface_SizeChanged` now converts `e.NewSize` to physical pixels using `GpuVideoSurface.CompositionScaleX/Y` and calls `_gpuPlayer.RequestResize(...)`. It previously only called `RequestRender()`, which is what made the bug exist in the first place.
+- Files touched: `Aethra/Native/D3D11SwapChainPanelHost.cs`, `Aethra/Native/AngleD3D11SwapChainContext.cs`, `Aethra/NativeMpvOpenGlPlayer.cs`, `Aethra/MainWindow.xaml.cs`.
+- Build: not run from this session; needs `dotnet build .\Aethra.slnx -p:Platform=x64` and a Visual Studio Package profile rerun to confirm video resizes with the window.
+- Known follow-ups still on the validation list: audio sync drift (separate step; suspect render-loop polling cadence vs mpv's frame-update callback driving the video clock against the audio-master clock), and DPI-change handling when moving between monitors with different scale factors (SizeChanged covers panel size; CompositionScaleChanged would also need a resize for that case).
+- The runtime path that worked: source-built `libmpv-2.dll` + minimal local `libplacebo-362.dll` + LGPL-clean local FFmpeg DLLs + ANGLE `libEGL`/`libGLESv2`, all resolved from `NativeRuntime\x64` via `NativeRuntimeLoader`.
+- No `GPU renderer task failed` or `GPU renderer startup failed` line in Output and no `Software renderer startup` line, so the software fallback never engaged.
+- Build path in Output is still `bin\x64\Debug\net8.0-windows10.0.19041.0\...`, confirming the project has not been migrated to .NET 10 yet. That migration is still a separate reviewed step per the updated instructions.
+- Files touched: none for this success run.
+- User reported that window resize and drag/drop playback now work, but the video image is cropped/off-center rather than showing the whole frame. Screenshot showed a zoomed/clipped view of the source inside the `SwapChainPanel`.
+- Diagnosis: the GPU path was multiplying `SwapChainPanel` logical size by `CompositionScaleX/Y` when creating/resizing the D3D/ANGLE target. In this visible composition path that appears to double-count DPI scaling: mpv renders a larger FBO than the panel composition expects, so the panel clips a zoomed portion of the video.
+- Changed GPU render sizing to use the panel's logical size directly:
+  - `NativeMpvOpenGlPlayer` constructor now initializes `_width`/`_height` from `panel.ActualWidth`/`panel.ActualHeight` without multiplying by composition scale.
+  - `MainWindow.GpuVideoSurface_SizeChanged` now passes `e.NewSize.Width`/`Height` directly to `_gpuPlayer.RequestResize(...)`.
+- Files touched: `Aethra/NativeMpvOpenGlPlayer.cs`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the GPU sizing change.
+- User confirmed the GPU path is now correct under the core interactions tested:
+  - Video plays right-side up and shows the full frame.
+  - Audio is synced.
+  - Window resize works.
+  - Drag/drop of new media files works.
+- Cleanup step before commit:
+  - Removed temporary GPU success breadcrumbs from `NativeMpvOpenGlPlayer` and `MainWindow` (`GPU renderer startup/context/first-frame`, `Software renderer startup`, and `MainWindow closing` lines).
+  - Kept real GPU failure/fallback logging in place: `GPU renderer startup failed...` and `GPU renderer task failed...`.
+- Files touched: `Aethra/NativeMpvOpenGlPlayer.cs`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after cleanup.
+- Removed the wrapper-era Hanuman/mpv-dotnet path now that the app-owned native GPU path is proven:
+  - Removed the `HanumanInstitute.LibMpv` package reference from `Aethra.csproj`.
+  - Deleted `AethraMpvClient.cs` and `DumpMpv.cs`, which existed only for the old wrapper prototype.
+  - Removed the unused `MpvContext` / `_mpvClient` fields, `InitializeMpv`/`wid` embedding method, old wrapper property observer extensions, and related stale helper methods from `MainWindow.xaml.cs`.
+  - Changed `App.OnLaunched` to call `NativeRuntimeLoader.Install()` directly instead of installing a resolver for the Hanuman assembly.
+  - Removed the Hanuman line from `ThirdPartyNotices\THIRD_PARTY_NOTICES.md`.
+- Files touched: `Aethra/App.xaml.cs`, `Aethra/Aethra.csproj`, `Aethra/MainWindow.xaml.cs`, `Aethra/AethraMpvClient.cs` (deleted), `Aethra/DumpMpv.cs` (deleted), `Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after removing wrapper-era code.
+- Migrated the Aethra app project to .NET 10:
+  - Confirmed installed SDKs: `10.0.202` and `10.0.203`; user confirmed `10.0.203` is up to date.
+  - Changed `Aethra.csproj` target framework from `net8.0-windows10.0.19041.0` to `net10.0-windows10.0.19041.0`.
+  - The first .NET 10 build succeeded but surfaced `CS9191` warnings in `D3D11SwapChainPanelHost.cs` because .NET 10 exposes `Marshal.QueryInterface` with an `in Guid` parameter.
+  - Updated the two `Marshal.QueryInterface` calls to pass GUIDs with `in` instead of `ref`.
+- Files touched: `Aethra/Aethra.csproj`, `Aethra/Native/D3D11SwapChainPanelHost.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` now outputs to `bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\Aethra.dll` and passes with zero warnings and zero errors.
+- Started the Input configuration settings surface:
+  - Read the user's current mpv `input.conf` from `C:\Users\rjh\workstation\tools\mpv\portable_config\input.conf`.
+  - Added `InputBindingSetting.cs`, a simple managed binding row model.
+  - Added `InputBindingCatalog.cs`, seeded from the user's real mpv binding categories: Mouse, Shaders, General, Picture, Video, Audio, Subtitles, Playback, Playlist, Screenshots, Window, Scripts, Scimitar, plus Aethra-native defaults.
+  - Replaced the placeholder Input settings text in `FullSettingsPanel.xaml` with a real searchable/sortable/editable binding list: search box, category filter, sort selector, Add binding, Reset list, editable Category/Gesture/Command/Description fields, and Source display.
+  - Wired `FullSettingsPanel.xaml.cs` to maintain the all-bindings list, filtered visible list, category list, sorting, search, Add binding, and Reset list.
+- This step intentionally does not persist changes or overwrite any `input.conf` yet. Keyboard capture, mouse-button capture, conflict warnings, import/export, and save/load are next steps.
+- Files touched: `Aethra/InputBindingSetting.cs` (new), `Aethra/InputBindingCatalog.cs` (new), `Aethra/FullSettingsPanel.xaml`, `Aethra/FullSettingsPanel.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the first Input bindings settings surface.
+- Fixed a startup `NullReferenceException` in `FullSettingsPanel.ApplyInputBindingFilters` when opening settings:
+  - Root cause: `InputSortCombo.SelectionChanged` fires during `InitializeComponent` because `SelectedIndex="0"` is set in XAML; this can invoke `ApplyInputBindingFilters()` before all named controls are assigned.
+  - Runtime evidence at crash time showed `InputBindingCountText` and `InputBindingsList` were still `null` while `InputSearchBox`, `InputCategoryFilter`, and `InputSortCombo` were already non-null.
+  - Added `_isInitialized` guard in `FullSettingsPanel` and early-return in `InputFilter_SelectionChanged` until initialization is complete.
+  - Strengthened `ApplyInputBindingFilters()` guard to also return when `InputBindingCountText` is `null`.
+  - Files touched: `Aethra/FullSettingsPanel.xaml.cs`.
+- User searched for "Boss Key" and it was missing from the Input settings list.
+- Root cause: the first input catalog pass included normal `input.conf` rows but skipped the comment-only Scimitar entries that are currently handled by script-side forced keybindings.
+- Added searchable Scimitar script-side rows to `InputBindingCatalog`:
+  - Button 8: A-B reset (`KP2 / KP_DOWN`)
+  - Button 9: A-B mark A (`KP3 / KP_PGDN`)
+  - Button 10: Boss Key (`KP0 / KP_INSERT`)
+  - Button 12: A-B mark B (`KP_SUBTRACT`)
+- These entries use source `Script-side` so they remain distinguishable from normal imported mpv input bindings.
+- Files touched: `Aethra/InputBindingCatalog.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the missing searchable Scimitar script-side entries.
+- User clarified that core Aethra behavior should be native app behavior, not mpv script behavior.
+- Updated `COPILOT_INSTRUCTIONS.md` to make that rule explicit:
+  - First-party features such as Boss Key, A-B loop workflow, favorites, HUD, settings, window control, and future library/clip workflows should be implemented as C#/WinUI/app-service commands.
+  - App-owned actions use `aethra:*` command names.
+  - Raw mpv commands remain valid for mpv-owned playback operations.
+  - mpv/Lua scripts remain optional user/community extensions only.
+- Updated the Scimitar Boss Key and A-B loop rows in `InputBindingCatalog` from `script-side:*` placeholders to planned native commands:
+  - `aethra:ab-loop-reset`
+  - `aethra:ab-loop-mark-a`
+  - `aethra:boss-key`
+  - `aethra:ab-loop-mark-b`
+- These commands are catalog/UI entries only right now; they are not wired to runtime behavior yet.
+- Files touched: `Aethra/COPILOT_INSTRUCTIONS.md`, `Aethra/InputBindingCatalog.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the native-command instruction/catalog update.
+- Tightened `COPILOT_INSTRUCTIONS.md` again after user clarification:
+  - Native-by-default is now a project-level rule for every feature request.
+  - When the user gives examples from mpv config, mpv scripts, or another player, treat them as product intent to translate into the cleanest native Aethra C#/WinUI/app architecture first.
+  - Avoid copying mpv config/script patterns into first-party app behavior unless the user explicitly asks for mpv-compatible behavior.
+- Files touched: `Aethra/COPILOT_INSTRUCTIONS.md`, `Aethra/COPILOT_WORKLOG.md`.
+- Added the first native `aethra:*` runtime command:
+  - `aethra:boss-key` is now wired in `MainWindow`.
+  - BOSS KEY is intentionally all caps in instructions/settings text.
+  - Default trigger is `SPACE`, replacing the previous spacebar play/pause behavior.
+  - BOSS KEY pauses playback through the active native player path, then minimizes the main window through `OverlappedPresenter.Minimize()`.
+- Added explicit `Pause()` methods to both native player paths so BOSS KEY pauses instead of toggling playback:
+  - `NativeMpvOpenGlPlayer.Pause()`
+  - `NativeMpvSoftwarePlayer.Pause()`
+- Updated `InputBindingCatalog` so `SPACE` appears as `aethra:boss-key` with description `BOSS KEY: pause and minimize`; the Scimitar Button 10 row also uses `BOSS KEY` capitalization.
+- Updated `COPILOT_INSTRUCTIONS.md` Input defaults to say `space = BOSS KEY`, and define BOSS KEY as pause playback plus minimize the app.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/NativeMpvOpenGlPlayer.cs`, `Aethra/NativeMpvSoftwarePlayer.cs`, `Aethra/InputBindingCatalog.cs`, `Aethra/COPILOT_INSTRUCTIONS.md`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding native BOSS KEY.
+- Started the architecture organization cleanup while preserving the snappy native input path:
+  - Added `Commands/AethraCommandIds.cs`.
+  - Added `Commands/AethraCommandContext.cs`.
+  - Added `Commands/AethraCommandDispatcher.cs`.
+  - Moved BOSS KEY execution out of `MainWindow` into the dispatcher.
+  - `MainWindow` now supplies direct delegates for `PausePlayback` and `MinimizeWindow`, keeping `SPACE -> aethra:boss-key -> pause + minimize` synchronous and allocation-light.
+- Added an `Organization Architecture` section to `COPILOT_INSTRUCTIONS.md`:
+  - Maps `Commands/`, `Input/`, `Configuration/`, `Profiles/`, backend/player code, settings, and `MainWindow` responsibilities.
+  - Says the structure is not set in stone and should adapt when the user brings up new needs.
+  - Explicitly preserves the hot-path rule: no disk reads, script calls, blocking waits, or settings parsing on live input.
+- Files touched: `Aethra/Commands/AethraCommandIds.cs` (new), `Aethra/Commands/AethraCommandContext.cs` (new), `Aethra/Commands/AethraCommandDispatcher.cs` (new), `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_INSTRUCTIONS.md`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after extracting the BOSS KEY command dispatcher.
+- Started Roadmap area 1: player UI polish and shell correctness.
+- Replaced the old fullscreen button/key behavior that only maximized the window:
+  - `F` and the fullscreen toolbar button now call `ToggleFullscreen()`.
+  - Fullscreen uses `AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen)`.
+  - Exiting fullscreen restores `AppWindowPresenterKind.Overlapped` and re-maximizes if the window was maximized before entering fullscreen.
+  - `Escape` now exits fullscreen after closing any visible settings panel.
+- Fullscreen chrome behavior:
+  - `TopChrome` is hidden while fullscreen.
+  - `TransportBar` is visible briefly on entering fullscreen and on pointer movement.
+  - `TransportBar` hides after a 2-second idle timer while fullscreen, leaving only the video visible.
+  - Leaving fullscreen restores `TopChrome` and `TransportBar`.
+- Files touched: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the first true fullscreen shell pass.
+- User verified fullscreen behavior worked and requested faster control hiding.
+- Changed the fullscreen transport idle hide timer from 2 seconds to 1 second.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- User reported the fullscreen controls hide, immediately reappear, then hide again.
+- Added fullscreen pointer-movement guards:
+  - Track the last pointer position while fullscreen.
+  - Ignore sub-2px pointer changes.
+  - Ignore the immediate pointer event within 250ms after hiding the transport bar, which can be triggered by the layout/visibility change itself.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the fullscreen control reappear fix.
+- Added fullscreen idle cursor hiding:
+  - The cursor hides when the fullscreen transport bar idle-hides.
+  - Real pointer movement restores the cursor before revealing controls.
+  - Exiting fullscreen and closing the window restore the cursor if it is hidden.
+  - The HWND subclass handles `WM_SETCURSOR` while hidden so Windows does not immediately restore the cursor behind Aethra.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding fullscreen idle cursor hiding.
+- User reported the cursor still did not disappear.
+- Strengthened cursor hiding:
+  - `HideCursor()` now calls Win32 `ShowCursor(false)` in a bounded loop until the display counter is hidden, then sets the current cursor to null.
+  - `ShowCursorIfHidden()` balances the counter with `ShowCursor(true)` before restoring the arrow cursor.
+  - Kept the existing `WM_SETCURSOR` guard while hidden.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after strengthening fullscreen cursor hide.
+- User reported the cursor still remained visible.
+- Found that `EnsureWindowMessageHook()` existed but was not being called, so the `WM_SETCURSOR` guard was not installed on the HWND.
+- Installed the subclass hook during window activation after title-bar setup.
+- Added a transparent Win32 cursor created with `CreateCursor(...)` and destroyed on window close:
+  - Hidden fullscreen cursor state now sets the transparent cursor through `WM_SETCURSOR`.
+  - This gives Windows/WinUI an actual cursor handle to use while the cursor should be visually invisible.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after installing the cursor hook and transparent cursor.
+- User reported the cursor still remained visible in fullscreen, and that BOSS KEY in fullscreen pauses but does not minimize.
+- Diagnosed both issues:
+  - Cursor: WinUI 3 hosts content in a child HWND (class names like `Microsoft.UI.Content.DesktopChildSiteBridge`, `InputSiteWindowClass`, `Windows.UI.Input.InputSite`). `WM_SETCURSOR` for the cursor over the WinUI content surface is dispatched to that child HWND, not to the top-level window we were subclassing, so the existing main-HWND hook never fired for the cursor over the video.
+  - BOSS KEY: `MinimizeWindow()` was `if (this.AppWindow.Presenter is OverlappedPresenter presenter) presenter.Minimize();`. In fullscreen the presenter is `FullScreenPresenter`, so the cast failed and minimize was silently skipped.
+- Fixed BOSS KEY in fullscreen: `MinimizeWindow()` now calls `ExitFullscreen()` first when `_isFullscreen` is true, then minimizes through the now-`OverlappedPresenter`. SPACE -> `aethra:boss-key` -> pause + (exit fullscreen if needed) + minimize.
+- Fixed cursor hiding by also subclassing the WinUI input-site child HWND:
+  - Added `EnumChildWindows`/`GetClassName` P/Invoke and an `EnumChildProc` delegate.
+  - Added `EnsureInputSiteCursorHook()` that walks the main HWND's children and finds the first one whose class name contains `InputSite`, `DesktopChildSiteBridge`, or `ContentIslandSite`.
+  - Installed a slim `InputSiteCursorSubclassProc` on that child HWND that only handles `WM_SETCURSOR` (so WinUI's keyboard/mouse delivery into the input site is not blocked). It sets the cached transparent cursor and returns `1` while `_isCursorHidden`, otherwise calls `DefSubclassProc`.
+  - Called `EnsureInputSiteCursorHook()` from `EnsureWindowMessageHook()` and again from `HideCursor()` as a safety net in case the input-site child appears after window activation.
+  - `MainWindow_Closed` now removes both subclasses and frees the transparent cursor.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Build: `dotnet build .\Aethra.slnx -p:Platform=x64` not run from this session (no local dotnet in the assistant's sandbox). Needs to be run locally to confirm zero warnings/errors and that fullscreen cursor hides + fullscreen BOSS KEY minimizes.
+- User confirmed BOSS KEY in fullscreen now works, but the cursor was still flaky: sometimes it would disappear after entering fullscreen and sometimes not, and after the cursor reappeared with the transport bar on mouse movement, the next idle hide left the cursor visible.
+- Diagnosed the cursor flakiness: hooking only the first WinUI descendant that matched `InputSite` / `DesktopChildSiteBridge` / `ContentIslandSite` was too narrow. The WinUI 3 content tree is a chain (top-level Window -> `Microsoft.UI.Content.DesktopChildSiteBridge` -> `Windows.UI.Input.InputSiteWindowClass`, sometimes plus more). When the cursor settled over a sibling or grandchild we did not hook, `WM_SETCURSOR` went there and the class-default arrow won.
+- Replaced the single-input-site hook with a recursive descendant walk:
+  - `EnsureChildCursorHooks()` calls `EnumChildWindows` on the main HWND. Per-child callback `HookChildIfNeeded` calls `SetWindowSubclass` on every descendant (idempotent via a `HashSet<IntPtr> _hookedChildHwnds`).
+  - The slim `ChildCursorSubclassProc` only intercepts `WM_SETCURSOR` (returning `1` after `SetCursor(IntPtr.Zero)` while hidden), so attaching it broadly does not interfere with WinUI's keyboard/mouse pipeline; everything else falls through to `DefSubclassProc`.
+  - Re-walked from `HideCursor()` so newly-created child HWNDs (lazy WinUI surfaces, content islands) get hooked the next time we hide.
+  - Switched the hidden-cursor mechanic from a custom transparent `CreateCursor` to plain `SetCursor(IntPtr.Zero)` (Win32 documents this as "remove the cursor from the screen"). Removed the `_hiddenCursor` field, `CreateCursor` / `DestroyCursor` P/Invokes, and the `GetClassName` / `StringBuilder` / `System.Text` plumbing that no longer has callers.
+  - `MainWindow_Closed` removes the subclass on every tracked child and clears the set.
+  - `_isCursorHidden` is now flipped before the `ShowCursor`/`SetCursor` calls so any `WM_SETCURSOR` that fires mid-toggle uses the new state.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Build: not run from this session. Needs `dotnet build .\Aethra.slnx -p:Platform=x64` locally to confirm zero warnings/errors, then a fullscreen test where the cursor hides reliably across multiple show/hide cycles regardless of where the cursor was when the idle timer fired.
+- User reported the cursor was still not hiding reliably even after the recursive descendant subclass. Visual Studio Copilot suggested centralizing cursor visibility logic.
+- Diagnosed the deeper mechanism failure: even with WM_SETCURSOR subclassed on every descendant, when any code path lets the message reach `DefWindowProc` (or any WinUI internal pointer event triggers an implicit cursor update) the cursor falls back to the **window class cursor** (`GCLP_HCURSOR`). For these WinUI host windows that defaults to the arrow, so the cursor flashes back to visible. `SetCursor(NULL)` is only effective until the next class-cursor lookup.
+- Fixed the mechanism by also clobbering the class cursor while hidden:
+  - Added `SetClassLongPtr` (entry point `SetClassLongPtrW`) P/Invoke and `GCLP_HCURSOR = -12` constant.
+  - `ClobberClassCursors(IntPtr cursor)` walks the main HWND and every hooked descendant and writes `cursor` into `GCLP_HCURSOR`.
+  - `HideCursor()` now calls `ClobberClassCursors(IntPtr.Zero)` (NULL = no cursor) before `ShowCursor(false)` + `SetCursor(IntPtr.Zero)`.
+  - `ShowCursorIfHidden()` calls `ClobberClassCursors(arrow)` to restore the arrow class cursor before showing.
+- Added a single source of truth for cursor visibility:
+  - `UpdateCursorVisibility()` decides hidden vs visible based on `_isFullscreen && TransportBar.Visibility==Collapsed && SettingsHost not visible && FullSettingsHost not visible`.
+  - All call sites that change those states (`FullscreenControlsIdleTimer_Tick`, `ShowFullscreenControls`, `EnterFullscreen`, `ExitFullscreen`, `ToggleSettingsPanel`, `Settings_CloseRequested`, `Settings_OpenAllSettingsRequested`, `FullSettings_CloseRequested`, the WinUI Escape handler, the HWND-subclass Escape handler) now call `UpdateCursorVisibility()` instead of calling `HideCursor()`/`ShowCursorIfHidden()` directly.
+  - `EnterFullscreen` no longer needs an explicit show because `ShowFullscreenControls()` makes the transport bar visible, and `UpdateCursorVisibility()` then keeps the cursor visible.
+  - Opening Settings (full or flyout) while in fullscreen-idle now reveals the cursor; closing them while still idle hides it again on the next idle tick.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Build: not run from this session. Needs `dotnet build .\Aethra.slnx -p:Platform=x64` locally and a fullscreen test where: (a) cursor hides on idle every time, (b) reappears on pointer movement, (c) reappears when opening settings while idle-hidden, (d) hides again on the next idle after closing settings, (e) restored on exit fullscreen and on window close.
+- User reported the cursor still remained visible.
+- Tried WinUI-native cursor access:
+  - Added a temporary `CursorCompileProbe.cs` to test `UIElement.ProtectedCursor`.
+  - Build confirmed `ProtectedCursor` exists but is inaccessible from outside a derived control, so the probe was deleted.
+- Added one more fullscreen-idle cursor hardening pass:
+  - A small `_cursorHideEnforcementTimer` runs only while `ShouldForceHideMouseCursor()` is true.
+  - Every 100ms it reapplies a bounded `ShowCursor(false)` and `SetCursor(IntPtr.Zero)`.
+  - The timer stops immediately when the cursor should show again.
+  - Fixed a bad HWND-subclass `F` key path that could dispatch BOSS KEY; it now routes to `ToggleFullscreen()`.
+- Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`; temporary `CursorCompileProbe.cs` was added and deleted during the probe.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding cursor hide enforcement and fixing the `F` branch.
+- User reported the cursor still remained visible; the Win32 cursor workarounds are still not reliable under WinUI.
+- Added a WinUI-native cursor owner:
+  - Added `Controls/CursorAwareGrid.cs`, a tiny `Grid` subclass that can set `UIElement.ProtectedCursor` from inside the derived control.
+  - Changed the XAML root from `Grid` to `controls:CursorAwareGrid`.
+  - `UpdateCursorVisibility()` now sets the root protected cursor based on the same fullscreen-idle single source of truth before the existing Win32 backup path runs.
+  - The visible cursor uses `InputSystemCursorShape.Arrow`; the hidden cursor uses a custom `CoreCursor` converted through `InputCursor.CreateFromCoreCursor`.
+- Files touched: `Aethra/Controls/CursorAwareGrid.cs` (new), `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after adding the WinUI root cursor owner.
+- User reported the cursor only disappeared when it was outside the app before fullscreen; if it started over the app, or moved once in fullscreen, it would not re-hide.
+- Cleaned the cursor architecture:
+  - Changed `VideoContainer` from `Grid` to `controls:CursorAwareGrid` so the actual video hit-test surface owns cursor state, not only the root.
+  - `UpdateCursorVisibility()` now applies cursor state to both `RootGrid` and `VideoContainer`.
+  - `CursorAwareGrid.SetCursorVisible(...)` clears `ProtectedCursor` before applying the requested cursor so repeated hide/show cycles force a refresh.
+  - Removed the old Win32 cursor hiding machinery from `MainWindow.xaml.cs`: child-HWND cursor subclassing, `ShowCursor`, `SetCursor`, class cursor clobbering, and the enforcement timer.
+  - Left the main HWND subclass only for existing hotkeys/right-click handling.
+- Files touched: `Aethra/Controls/CursorAwareGrid.cs`, `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after simplifying to the WinUI cursor-owner path.
+
+## Roadmap
+
+The GPU path is proven under core use, BOSS KEY feels instant, and the next phase is making the app feel intentional instead of prototype-shaped. Preserve the hot input path: live keyboard/mouse handling must stay native, synchronous, and already-loaded in memory.
+
+### 1. Player UI polish and shell correctness
+
+- Fix the central play/pause button visual so it reads as a polished native media control.
+- Hide the mouse pointer after a short idle delay over the video surface, and show it immediately on movement.
+- Continue hardening true fullscreen behavior: validate monitor coverage, restore behavior, control reveal, and no renderer fallback.
+- Revisit the transport shelf spacing, icons, disabled states, hover states, and bottom action cluster so the player feels close to modern Windows Media Player but better suited to Aethra.
+- Keep BOSS KEY and `S` settings toggling as snappy reference interactions.
+
+### 2. Command and input architecture
+
+- Expand `Commands/` beyond BOSS KEY with native app command IDs and dispatcher cases for settings, fullscreen, play/pause, seek, volume, mute, A-B loop, favorites, HUD, and future clip/library workflows.
+- Add an `Input/` runtime service that maps WinUI keyboard/mouse gestures to already-loaded command IDs without disk IO, script calls, or settings parsing.
+- Move default binding models/catalog into the `Input/` area.
+- Add keyboard capture in Settings first.
+- Add mouse-button capture after keyboard capture works, including Scimitar-class extended buttons.
+- Add conflict detection, duplicate gesture warnings, clear/reset per binding, and per-section reset.
+- Add import from existing mpv `input.conf` as a migration helper, not as the runtime architecture.
+- Add export/save to Aethra's future `%APPDATA%\Aethra\input.conf` or native binding store only after the model and UI flow are approved.
+
+### 3. Settings UI rebuild
+
+- Redesign Settings as a serious native configuration surface, not the current scaffold.
+- Fix Input settings so it is easy to search, sort, capture, edit, reset, and understand what is native Aethra versus mpv passthrough.
+- Split Settings into clear pages: Playback, Video, Audio, Subtitles, Input, Library, Shaders, Profiles, Network, Advanced.
+- Add per-page reset-to-defaults, import/export profiles, and clear applied/pending state.
+- Keep advanced controls available without making the default settings page feel like a spreadsheet.
+- Move settings code toward `Settings/` plus view models when the UI becomes more than a simple shell.
+
+### 4. Native replacement plan for `input.conf`
+
+- Treat every old `input.conf` row as intent to translate into a native Aethra command or native mpv passthrough.
+- Native Aethra commands should cover app behavior: BOSS KEY, settings, fullscreen, HUD, favorites, A-B loop, playlist UI, chapter/clip workflows, screenshots UI, and window actions.
+- mpv passthrough remains appropriate for engine-owned playback operations: seek, frame step, volume, track switching, subtitle delay, audio delay, speed, video filters, and raw properties.
+- Store bindings in a native model first; only export/import text files for compatibility and power users.
+
+### 5. Native replacement plan for `mpv.conf`
+
+- Build typed Aethra profile models before exposing raw option text:
+  - Playback profile: resume, loop, speed defaults, playlist behavior.
+  - Video profile: hardware decode, scaling, debanding, interpolation, aspect, rotation, HDR/tone mapping.
+  - Audio profile: WASAPI mode, exclusive/shared, passthrough, channel layout, audio delay.
+  - Subtitle profile: default language, scale, delay, visibility, style overrides.
+  - Network profile: cache, streaming options, yt-dlp behavior.
+  - Advanced profile: raw mpv options for users who want exact control.
+- Apply those profiles to libmpv through backend profile APIs, not scattered `set` calls across UI code.
+- Keep hand-edit/import/export paths, but make the first-class UI native and understandable.
+
+### 6. Shaders, scripts, and extension surface
+
+- Shaders are first-class: expose shader folders, shader chains, enable/disable ordering, presets, and per-profile application in Settings.
+- Built-in shader workflows should be native Aethra settings/profile choices.
+- Lua/mpv scripts are optional user/community extensions only. Surface a scripts folder and script enable/disable management later, but do not depend on scripts for first-party Aethra features.
+- For features that used to be scripts, first ask for the clean native Aethra command/service design.
+
+### 7. Backend and runtime cleanup
+
+- Keep the GPU renderer as the primary path.
+- Keep software fallback for now, but stop broadening it unless needed for diagnostics or recovery.
+- Remove old root-level prototype native binaries once the runtime is confirmed fully resolved from `NativeRuntime\x64`.
+- Rebuild the native media bundle for the free/GPL GitHub direction: mpv `-Dgpl=true`, FFmpeg `--enable-gpl`, Lua enabled, shader/script support enabled, and notices updated.
+- Validate true fullscreen, resize, snap, drag/drop reload, seek, long playback, and no `GPU renderer task failed` lines.
+
+### 8. Windows integration and persistence
+
+- Add SMTC for media keys and lock-screen controls.
+- Add window/state persistence: position, size, monitor, volume, last folder, last file, watch progress.
+- Add prevent-sleep during playback.
+- Add file associations and "Open with" support.
+- Add mini-player / picture-in-picture after the main player shell is stable.
+
+### 9. Repo readiness
+
+- Add README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CI, and release packaging in small reviewed steps.
+- Keep `ThirdPartyNotices/THIRD_PARTY_NOTICES.md` current whenever native binaries change.
+
+## Notes
+
+- 2026-04-25 rebrand: renamed the app to Aethra across project identity, namespace, resource keys, commands, manifests, docs, and visible title chrome. Brand line: "Bright media. Pure playback." Tagline: "Clarity in every frame." The app project is now `Aethra/Aethra.csproj` and the solution is `Aethra.slnx`.
+- 2026-04-25 repo reset: created a clean standalone repo root at `C:\Users\rjh\source\repos\Aethra`, copied the renamed solution/app/smoke harness plus required local native runtime assets, and initialized a fresh Git repository on `main`.
+- The repository had existing local edits before this worklog was added, including settings-panel files and main-window changes.
+- The app project now targets `net10.0-windows10.0.19041.0`. `TempMpv` still targets `net8.0` as a console smoke harness; decide separately whether to migrate it.

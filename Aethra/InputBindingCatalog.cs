@@ -1,0 +1,130 @@
+using System.Collections.Generic;
+
+namespace Aethra;
+
+internal static class InputBindingCatalog
+{
+    internal static IReadOnlyList<InputBindingSetting> CreateDefaults()
+    {
+        return new[]
+        {
+            new InputBindingSetting("Mouse", "MBTN_LEFT", "cycle pause", "Left click: play/pause", "Imported"),
+            new InputBindingSetting("Mouse", "MBTN_MID", "quit", "Middle click: exit", "Imported"),
+            new InputBindingSetting("Mouse", "MBTN_RIGHT", "script-binding uosc/menu", "Right click: menu", "Imported"),
+            new InputBindingSetting("Mouse", "WHEEL_UP", "add volume 2", "Scroll up: volume +2", "Imported"),
+            new InputBindingSetting("Mouse", "WHEEL_DOWN", "add volume -2", "Scroll down: volume -2", "Imported"),
+
+            new InputBindingSetting("Shaders", "CTRL+1", "change-list glsl-shaders set \"~~/shaders/FSRCNNX_x2_56-16-4-1.glsl\" ; show-text \"FSRCNNX x2 56 (live-action)\"", "FSRCNNX live-action shader", "Imported"),
+            new InputBindingSetting("Shaders", "CTRL+2", "change-list glsl-shaders set \"~~/shaders/Anime4K_Clamp_Highlights.glsl:~~/shaders/Anime4K_Restore_CNN_VL.glsl:~~/shaders/Anime4K_Upscale_CNN_x2_VL.glsl:~~/shaders/Anime4K_AutoDownscalePre_x2.glsl:~~/shaders/Anime4K_AutoDownscalePre_x4.glsl:~~/shaders/Anime4K_Upscale_CNN_x2_M.glsl\" ; show-text \"Anime4K\"", "Anime4K shader chain", "Imported"),
+            new InputBindingSetting("Shaders", "CTRL+3", "change-list glsl-shaders set \"~~/shaders/SSimDownscaler.glsl\" ; change-list glsl-shaders append \"~~/shaders/FSRCNNX_x2_56-16-4-1.glsl\" ; show-text \"SSim + FSRCNNX x2 56\"", "SSim + FSRCNNX chain", "Imported"),
+            new InputBindingSetting("Shaders", "CTRL+4", "change-list glsl-shaders clr ; set scale ewa_lanczossharp ; set cscale ewa_lanczos ; set sigmoid-upscaling yes ; show-text \"Built-in sharp scaling (no user shaders)\"", "Built-in sharp scaling", "Imported"),
+            new InputBindingSetting("Shaders", "CTRL+0", "change-list glsl-shaders clr ; set scale bilinear ; set cscale bilinear ; set sigmoid-upscaling no ; show-text \"Basic scaling (no shaders)\"", "Basic scaling", "Imported"),
+
+            new InputBindingSetting("General", "k", "cycle ontop", "Toggle always on top", "Imported"),
+            new InputBindingSetting("General", "q", "quit-watch-later", "Quit and save position", "Imported"),
+            new InputBindingSetting("General", "Q", "quit", "Force quit", "Imported"),
+            new InputBindingSetting("General", "ESC", "set fullscreen no", "Exit fullscreen", "Imported"),
+            new InputBindingSetting("General", "f", "cycle fullscreen", "Toggle fullscreen", "Imported"),
+            new InputBindingSetting("General", "TAB", "cycle osc", "Toggle OSC visibility", "Imported"),
+
+            new InputBindingSetting("Picture", "1", "add brightness 1 ; show-text \"Brightness: ${brightness}\"", "Brightness +1", "Imported"),
+            new InputBindingSetting("Picture", "2", "add brightness -1 ; show-text \"Brightness: ${brightness}\"", "Brightness -1", "Imported"),
+            new InputBindingSetting("Picture", "3", "add contrast 1 ; show-text \"Contrast: ${contrast}\"", "Contrast +1", "Imported"),
+            new InputBindingSetting("Picture", "4", "add contrast -1 ; show-text \"Contrast: ${contrast}\"", "Contrast -1", "Imported"),
+            new InputBindingSetting("Picture", "5", "add saturation 1 ; show-text \"Saturation: ${saturation}\"", "Saturation +1", "Imported"),
+            new InputBindingSetting("Picture", "6", "add saturation -1 ; show-text \"Saturation: ${saturation}\"", "Saturation -1", "Imported"),
+            new InputBindingSetting("Picture", "7", "add gamma 1 ; show-text \"Gamma: ${gamma}\"", "Gamma +1", "Imported"),
+            new InputBindingSetting("Picture", "8", "add gamma -1 ; show-text \"Gamma: ${gamma}\"", "Gamma -1", "Imported"),
+            new InputBindingSetting("Picture", "9", "set brightness 7 ; set contrast 15 ; set saturation 5 ; set gamma 5 ; show-text \"Vivid baseline (mpv.conf)\"", "Vivid baseline", "Imported"),
+            new InputBindingSetting("Picture", "0", "set brightness 0 ; set contrast 0 ; set saturation 0 ; set gamma 0", "Neutral EQ", "Imported"),
+
+            new InputBindingSetting("Video", "d", "cycle deband", "Toggle debanding", "Imported"),
+            new InputBindingSetting("Video", "D", "cycle deinterlace", "Toggle deinterlacing", "Imported"),
+            new InputBindingSetting("Video", "n", "cycle video-unscaled", "Toggle unscaled video", "Imported"),
+            new InputBindingSetting("Video", "C", "cycle-values video-aspect-override \"16:9\" \"21:9\" \"4:3\" \"2.35:1\" \"-1\"", "Cycle aspect ratio", "Imported"),
+            new InputBindingSetting("Video", "CTRL+R", "cycle-values video-rotate 90 180 270 0", "Rotate video", "Imported"),
+            new InputBindingSetting("Video", "CTRL+H", "cycle-values hwdec \"auto-safe\" \"no\" \"auto\"", "Cycle hardware decoding", "Imported"),
+            new InputBindingSetting("Video", "i", "script-binding stats/display-stats-toggle", "Toggle stats overlay", "Imported"),
+            new InputBindingSetting("Video", "I", "script-binding stats/display-page-4", "Detailed stats", "Imported"),
+
+            new InputBindingSetting("Audio", "a", "cycle audio", "Next audio track", "Imported"),
+            new InputBindingSetting("Audio", "A", "cycle audio down", "Previous audio track", "Imported"),
+            new InputBindingSetting("Audio", "UP", "add volume 2", "Volume +2", "Imported"),
+            new InputBindingSetting("Audio", "DOWN", "add volume -2", "Volume -2", "Imported"),
+            new InputBindingSetting("Audio", "m", "cycle mute", "Toggle mute", "Imported"),
+            new InputBindingSetting("Audio", "CTRL+UP", "add volume 10", "Volume +10", "Imported"),
+            new InputBindingSetting("Audio", "CTRL+DOWN", "add volume -10", "Volume -10", "Imported"),
+            new InputBindingSetting("Audio", "x", "add audio-delay -0.05", "Audio delay -50ms", "Imported"),
+            new InputBindingSetting("Audio", "X", "add audio-delay +0.05", "Audio delay +50ms", "Imported"),
+            new InputBindingSetting("Audio", "CTRL+X", "set audio-delay 0", "Reset audio delay", "Imported"),
+
+            new InputBindingSetting("Subtitles", "s", "cycle sub", "Next subtitle track", "Imported"),
+            new InputBindingSetting("Subtitles", "S", "cycle sub down", "Previous subtitle track", "Imported"),
+            new InputBindingSetting("Subtitles", "v", "cycle sub-visibility", "Toggle subtitles", "Imported"),
+            new InputBindingSetting("Subtitles", "SHIFT+G", "add sub-scale +0.05", "Subtitle size +", "Imported"),
+            new InputBindingSetting("Subtitles", "SHIFT+F", "add sub-scale -0.05", "Subtitle size -", "Imported"),
+            new InputBindingSetting("Subtitles", "z", "add sub-delay -0.05", "Subtitle delay -50ms", "Imported"),
+            new InputBindingSetting("Subtitles", "Z", "add sub-delay +0.05", "Subtitle delay +50ms", "Imported"),
+            new InputBindingSetting("Subtitles", "CTRL+Z", "set sub-delay 0", "Reset subtitle delay", "Imported"),
+            new InputBindingSetting("Subtitles", "g", "sub-reload", "Reload subtitles", "Imported"),
+            new InputBindingSetting("Subtitles", "CTRL+S", "cycle secondary-sid", "Toggle secondary subtitles", "Imported"),
+
+            new InputBindingSetting("Playback", "LEFT", "seek -5", "Seek backward 5s", "Imported"),
+            new InputBindingSetting("Playback", "RIGHT", "seek 5", "Seek forward 5s", "Imported"),
+            new InputBindingSetting("Playback", "SHIFT+LEFT", "seek -60", "Seek backward 1min", "Imported"),
+            new InputBindingSetting("Playback", "SHIFT+RIGHT", "seek 60", "Seek forward 1min", "Imported"),
+            new InputBindingSetting("Playback", "CTRL+LEFT", "seek -300", "Seek backward 5min", "Imported"),
+            new InputBindingSetting("Playback", "CTRL+RIGHT", "seek 300", "Seek forward 5min", "Imported"),
+            new InputBindingSetting("Playback", ",", "frame-back-step", "Previous frame", "Imported"),
+            new InputBindingSetting("Playback", ".", "frame-step", "Next frame", "Imported"),
+            new InputBindingSetting("Playback", "[", "multiply speed 0.9091", "Decrease speed", "Imported"),
+            new InputBindingSetting("Playback", "]", "multiply speed 1.1", "Increase speed", "Imported"),
+            new InputBindingSetting("Playback", "BS", "set speed 1.0", "Reset speed", "Imported"),
+
+            new InputBindingSetting("Playlist", "PGUP", "playlist-prev", "Previous file", "Imported"),
+            new InputBindingSetting("Playlist", "PGDWN", "playlist-next", "Next file", "Imported"),
+            new InputBindingSetting("Playlist", "HOME", "playlist-play-index 0", "First file", "Imported"),
+            new InputBindingSetting("Playlist", "END", "playlist-next-playlist", "Next playlist", "Imported"),
+            new InputBindingSetting("Playlist", "CTRL+L", "script-binding playlistmanager/showplaylist", "Show playlist manager", "Imported"),
+
+            new InputBindingSetting("Screenshots", "F12", "screenshot", "Screenshot", "Imported"),
+            new InputBindingSetting("Screenshots", "CTRL+S", "screenshot video", "Video-only screenshot", "Imported"),
+            new InputBindingSetting("Screenshots", "CTRL+ALT+S", "screenshot window", "Window screenshot", "Imported"),
+
+            new InputBindingSetting("Window", "ALT+ENTER", "cycle fullscreen", "Toggle fullscreen", "Imported"),
+            new InputBindingSetting("Window", "ALT+1", "set window-scale 0.5", "50% window size", "Imported"),
+            new InputBindingSetting("Window", "ALT+2", "set window-scale 1.0", "100% window size", "Imported"),
+            new InputBindingSetting("Window", "ALT+3", "set window-scale 1.5", "150% window size", "Imported"),
+            new InputBindingSetting("Window", "ALT+4", "set window-scale 2.0", "200% window size", "Imported"),
+            new InputBindingSetting("Window", "ALT+R", "cycle-values video-aspect-override \"21:9\" \"-1\"", "Toggle ultrawide aspect", "Imported"),
+
+            new InputBindingSetting("Scripts", "c", "script-binding cycle-visualizer", "Cycle audio visualizer", "Imported"),
+            new InputBindingSetting("Scripts", "b", "script-binding set_gif_start", "Set GIF start", "Imported"),
+            new InputBindingSetting("Scripts", "B", "script-binding set_gif_end", "Set GIF end", "Imported"),
+            new InputBindingSetting("Scripts", "CTRL+B", "script-binding make_gif", "Create GIF", "Imported"),
+            new InputBindingSetting("Scripts", "CTRL+C", "script-binding copy-time", "Copy timestamp", "Imported"),
+            new InputBindingSetting("Scripts", "CTRL+T", "script-binding toggle-seeker", "Toggle timestamp input", "Imported"),
+            new InputBindingSetting("Scripts", "ALT+B", "script-binding sponsorblock", "Toggle SponsorBlock", "Imported"),
+            new InputBindingSetting("Scripts", "H", "script-binding hdr-auto/toggle-hdr", "Manual HDR toggle", "Imported"),
+
+            new InputBindingSetting("Scimitar", "KP7 / KP_HOME", "cycle fullscreen", "Button 1: fullscreen", "Imported"),
+            new InputBindingSetting("Scimitar", "KP8 / KP_UP", "playlist-prev", "Button 2: previous file", "Imported"),
+            new InputBindingSetting("Scimitar", "KP9 / KP_PGUP", "playlist-next", "Button 3: next file", "Imported"),
+            new InputBindingSetting("Scimitar", "KP4 / KP_LEFT", "script-message-to favorites favorites-open", "Button 4: favorites menu", "Imported"),
+            new InputBindingSetting("Scimitar", "KP5 / KP_BEGIN", "frame-back-step", "Button 5: frame back", "Imported"),
+            new InputBindingSetting("Scimitar", "KP6 / KP_RIGHT", "frame-step", "Button 6: frame forward", "Imported"),
+            new InputBindingSetting("Scimitar", "KP1 / KP_END", "cycle mute", "Button 7: mute", "Imported"),
+            new InputBindingSetting("Scimitar", "KP2 / KP_DOWN", "aethra:ab-loop-reset", "Button 8: A-B reset", "Native planned"),
+            new InputBindingSetting("Scimitar", "KP3 / KP_PGDN", "aethra:ab-loop-mark-a", "Button 9: A-B mark A", "Native planned"),
+            new InputBindingSetting("Scimitar", "KP0 / KP_INSERT", "aethra:boss-key", "Button 10: BOSS KEY", "Native planned"),
+            new InputBindingSetting("Scimitar", "KP_DEC / KP_DEL", "cycle-values loop-file \"inf\" \"no\" ; show-text \"Loop: ${loop-file}\"", "Button 11: loop toggle", "Imported"),
+            new InputBindingSetting("Scimitar", "KP_SUBTRACT", "aethra:ab-loop-mark-b", "Button 12: A-B mark B", "Native planned"),
+
+            new InputBindingSetting("Aethra", "SPACE", "aethra:boss-key", "BOSS KEY: pause and minimize", "Native"),
+            new InputBindingSetting("Aethra", "S", "aethra:settings", "Open settings", "Native"),
+            new InputBindingSetting("Aethra", "F", "aethra:fullscreen", "Toggle window fullscreen/maximize", "Native"),
+            new InputBindingSetting("Aethra", "MBTN_LEFT", "aethra:play-pause", "Video click play/pause", "Native"),
+            new InputBindingSetting("Aethra", "MBTN_RIGHT", "aethra:settings-menu", "Open settings flyout", "Native")
+        };
+    }
+}

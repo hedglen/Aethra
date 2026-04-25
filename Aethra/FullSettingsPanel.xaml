@@ -1,0 +1,517 @@
+<UserControl
+    x:Class="Aethra.FullSettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Aethra"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#F2F2F2"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="SectionSubtitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#9FA0A4"/>
+            <Setter Property="Margin" Value="0,0,0,24"/>
+        </Style>
+
+        <Style x:Key="GroupHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#AAAAAA"/>
+            <Setter Property="Margin" Value="0,12,0,0"/>
+        </Style>
+
+        <Style x:Key="ComingSoonStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#6C6D71"/>
+            <Setter Property="FontStyle" Value="Italic"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#F20A0A0A">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Padding="32,20,24,16" Background="#F2141414">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <Border Width="36" Height="36" CornerRadius="18" Background="#1F1F1F" BorderBrush="#7B2FFF" BorderThickness="1">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" FontSize="18" Foreground="#F2F2F2"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="All settings" FontSize="22" FontWeight="SemiBold" Foreground="#F2F2F2"/>
+                    <TextBlock Text="Every Aethra setting, organized by area." FontSize="12" Foreground="#9FA0A4"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button Grid.Column="2"
+                    x:Name="CloseButton"
+                    Click="CloseButton_Click"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Foreground="#F2F2F2"
+                    Padding="10,6"
+                    VerticalAlignment="Center"
+                    ToolTipService.ToolTip="Close all settings">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE711;" FontSize="14"/>
+                    <TextBlock Text="Close" FontSize="13"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <NavigationView x:Name="NavView"
+                        Grid.Row="1"
+                        PaneDisplayMode="Left"
+                        IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False"
+                        OpenPaneLength="240"
+                        SelectionChanged="NavView_SelectionChanged"
+                        Background="Transparent"
+                        Foreground="#F2F2F2">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Playback" Tag="Playback" IsSelected="True">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE768;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Video" Tag="Video">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE714;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Audio" Tag="Audio">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE767;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Subtitles" Tag="Subtitles">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xED1E;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Input" Tag="Input">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE765;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Library" Tag="Library">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8F1;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Shaders" Tag="Shaders">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE71C;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Profiles" Tag="Profiles">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE748;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Appearance" Tag="Appearance">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE790;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Advanced" Tag="Advanced">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE9D5;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <ScrollViewer Padding="48,32,48,48" VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <StackPanel x:Name="PlaybackPanel" Spacing="12" Visibility="Visible">
+                        <TextBlock Text="Playback" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="How files load, queue, and play." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Startup" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ToggleSwitch Header="Resume where you left off" OffContent="Off" OnContent="On" Foreground="White"/>
+                        <ToggleSwitch Header="Autoplay when a file is opened" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+
+                        <TextBlock Text="After a file finishes" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox Header="On end-of-file" SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="Stop"/>
+                            <ComboBoxItem Content="Play next in folder"/>
+                            <ComboBoxItem Content="Loop current file"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Speed" Style="{StaticResource GroupHeaderStyle}"/>
+                        <Slider Header="Default playback speed" Minimum="50" Maximum="200" Value="100" TickFrequency="25" TickPlacement="Outside" Foreground="White"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="VideoPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Video" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Output, decoding, and scaling." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Video Output" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="GPU Next (Modern)"/>
+                            <ComboBoxItem Content="GPU (Standard)"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Hardware Decoding" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox SelectedIndex="1" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="Auto"/>
+                            <ComboBoxItem Content="NVDEC (NVIDIA)"/>
+                            <ComboBoxItem Content="DXVA2 (Windows)"/>
+                            <ComboBoxItem Content="Copy (CPU callback)"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Smoothness" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ToggleSwitch Header="Video Interpolation (Smooth Motion)" OffContent="Off" OnContent="On" Foreground="White"/>
+                        <ToggleSwitch Header="Deinterlacing (for interlaced content)" OffContent="Off" OnContent="On" Foreground="White"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="AudioPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Audio" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Output device, loudness, and channels." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Output" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox Header="Audio device" SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="System default"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Loudness" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ToggleSwitch Header="Dynamic Range Compression" OffContent="Off" OnContent="On" Foreground="White"/>
+                        <ToggleSwitch Header="ReplayGain normalization" OffContent="Off" OnContent="On" Foreground="White"/>
+
+                        <TextBlock Text="Channels" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox Header="Preferred channel layout" SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="Auto (match source)"/>
+                            <ComboBoxItem Content="Stereo"/>
+                            <ComboBoxItem Content="5.1 surround"/>
+                            <ComboBoxItem Content="7.1 surround"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SubtitlesPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Subtitles" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Track selection, font, and timing." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Auto-load" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ToggleSwitch Header="Load matching subtitles from the same folder" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+
+                        <TextBlock Text="Language preference" Style="{StaticResource GroupHeaderStyle}"/>
+                        <TextBox Header="Preferred languages (comma-separated ISO codes)" PlaceholderText="eng,jpn" Foreground="White"/>
+
+                        <TextBlock Text="Appearance" Style="{StaticResource GroupHeaderStyle}"/>
+                        <Slider Header="Font size" Minimum="20" Maximum="80" Value="40" Foreground="White"/>
+                        <ToggleSwitch Header="Border and shadow" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="InputPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Input" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Keyboard shortcuts, mouse buttons, and mpv command bindings." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox x:Name="InputSearchBox"
+                                     PlaceholderText="Search gesture, command, description"
+                                     TextChanged="InputSearchBox_TextChanged"
+                                     Foreground="White"/>
+
+                            <ComboBox x:Name="InputCategoryFilter"
+                                      Grid.Column="1"
+                                      Header="Category"
+                                      SelectionChanged="InputFilter_SelectionChanged"
+                                      HorizontalAlignment="Stretch"
+                                      Foreground="White"/>
+
+                            <ComboBox x:Name="InputSortCombo"
+                                      Grid.Column="2"
+                                      Header="Sort by"
+                                      SelectionChanged="InputFilter_SelectionChanged"
+                                      SelectedIndex="0"
+                                      HorizontalAlignment="Stretch"
+                                      Foreground="White">
+                                <ComboBoxItem Content="Category"/>
+                                <ComboBoxItem Content="Gesture"/>
+                                <ComboBoxItem Content="Command"/>
+                                <ComboBoxItem Content="Source"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Click="AddInputBindingButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE710;" FontSize="12"/>
+                                    <TextBlock Text="Add binding"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="1"
+                                    Click="ResetInputBindingsButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
+                                    <TextBlock Text="Reset list"/>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock x:Name="InputBindingCountText"
+                                       Grid.Column="2"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right"
+                                       Foreground="#9FA0A4"
+                                       FontSize="12"/>
+                        </Grid>
+
+                        <Border BorderBrush="#303030"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Background="#141414">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Padding="12,10" ColumnSpacing="12" Background="#1B1B1B">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="170"/>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="90"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Text="Category" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="1" Text="Gesture" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="2" Text="Command" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="3" Text="Description" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="4" Text="Source" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                </Grid>
+
+                                <ListView x:Name="InputBindingsList"
+                                          Grid.Row="1"
+                                          MaxHeight="520"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          SelectionMode="None">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="local:InputBindingSetting">
+                                            <Grid ColumnSpacing="12" Padding="12,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="170"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <ComboBox SelectedValue="{Binding Category, Mode=TwoWay}"
+                                                          SelectedValuePath="Content"
+                                                          HorizontalAlignment="Stretch"
+                                                          Foreground="White">
+                                                    <ComboBoxItem Content="Mouse"/>
+                                                    <ComboBoxItem Content="Shaders"/>
+                                                    <ComboBoxItem Content="General"/>
+                                                    <ComboBoxItem Content="Picture"/>
+                                                    <ComboBoxItem Content="Video"/>
+                                                    <ComboBoxItem Content="Audio"/>
+                                                    <ComboBoxItem Content="Subtitles"/>
+                                                    <ComboBoxItem Content="Playback"/>
+                                                    <ComboBoxItem Content="Playlist"/>
+                                                    <ComboBoxItem Content="Screenshots"/>
+                                                    <ComboBoxItem Content="Window"/>
+                                                    <ComboBoxItem Content="Scripts"/>
+                                                    <ComboBoxItem Content="Scimitar"/>
+                                                    <ComboBoxItem Content="Aethra"/>
+                                                    <ComboBoxItem Content="Custom"/>
+                                                </ComboBox>
+
+                                                <TextBox Grid.Column="1"
+                                                         Text="{Binding Gesture, Mode=TwoWay}"
+                                                         PlaceholderText="Key or mouse"
+                                                         Foreground="White"/>
+
+                                                <TextBox Grid.Column="2"
+                                                         Text="{Binding Command, Mode=TwoWay}"
+                                                         PlaceholderText="mpv command"
+                                                         TextWrapping="Wrap"
+                                                         AcceptsReturn="False"
+                                                         Foreground="White"/>
+
+                                                <TextBox Grid.Column="3"
+                                                         Text="{Binding Description, Mode=TwoWay}"
+                                                         PlaceholderText="What it does"
+                                                         TextWrapping="Wrap"
+                                                         AcceptsReturn="False"
+                                                         Foreground="White"/>
+
+                                                <TextBlock Grid.Column="4"
+                                                           Text="{Binding Source}"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#9FA0A4"
+                                                           FontSize="12"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Keyboard capture, mouse-button capture, conflict warnings, and input.conf save/load come next." Style="{StaticResource ComingSoonStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="LibraryPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Library" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Recent files, watched folders, and history." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Watched folders" Style="{StaticResource GroupHeaderStyle}"/>
+                        <TextBlock Text="Folder watching coming soon." Style="{StaticResource ComingSoonStyle}"/>
+
+                        <TextBlock Text="History" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ToggleSwitch Header="Remember recently opened files" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="ShadersPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Shaders" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Upscalers and post-processing profiles." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Active shader profile" Style="{StaticResource GroupHeaderStyle}"/>
+                        <RadioButton GroupName="FullShaders" Content="None (basic scaling)" IsChecked="True" Foreground="White"/>
+                        <RadioButton GroupName="FullShaders" Content="FSRCNNX (live action)" Foreground="White"/>
+                        <RadioButton GroupName="FullShaders" Content="Anime4K (animation)" Foreground="White"/>
+                        <RadioButton GroupName="FullShaders" Content="SSimDownscaler + FSRCNNX" Foreground="White"/>
+
+                        <TextBlock Text="Custom" Style="{StaticResource GroupHeaderStyle}"/>
+                        <TextBlock Text="Custom shader chain editor coming soon." Style="{StaticResource ComingSoonStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="ProfilesPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Profiles" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Named bundles of settings you can switch between." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Active profile" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="Default"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Manage" Style="{StaticResource GroupHeaderStyle}"/>
+                        <TextBlock Text="Profile creation, import, and export coming soon." Style="{StaticResource ComingSoonStyle}"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="AppearancePanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Appearance" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Colors and player chrome." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Accent color" Style="{StaticResource GroupHeaderStyle}"/>
+                        <Grid ColumnSpacing="12" MaxWidth="520" HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="260"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Width="36"
+                                    Height="36"
+                                    CornerRadius="18"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderBrush="{StaticResource AethraAccentSoftBrush}"
+                                    BorderThickness="2"
+                                    VerticalAlignment="Bottom"/>
+
+                            <TextBox x:Name="FullAccentHexBox"
+                                     Grid.Column="1"
+                                     Header="Hex"
+                                     PlaceholderText="#7B2FFF"
+                                     TextChanged="FullAccentHexBox_TextChanged"
+                                     Foreground="White"/>
+
+                            <Button Grid.Column="2"
+                                    Click="FullApplyAccentButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White"
+                                    VerticalAlignment="Bottom">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE73E;" FontSize="12"/>
+                                    <TextBlock Text="Apply"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="3"
+                                    Click="FullResetAccentButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White"
+                                    VerticalAlignment="Bottom">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
+                                    <TextBlock Text="Reset"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <TextBlock x:Name="FullAccentStatusText"
+                                   FontSize="13"
+                                   Foreground="#9FA0A4"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="AdvancedPanel" Spacing="12" Visibility="Collapsed">
+                        <TextBlock Text="Advanced" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="Raw mpv options and expert controls." Style="{StaticResource SectionSubtitleStyle}"/>
+
+                        <TextBlock Text="Logging" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ComboBox Header="Log level" SelectedIndex="1" HorizontalAlignment="Stretch" Foreground="White">
+                            <ComboBoxItem Content="Off"/>
+                            <ComboBoxItem Content="Warnings"/>
+                            <ComboBoxItem Content="Verbose"/>
+                            <ComboBoxItem Content="Debug"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Extra mpv options" Style="{StaticResource GroupHeaderStyle}"/>
+                        <TextBox PlaceholderText="key=value pairs, one per line" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Foreground="White"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</UserControl>
