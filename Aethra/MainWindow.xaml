@@ -93,33 +93,37 @@
 
         <Grid x:Name="TopChrome" VerticalAlignment="Top" Height="40" Background="{StaticResource AethraChromeBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="64"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Style="{StaticResource ChromeIconButtonStyle}"
-                    Click="BackButton_Click"
-                    ToolTipService.ToolTip="Back">
-                <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72B;" FontSize="18"/>
-            </Button>
-
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Spacing="12">
+            <Button Grid.Column="0"
+                    Style="{StaticResource ChromeIconButtonStyle}"
+                    Width="64"
+                    HorizontalAlignment="Stretch"
+                    Click="RailToggleButton_Click"
+                    ToolTipService.ToolTip="Toggle command rail">
                 <Border Width="24"
                         Height="24"
                         CornerRadius="12"
                         BorderBrush="{StaticResource AethraAccentBrush}"
                         BorderThickness="1"
                         Background="{StaticResource AethraPanelElevatedBrush}">
-                    <FontIcon FontFamily="Segoe Fluent Icons"
-                              Glyph="&#xE768;"
+                    <FontIcon x:Name="RailToggleIcon"
+                              FontFamily="Segoe Fluent Icons"
+                              Glyph="&#xE700;"
                               FontSize="12"
-                              Foreground="{StaticResource AethraAccentBrush}"/>
+                              Foreground="{StaticResource AethraAccentBrush}"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
                 </Border>
+            </Button>
 
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Spacing="12">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Aethra"
                                FontSize="18"
@@ -143,43 +147,11 @@
                 BorderThickness="0,0,1,0">
             <Grid Padding="6">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Button Style="{StaticResource RailButtonStyle}"
-                        Click="RailToggleButton_Click"
-                        ToolTipService.ToolTip="Toggle command rail">
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="52"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <FontIcon x:Name="RailToggleIcon"
-                                  FontFamily="Segoe Fluent Icons"
-                                  Glyph="&#xE700;"
-                                  FontSize="18"
-                                  Foreground="{StaticResource AethraAccentBrush}"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"/>
-
-                        <StackPanel Grid.Column="1"
-                                    Tag="RailExpanded"
-                                    VerticalAlignment="Center">
-                            <TextBlock Text="Command"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource AethraTextBrush}"/>
-                            <TextBlock Text="Media tools"
-                                       FontSize="11"
-                                       Foreground="{StaticResource AethraMutedTextBrush}"/>
-                        </StackPanel>
-                    </Grid>
-                </Button>
-
-                <ScrollViewer Grid.Row="1"
+                <ScrollViewer Grid.Row="0"
                               VerticalScrollBarVisibility="Auto"
                               Padding="0,8,0,8">
                     <StackPanel Spacing="2">
@@ -344,7 +316,7 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <StackPanel Grid.Row="2" Spacing="2">
+                <StackPanel Grid.Row="1" Spacing="2">
                     <Button Style="{StaticResource RailButtonStyle}"
                             Click="RailHelpButton_Click"
                             ToolTipService.ToolTip="Help">

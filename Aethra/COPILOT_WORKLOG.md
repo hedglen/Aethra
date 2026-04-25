@@ -644,6 +644,18 @@ Active steps:
   - Left the main HWND subclass only for existing hotkeys/right-click handling.
 - Files touched: `Aethra/Controls/CursorAwareGrid.cs`, `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
 - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after simplifying to the WinUI cursor-owner path.
+- Updated the transport primary play/pause button visuals and state behavior:
+  - Added named `PlayPauseButton` / `PlayPauseIcon` elements in `MainWindow.xaml`.
+  - Added `_isPlaybackPaused` and `ApplyPlayPauseVisualState()` in `MainWindow.xaml.cs`.
+  - Final mapping now follows action semantics requested by user: **playing shows Pause icon** on a black button; **paused shows Play icon** with the accent border ring.
+  - Visual state updates are applied on startup, toggle, explicit pause (BOSS KEY), and media load.
+- Removed the top-left Back button from `TopChrome`.
+- Reworked top chrome and command rail toggle placement:
+  - Added a dedicated 64px top-left chrome column aligned to the command rail width.
+  - Moved the Aethra icon into that left slot and made it the rail toggle trigger (`RailToggleButton_Click`).
+  - Removed the old in-rail toggle button row; command rail content now starts directly with media/tools/help actions.
+- Files touched in this UI pass: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after the play/pause and top-chrome/rail toggle updates.
 
 ## Roadmap
 
