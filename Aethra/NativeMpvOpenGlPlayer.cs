@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -44,6 +45,7 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
 
     internal event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
     internal event EventHandler<bool>? PlaybackPausedChanged;
+    internal event EventHandler<IReadOnlyList<MpvChapter>>? ChaptersChanged;
 
     internal void LoadFile(string path)
     {
@@ -143,17 +145,19 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
             context.ObserveProperty(1, "time-pos", MpvNative.MpvFormat.Double);
             context.ObserveProperty(2, "duration", MpvNative.MpvFormat.Double);
             context.ObserveProperty(3, "pause", MpvNative.MpvFormat.Flag);
+            context.ObserveProperty(4, "chapter-list/count", MpvNative.MpvFormat.Int64);
 
             renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
             renderer.Create();
             EnqueueCommand("loadfile", @"C:\Users\rjh\Videos\test.mp4", "replace");
 
+            Action<MpvNative.MpvEvent> eventHandler = mpvEvent => HandleMpvEvent(context, mpvEvent);
             while (!cancellationToken.IsCancellationRequested)
             {
                 ApplyPendingResize();
 
                 DrainCommands(context);
-                context.DrainEvents(HandleMpvEvent);
+                context.DrainEvents(eventHandler);
 
                 if (Interlocked.Exchange(ref _frameRequested, 0) == 1)
                     RenderFrame(renderer, requireFrameUpdate: false);
@@ -213,12 +217,27 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
         }
     }
 
-    private void HandleMpvEvent(MpvNative.MpvEvent mpvEvent)
+    private void HandleMpvEvent(NativeMpvContext context, MpvNative.MpvEvent mpvEvent)
     {
+        if (mpvEvent.EventId == MpvNative.MpvEventId.FileLoaded)
+        {
+            RefreshChapters(context);
+            return;
+        }
+
         if (mpvEvent.EventId != MpvNative.MpvEventId.PropertyChange || mpvEvent.Data == IntPtr.Zero)
             return;
 
         var property = Marshal.PtrToStructure<MpvNative.MpvEventProperty>(mpvEvent.Data);
+
+        if (mpvEvent.ReplyUserData == 4)
+        {
+            // chapter-list/count: refresh the chapter list whenever it changes,
+            // including the count going from zero to non-zero on file load.
+            RefreshChapters(context);
+            return;
+        }
+
         if (property.Data == IntPtr.Zero)
             return;
 
@@ -244,6 +263,32 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
             return;
 
         QueueProgressChanged();
+    }
+
+    private void RefreshChapters(NativeMpvContext context)
+    {
+        var countText = context.GetPropertyString("chapter-list/count");
+        if (!int.TryParse(countText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) || count <= 0)
+        {
+            QueueChaptersChanged(Array.Empty<MpvChapter>());
+            return;
+        }
+
+        var chapters = new List<MpvChapter>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var timeText = context.GetPropertyString($"chapter-list/{i}/time");
+            if (!double.TryParse(timeText, NumberStyles.Float, CultureInfo.InvariantCulture, out var time))
+                continue;
+
+            if (double.IsNaN(time) || double.IsInfinity(time) || time < 0)
+                continue;
+
+            var title = context.GetPropertyString($"chapter-list/{i}/title");
+            chapters.Add(new MpvChapter(time, string.IsNullOrEmpty(title) ? null : title));
+        }
+
+        QueueChaptersChanged(chapters);
     }
 
     private void EnqueueCommand(params string[] args)
@@ -275,5 +320,10 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
     private void QueuePlaybackPausedChanged(bool isPaused)
     {
         _dispatcherQueue.TryEnqueue(() => PlaybackPausedChanged?.Invoke(this, isPaused));
+    }
+
+    private void QueueChaptersChanged(IReadOnlyList<MpvChapter> chapters)
+    {
+        _dispatcherQueue.TryEnqueue(() => ChaptersChanged?.Invoke(this, chapters));
     }
 }

@@ -21,8 +21,61 @@
             <SolidColorBrush x:Key="AethraTextBrush" Color="#F2F2F2"/>
             <SolidColorBrush x:Key="AethraMutedTextBrush" Color="#9FA0A4"/>
             <SolidColorBrush x:Key="AethraAccentBrush" Color="#7B2FFF"/>
+            <SolidColorBrush x:Key="AethraAccentHoverBrush" Color="#E67B2FFF"/>
+            <SolidColorBrush x:Key="AethraAccentPressedBrush" Color="#CC7B2FFF"/>
             <SolidColorBrush x:Key="AethraAccentSoftBrush" Color="#667B2FFF"/>
             <SolidColorBrush x:Key="AethraAccentSubtleBrush" Color="#267B2FFF"/>
+
+            <StaticResource x:Key="AccentFillColorDefaultBrush" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="AccentFillColorSecondaryBrush" ResourceKey="AethraAccentHoverBrush"/>
+            <StaticResource x:Key="AccentFillColorTertiaryBrush" ResourceKey="AethraAccentPressedBrush"/>
+            <StaticResource x:Key="SystemControlForegroundAccentBrush" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="SystemControlHighlightAccentBrush" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleSwitchFillOn" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleSwitchFillOnPointerOver" ResourceKey="AethraAccentHoverBrush"/>
+            <StaticResource x:Key="ToggleSwitchFillOnPressed" ResourceKey="AethraAccentPressedBrush"/>
+            <StaticResource x:Key="ToggleSwitchStrokeOn" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleSwitchStrokeOnPointerOver" ResourceKey="AethraAccentHoverBrush"/>
+            <StaticResource x:Key="ToggleSwitchStrokeOnPressed" ResourceKey="AethraAccentPressedBrush"/>
+            <StaticResource x:Key="RadioButtonOuterEllipseCheckedStroke" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="RadioButtonOuterEllipseCheckedStrokePointerOver" ResourceKey="AethraAccentHoverBrush"/>
+            <StaticResource x:Key="RadioButtonOuterEllipseCheckedStrokePressed" ResourceKey="AethraAccentPressedBrush"/>
+            <StaticResource x:Key="RadioButtonOuterEllipseCheckedFill" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="RadioButtonOuterEllipseCheckedFillPointerOver" ResourceKey="AethraAccentHoverBrush"/>
+            <StaticResource x:Key="RadioButtonOuterEllipseCheckedFillPressed" ResourceKey="AethraAccentPressedBrush"/>
+            <StaticResource x:Key="NavigationViewSelectionIndicatorForeground" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="NavigationViewItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="NavigationViewItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="NavigationViewItemForegroundCheckedPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="NavigationViewItemForegroundCheckedPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="NavigationViewItemForegroundSelectedPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="NavigationViewItemForegroundSelectedPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="TopNavigationViewItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="TopNavigationViewItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="TopNavigationViewItemForegroundSelectedPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="TopNavigationViewItemForegroundSelectedPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutItemKeyboardAcceleratorTextForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutItemKeyboardAcceleratorTextForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutSubItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutSubItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="MenuFlyoutSubItemForegroundSubMenuOpened" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleMenuFlyoutItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleMenuFlyoutItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleMenuFlyoutItemKeyboardAcceleratorTextForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ToggleMenuFlyoutItemKeyboardAcceleratorTextForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ComboBoxItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ComboBoxItemForegroundSelectedPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ComboBoxItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ComboBoxItemForegroundSelectedPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ListViewItemForegroundPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ListViewItemForegroundSelectedPointerOver" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ListViewItemForegroundPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ListViewItemForegroundSelectedPressed" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="TextControlSelectionHighlightColor" ResourceKey="AethraAccentBrush"/>
+            <StaticResource x:Key="ComboBoxBackgroundBorderBrushFocused" ResourceKey="AethraAccentBrush"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

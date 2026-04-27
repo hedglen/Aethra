@@ -36,6 +36,7 @@ public static class AccentColorService
 
         CurrentHex = normalizedHex;
         ApplyColor(color);
+        AccentColorChanged?.Invoke(null, new AccentColorChangedEventArgs(normalizedHex, color));
     }
 
     public static bool TryApplyHex(string input, out string normalizedHex)
@@ -90,6 +91,8 @@ public static class AccentColorService
     private static void ApplyColor(Color color)
     {
         SetBrushColor("AethraAccentBrush", color);
+        SetBrushColor("AethraAccentHoverBrush", Color.FromArgb(0xE6, color.R, color.G, color.B));
+        SetBrushColor("AethraAccentPressedBrush", Color.FromArgb(0xCC, color.R, color.G, color.B));
         SetBrushColor("AethraAccentSoftBrush", Color.FromArgb(0x66, color.R, color.G, color.B));
         SetBrushColor("AethraAccentSubtleBrush", Color.FromArgb(0x26, color.R, color.G, color.B));
     }

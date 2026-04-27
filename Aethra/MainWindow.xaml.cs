@@ -10,7 +10,11 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+// Aliased rather than `using Microsoft.UI.Xaml.Shapes;` because that namespace
+// also contains a `Path` type which collides with `System.IO.Path` used here.
+using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 using Windows.Storage.Pickers;
 
 namespace Aethra
@@ -33,6 +37,13 @@ namespace Aethra
             string.Equals(Environment.GetEnvironmentVariable("AETHRA_GPU_SURFACE_SMOKE"), "1", StringComparison.Ordinal);
         private IntPtr _mainHwnd;
         private bool _suppressSliderValueChanged;
+        private IReadOnlyList<MpvChapter> _chapters = Array.Empty<MpvChapter>();
+        // Last-known seek bar duration used to size chapter markers (the slider runs 0-100,
+        // so we need the actual seconds to format chapter timestamps in the tooltip).
+        private double _lastKnownDurationSeconds;
+        // Index of the chapter whose tooltip is currently shown. -1 when hidden.
+        private int _hoveredChapterIndex = -1;
+        private const double ChapterMarkerHoverThresholdPx = 6.0;
         private bool _visiblePlayerInitialized;
         private bool _isFullscreen;
         private bool _wasMaximizedBeforeFullscreen;
@@ -55,6 +66,7 @@ namespace Aethra
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
         private const double TransportBarHeight = 70;
+        private const double TopChromeHeight = 20;
         private const double WindowDragThreshold = 6;
 
         public MainWindow()
@@ -303,10 +315,12 @@ namespace Aethra
 
         private void TopLeftMenuButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement target)
-                VideoContextFlyout.ShowAt(target);
-            else
-                VideoContextFlyout.ShowAt(VideoContainer);
+            var topChromeHeight = TopChrome.ActualHeight > 0 ? TopChrome.ActualHeight : TopChrome.Height;
+            VideoContextFlyout.ShowAt(RootGrid, new FlyoutShowOptions
+            {
+                Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
+                Position = new Windows.Foundation.Point(0, topChromeHeight)
+            });
         }
 
         private void SetCommandRailExpanded(bool expanded)
@@ -469,7 +483,7 @@ namespace Aethra
         private void UpdateEmbeddedPanelOffset()
         {
             var commandRailWidth = CommandRail.Visibility == Visibility.Visible ? CommandRail.Width : 0;
-            EmbeddedPanelHost.Margin = new Thickness(commandRailWidth, 40, 0, TransportBarHeight);
+            EmbeddedPanelHost.Margin = new Thickness(commandRailWidth, TopChromeHeight, 0, TransportBarHeight);
         }
 
         private IntPtr GetWindowHandle()
@@ -728,6 +742,7 @@ namespace Aethra
                 bitmap => VideoFrame.Source = bitmap);
             _softwarePlayer.ProgressChanged += Player_ProgressChanged;
             _softwarePlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
+            _softwarePlayer.ChaptersChanged += Player_ChaptersChanged;
         }
 
         private void InitializeNativeGpuPlayer()
@@ -735,6 +750,7 @@ namespace Aethra
             _gpuPlayer = new NativeMpvOpenGlPlayer(DispatcherQueue, GpuVideoSurface, GpuPlayer_Failed);
             _gpuPlayer.ProgressChanged += Player_ProgressChanged;
             _gpuPlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
+            _gpuPlayer.ChaptersChanged += Player_ChaptersChanged;
             GpuVideoSurface.SizeChanged += GpuVideoSurface_SizeChanged;
         }
 
@@ -1408,6 +1424,16 @@ namespace Aethra
             {
                 _suppressSliderValueChanged = false;
             }
+
+            // Marker positions are percent-of-duration but the tooltip shows absolute
+            // timestamps, so we need the duration to format times. Re-render markers
+            // when the duration first becomes known so chapters reported before
+            // duration was observed still get drawn.
+            if (Math.Abs(_lastKnownDurationSeconds - duration) > 0.001)
+            {
+                _lastKnownDurationSeconds = duration;
+                RebuildChapterMarkers();
+            }
         }
 
         private void NativeProgressBar_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -1416,6 +1442,162 @@ namespace Aethra
                 return;
 
             SeekToPercent(e.NewValue);
+        }
+
+        private void Player_ChaptersChanged(object? sender, IReadOnlyList<MpvChapter> chapters)
+        {
+            _chapters = chapters ?? Array.Empty<MpvChapter>();
+            RebuildChapterMarkers();
+        }
+
+        private void NativeProgressBar_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // Marker x-positions are absolute pixels relative to the slider, so any
+            // resize requires re-laying them out.
+            RebuildChapterMarkers();
+        }
+
+        private void NativeProgressBar_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (_chapters.Count == 0 || _lastKnownDurationSeconds <= 0)
+            {
+                HideChapterTooltip();
+                return;
+            }
+
+            var width = NativeProgressBar.ActualWidth;
+            if (width <= 0)
+                return;
+
+            var pointerX = e.GetCurrentPoint(NativeProgressBar).Position.X;
+
+            // Find the chapter whose marker is closest to the pointer, but only
+            // commit to showing a tooltip when we are within a small px threshold so
+            // the tooltip doesn't follow the cursor across the whole bar.
+            var nearestIndex = -1;
+            var nearestDistance = double.PositiveInfinity;
+            for (var i = 0; i < _chapters.Count; i++)
+            {
+                var chapterX = ChapterPercent(_chapters[i]) / 100.0 * width;
+                var distance = Math.Abs(pointerX - chapterX);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestIndex = i;
+                }
+            }
+
+            if (nearestIndex < 0 || nearestDistance > ChapterMarkerHoverThresholdPx)
+            {
+                HideChapterTooltip();
+                return;
+            }
+
+            ShowChapterTooltip(nearestIndex, width);
+        }
+
+        private void NativeProgressBar_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            HideChapterTooltip();
+        }
+
+        private void RebuildChapterMarkers()
+        {
+            if (ChapterMarkerCanvas is null)
+                return;
+
+            ChapterMarkerCanvas.Children.Clear();
+            HideChapterTooltip();
+
+            if (_chapters.Count == 0)
+                return;
+
+            var width = NativeProgressBar.ActualWidth;
+            if (width <= 0)
+                return;
+
+            // Subtle dark notch that contrasts against both the unfilled track
+            // (mid-gray) and the filled value track (near-white / accent). Keep the
+            // markers off the very edges so the slider thumb at value=0/100 isn't
+            // visually fighting them.
+            var markerBrush = new SolidColorBrush(Microsoft.UI.Colors.Black) { Opacity = 0.55 };
+            const double markerWidth = 2.0;
+            const double markerHeight = 14.0;
+            var canvasHeight = ChapterMarkerCanvas.ActualHeight > 0 ? ChapterMarkerCanvas.ActualHeight : 22.0;
+            var top = (canvasHeight - markerHeight) / 2.0;
+
+            foreach (var chapter in _chapters)
+            {
+                var percent = ChapterPercent(chapter);
+                if (percent <= 0.001 || percent >= 99.999)
+                    continue; // markers at the very ends are noise.
+
+                var x = percent / 100.0 * width - markerWidth / 2.0;
+
+                var tick = new Rectangle
+                {
+                    Width = markerWidth,
+                    Height = markerHeight,
+                    Fill = markerBrush,
+                    RadiusX = 1,
+                    RadiusY = 1,
+                };
+                Canvas.SetLeft(tick, x);
+                Canvas.SetTop(tick, top);
+                ChapterMarkerCanvas.Children.Add(tick);
+            }
+        }
+
+        private double ChapterPercent(MpvChapter chapter)
+        {
+            if (_lastKnownDurationSeconds <= 0)
+                return -1;
+
+            return Math.Clamp(chapter.Time / _lastKnownDurationSeconds * 100.0, 0.0, 100.0);
+        }
+
+        private void ShowChapterTooltip(int chapterIndex, double sliderWidth)
+        {
+            if (chapterIndex < 0 || chapterIndex >= _chapters.Count)
+                return;
+
+            var chapter = _chapters[chapterIndex];
+            var percent = ChapterPercent(chapter);
+            if (percent < 0)
+                return;
+
+            // Only re-bind text content when the hovered chapter actually changes;
+            // otherwise PointerMoved fires constantly and keeping the assignments
+            // idempotent avoids unnecessary layout invalidation.
+            if (_hoveredChapterIndex != chapterIndex)
+            {
+                _hoveredChapterIndex = chapterIndex;
+                ChapterTooltipTitle.Text = string.IsNullOrWhiteSpace(chapter.Title)
+                    ? $"Chapter {chapterIndex + 1}"
+                    : chapter.Title!;
+                ChapterTooltipTime.Text = FormatTime(chapter.Time);
+            }
+
+            ChapterTooltip.Visibility = Visibility.Visible;
+
+            // Position the tooltip horizontally over the marker, then nudge so it
+            // doesn't clip past the slider's left/right edges.
+            ChapterTooltip.UpdateLayout();
+            var tooltipWidth = ChapterTooltip.ActualWidth;
+            var markerX = percent / 100.0 * sliderWidth;
+            var desiredLeft = markerX - tooltipWidth / 2.0;
+            var maxLeft = Math.Max(0, sliderWidth - tooltipWidth);
+            var clampedLeft = Math.Clamp(desiredLeft, 0, maxLeft);
+            ChapterTooltipTransform.X = clampedLeft;
+        }
+
+        private void HideChapterTooltip()
+        {
+            if (_hoveredChapterIndex == -1 && ChapterTooltip.Visibility == Visibility.Collapsed)
+                return;
+
+            _hoveredChapterIndex = -1;
+            ChapterTooltip.Visibility = Visibility.Collapsed;
         }
 
         private static string FormatTime(double seconds)

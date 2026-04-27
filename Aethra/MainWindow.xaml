@@ -187,54 +187,48 @@
                    IsHitTestVisible="False"/>
         </controls:CursorAwareGrid>
 
-        <Grid x:Name="TopChrome" VerticalAlignment="Top" Height="40" Background="{StaticResource AethraChromeBrush}">
+        <Grid x:Name="TopChrome" VerticalAlignment="Top" Height="20" Background="{StaticResource AethraChromeBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="64"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0"
-                    Style="{StaticResource ChromeIconButtonStyle}"
-                    Width="64"
-                    HorizontalAlignment="Stretch"
-                    Click="TopLeftMenuButton_Click"
-                    ToolTipService.ToolTip="Playback menu">
-                <Border Width="24"
-                        Height="24"
-                        CornerRadius="12"
-                        BorderBrush="{StaticResource AethraAccentBrush}"
-                        BorderThickness="1"
-                        Background="{StaticResource AethraPanelElevatedBrush}">
-                    <FontIcon FontFamily="Segoe Fluent Icons"
-                              Glyph="&#xE700;"
-                              FontSize="12"
-                              Foreground="{StaticResource AethraAccentBrush}"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"/>
-                </Border>
-            </Button>
-
-            <StackPanel Grid.Column="1"
+            <StackPanel Grid.Column="0"
+                        Margin="10,0,0,0"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
-                        Spacing="12">
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Aethra"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               Foreground="{StaticResource AethraTextBrush}"/>
-                    <TextBlock Text="Clarity in every frame."
-                               Margin="0,-2,0,0"
-                               FontSize="10"
-                               Foreground="{StaticResource AethraMutedTextBrush}"/>
-                </StackPanel>
+                        Spacing="6">
+                <TextBlock Text="Aethra"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource AethraTextBrush}"/>
+
+                <Button Style="{StaticResource ChromeIconButtonStyle}"
+                        Width="18"
+                        Height="18"
+                        Click="TopLeftMenuButton_Click"
+                        ToolTipService.ToolTip="Playback menu">
+                    <Border Width="14"
+                            Height="14"
+                            CornerRadius="7"
+                            BorderBrush="{StaticResource AethraAccentBrush}"
+                            BorderThickness="1"
+                            Background="{StaticResource AethraPanelElevatedBrush}">
+                        <FontIcon FontFamily="Segoe Fluent Icons"
+                                  Glyph="&#xE700;"
+                                  FontSize="8"
+                                  Foreground="{StaticResource AethraAccentBrush}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                </Button>
             </StackPanel>
         </Grid>
 
         <Border x:Name="CommandRail"
                 Width="64"
-                Margin="0,40,0,70"
+                Margin="0,20,0,70"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
                 Background="{StaticResource AethraRailBrush}"
@@ -440,7 +434,7 @@
         <Border x:Name="EmbeddedPanelHost"
                 Visibility="Collapsed"
                 Width="360"
-                Margin="64,40,0,70"
+                Margin="64,20,0,70"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
                 Background="{StaticResource AethraPanelBrush}"
@@ -619,20 +613,59 @@
                     VerticalAlignment="Top"
                     Background="#33FFFFFF"/>
 
-            <Slider x:Name="NativeProgressBar"
-                    Grid.Row="0"
-                    Minimum="0"
-                    Maximum="100"
-                    Value="0"
-                    StepFrequency="0.01"
-                    SmallChange="0.1"
-                    LargeChange="5"
-                    Margin="0,-3,0,0"
-                    Height="22"
-                    MinHeight="0"
-                    VerticalAlignment="Center"
-                    Foreground="{StaticResource AethraAccentBrush}"
-                    ValueChanged="NativeProgressBar_ValueChanged"/>
+            <Grid Grid.Row="0"
+                  Margin="0,-3,0,0"
+                  Height="22"
+                  VerticalAlignment="Center">
+                <Slider x:Name="NativeProgressBar"
+                        Minimum="0"
+                        Maximum="100"
+                        Value="0"
+                        StepFrequency="0.01"
+                        SmallChange="0.1"
+                        LargeChange="5"
+                        Height="22"
+                        MinHeight="0"
+                        VerticalAlignment="Center"
+                        Foreground="{StaticResource AethraAccentBrush}"
+                        ValueChanged="NativeProgressBar_ValueChanged"
+                        SizeChanged="NativeProgressBar_SizeChanged"
+                        PointerMoved="NativeProgressBar_PointerMoved"
+                        PointerExited="NativeProgressBar_PointerExited"/>
+                <!-- Chapter markers and floating tooltip. Non-hit-testing so the slider
+                     keeps full pointer interaction; hover detection is driven from the
+                     slider's PointerMoved/Exited handlers. -->
+                <Canvas x:Name="ChapterMarkerCanvas"
+                        IsHitTestVisible="False"
+                        VerticalAlignment="Center"
+                        Height="22"/>
+                <Border x:Name="ChapterTooltip"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False"
+                        Background="#F00E0F12"
+                        BorderBrush="#33FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        Padding="6,3"
+                        VerticalAlignment="Top"
+                        HorizontalAlignment="Left"
+                        RenderTransformOrigin="0.5,1">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="ChapterTooltipTransform" X="0" Y="-32"/>
+                    </Border.RenderTransform>
+                    <StackPanel Orientation="Vertical" Spacing="0">
+                        <TextBlock x:Name="ChapterTooltipTitle"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Foreground="#FFFFFFFF"
+                                   TextTrimming="CharacterEllipsis"
+                                   MaxWidth="240"/>
+                        <TextBlock x:Name="ChapterTooltipTime"
+                                   FontSize="10"
+                                   Foreground="{StaticResource AethraMutedTextBrush}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <Grid Grid.Row="1" Margin="0,2,0,0">
                 <Grid.ColumnDefinitions>
@@ -735,7 +768,7 @@
         <Grid x:Name="RightDrawerHost"
               Visibility="Collapsed"
               Width="336"
-              Margin="0,40,0,70"
+              Margin="0,20,0,70"
               HorizontalAlignment="Right"
               VerticalAlignment="Stretch">
             <local:VideoAdjustmentsPanel x:Name="VideoAdjustments"
