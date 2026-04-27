@@ -168,7 +168,7 @@
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
                     <MenuFlyoutSeparator/>
-                    <MenuFlyoutItem Text="Settings"
+                    <MenuFlyoutItem Text="Preferences"
                                     Click="ContextSettingsItem_Click">
                         <MenuFlyoutItem.Icon>
                             <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;"/>
@@ -198,16 +198,15 @@
                     Style="{StaticResource ChromeIconButtonStyle}"
                     Width="64"
                     HorizontalAlignment="Stretch"
-                    Click="RailToggleButton_Click"
-                    ToolTipService.ToolTip="Toggle command rail">
+                    Click="TopLeftMenuButton_Click"
+                    ToolTipService.ToolTip="Playback menu">
                 <Border Width="24"
                         Height="24"
                         CornerRadius="12"
                         BorderBrush="{StaticResource AethraAccentBrush}"
                         BorderThickness="1"
                         Background="{StaticResource AethraPanelElevatedBrush}">
-                    <FontIcon x:Name="RailToggleIcon"
-                              FontFamily="Segoe Fluent Icons"
+                    <FontIcon FontFamily="Segoe Fluent Icons"
                               Glyph="&#xE700;"
                               FontSize="12"
                               Foreground="{StaticResource AethraAccentBrush}"
@@ -582,7 +581,7 @@
                             <Button Style="{StaticResource PanelActionButtonStyle}" Click="SettingsButton_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" FontSize="14"/>
-                                    <TextBlock Text="Open settings"/>
+                                    <TextBlock Text="Open Preferences"/>
                                 </StackPanel>
                             </Button>
                             <TextBlock Text="Documentation and diagnostics are not connected yet."

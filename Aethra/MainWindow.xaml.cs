@@ -301,16 +301,18 @@ namespace Aethra
             SetCommandRailExpanded(false);
         }
 
-        private void RailToggleButton_Click(object sender, RoutedEventArgs e)
+        private void TopLeftMenuButton_Click(object sender, RoutedEventArgs e)
         {
-            SetCommandRailExpanded(!_isCommandRailExpanded);
+            if (sender is FrameworkElement target)
+                VideoContextFlyout.ShowAt(target);
+            else
+                VideoContextFlyout.ShowAt(VideoContainer);
         }
 
         private void SetCommandRailExpanded(bool expanded)
         {
             _isCommandRailExpanded = expanded;
             CommandRail.Width = expanded ? CommandRailExpandedWidth : CommandRailCollapsedWidth;
-            RailToggleIcon.Glyph = expanded ? "\uE70E" : "\uE700";
             SetTaggedVisibility(CommandRail, "RailExpanded", expanded ? Visibility.Visible : Visibility.Collapsed);
 
             if (!expanded)
@@ -466,7 +468,8 @@ namespace Aethra
 
         private void UpdateEmbeddedPanelOffset()
         {
-            EmbeddedPanelHost.Margin = new Thickness(CommandRail.Width, 40, 0, TransportBarHeight);
+            var commandRailWidth = CommandRail.Visibility == Visibility.Visible ? CommandRail.Width : 0;
+            EmbeddedPanelHost.Margin = new Thickness(commandRailWidth, 40, 0, TransportBarHeight);
         }
 
         private IntPtr GetWindowHandle()
@@ -713,7 +716,6 @@ namespace Aethra
             }
 
             TopChrome.Visibility = Visibility.Visible;
-            CommandRail.Visibility = Visibility.Visible;
             UpdateEmbeddedPanelOffset();
             ApplyTitleBarInsets();
             RefreshPlaybackActivityState();
@@ -907,6 +909,7 @@ namespace Aethra
         private void Player_PlaybackPausedChanged(object? sender, bool isPaused)
         {
             _isPlaybackPaused = isPaused;
+            ClosePlayerShellCommandSurfacesForActivePlayback();
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
         }
@@ -928,6 +931,7 @@ namespace Aethra
         private void TogglePlayback()
         {
             _isPlaybackPaused = !_isPlaybackPaused;
+            ClosePlayerShellCommandSurfacesForActivePlayback();
             _gpuPlayer?.TogglePause();
             _softwarePlayer?.TogglePause();
             ApplyPlayPauseVisualState();
@@ -976,6 +980,7 @@ namespace Aethra
             _gpuPlayer?.LoadFile(path);
             _softwarePlayer?.LoadFile(path);
             _isPlaybackPaused = false;
+            ClosePlayerShellCommandSurfacesForActivePlayback();
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
         }
@@ -1075,6 +1080,8 @@ namespace Aethra
 
         private void ApplyPlaybackActivityState()
         {
+            ApplyPlayerShellCommandRailVisibility();
+
             var shouldShowTransport = !_isFullscreen
                 || _playbackActivity.Mode == PlaybackActivityMode.Active
                 || !CanLetPlaybackChromeIdle();
@@ -1144,6 +1151,40 @@ namespace Aethra
                 .TransformBounds(new Windows.Foundation.Rect(0, 0, element.ActualWidth, element.ActualHeight));
 
             return bounds.Contains(position);
+        }
+
+        private bool ShouldShowPlayerShellCommandRail()
+        {
+            return !_isFullscreen && _isPlaybackPaused;
+        }
+
+        private void ApplyPlayerShellCommandRailVisibility()
+        {
+            var shouldShowRail = ShouldShowPlayerShellCommandRail();
+
+            if (!shouldShowRail)
+            {
+                if (_isCommandRailExpanded)
+                    SetCommandRailExpanded(false);
+                else
+                    HideRailSubMenus();
+            }
+
+            CommandRail.Visibility = shouldShowRail ? Visibility.Visible : Visibility.Collapsed;
+            UpdateEmbeddedPanelOffset();
+        }
+
+        private void ClosePlayerShellCommandSurfacesForActivePlayback()
+        {
+            if (_isPlaybackPaused)
+                return;
+
+            if (_isCommandRailExpanded)
+                SetCommandRailExpanded(false);
+            else
+                HideRailSubMenus();
+
+            EmbeddedPanelHost.Visibility = Visibility.Collapsed;
         }
 
         private void SetNativeCursorVisible(bool isVisible)
