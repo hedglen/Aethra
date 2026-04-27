@@ -37,7 +37,7 @@ Core principles: free, easy, and the best of everything. C# runs only the UI and
 ## Architecture Rules
 
 - One main WinUI window only.
-- All player UI lives in the main WinUI visual tree: settings, HUD, progress, context menus, overlays, and command surfaces.
+- All player UI lives in the main WinUI visual tree: Preferences, HUD, progress, context menus, overlays, and command surfaces.
 - No separate overlay windows for controls.
 - No `wid`/child-HWND mpv embedding.
 - No player UI in web views.
@@ -47,7 +47,7 @@ Core principles: free, easy, and the best of everything. C# runs only the UI and
 - Prefer app-owned PInvoke/native interop for libmpv integration.
 - Do not build around mpv-dotnet or another player wrapper. Existing wrapper usage is temporary and should be removed in small reviewed steps.
 - Keep mpv options, shaders, tone mapping, and playback profiles behind backend profile APIs.
-- Core Aethra behavior must be native app code. App-owned features such as Boss Key, A-B loop workflow, favorites, HUD, settings, window control, and future library/clip workflows should be implemented as C#/WinUI/app-service commands, not as required mpv/Lua scripts or copied mpv config patterns.
+- Core Aethra behavior must be native app code. App-owned features such as Boss Key, A-B loop workflow, favorites, HUD, preferences, window control, and future library/clip workflows should be implemented as C#/WinUI/app-service commands, not as required mpv/Lua scripts or copied mpv config patterns.
 - Use `aethra:*` command names for app-owned actions. Raw mpv commands remain valid for playback operations that mpv natively owns, such as `seek 5`, `cycle pause`, or `add volume 2`.
 - mpv/Lua scripts are optional user/community extensions only. Do not make first-party Aethra functionality depend on scripts.
 - Win32 interop is allowed for HWND subclassing of the main window when WinUI input gaps require it. Route interop through named helpers, not ad hoc code paths.
@@ -56,15 +56,15 @@ Core principles: free, easy, and the best of everything. C# runs only the UI and
 
 This organization is the current target shape, not a rigid forever-plan. Keep it clean and native, but stay willing to adjust the folder/module boundaries when new product needs reveal a better structure. The goal is always the absolute best organization for Aethra, not blind adherence to an early layout.
 
-- `Commands/`: native `aethra:*` app commands and dispatch. This is where first-party behavior goes when it would have been an mpv script, such as BOSS KEY, A-B loop workflow, favorites, HUD actions, settings commands, window commands, and future library/clip workflows. Keep command execution synchronous and allocation-light on the hot input path.
+- `Commands/`: native `aethra:*` app commands and dispatch. This is where first-party behavior goes when it would have been an mpv script, such as BOSS KEY, A-B loop workflow, favorites, HUD actions, preferences commands, window commands, and future library/clip workflows. Keep command execution synchronous and allocation-light on the hot input path.
 - `Input/`: binding models, default binding catalog, input gesture parsing/capture, conflict detection, and the runtime input-binding service. This is where behavior that would have lived in `input.conf` should be represented natively first.
 - `Configuration/`: load/save for user settings, portable mode, round-trip import/export, and future `%APPDATA%\Aethra\` state. Disk IO belongs here, not in the live input path.
-- `Profiles/`: user-facing playback, video, audio, subtitle, shader, and advanced profile models. This is where behavior that would have lived in `mpv.conf` should become approachable Aethra settings first.
+- `Profiles/`: user-facing playback, video, audio, subtitle, shader, and advanced profile models. This is where behavior that would have lived in `mpv.conf` should become approachable Aethra preferences first.
 - `Player/` or `Native/`: media backend abstractions and native interop. libmpv remains the engine; Aethra owns the app behavior and UI.
-- `Settings/`: WinUI settings surfaces and view models as they are introduced. Settings edits should update models/stores; runtime input should use already-loaded in-memory state.
-- `MainWindow`: shell only. It may host the video surface, title bar, settings host, and window-specific operations such as minimize/maximize, but it should not become the long-term home for command lists, script-like behavior, binding persistence, or profile logic.
+- `Preferences/`: WinUI preferences surfaces and view models as they are introduced. Preferences edits should update models/stores; runtime input should use already-loaded in-memory state. Older `Settings` file/type names are legacy and should migrate opportunistically when those files are touched.
+- `MainWindow`: shell only. It may host the video surface, title bar, preferences host, and window-specific operations such as minimize/maximize, but it should not become the long-term home for command lists, script-like behavior, binding persistence, or profile logic.
 
-Hot-path rule: input must stay snappy. Native input should flow through in-memory binding lookup and command dispatch without disk reads, script calls, blocking waits, or settings parsing.
+Hot-path rule: input must stay snappy. Native input should flow through in-memory binding lookup and command dispatch without disk reads, script calls, blocking waits, or preference parsing.
 
 ## Quality Bar
 
@@ -87,8 +87,8 @@ Aethra explicitly supports:
 
 - Local files in any container/codec FFmpeg handles (MKV, MP4, WebM, AVI, MOV, TS, M2TS, FLAC, ALAC, WAV, DSD, etc.).
 - Network streams: HTTP(S), HLS, DASH, RTSP, RTMP, SMB.
-- yt-dlp integration for online video sites. Bundle or auto-fetch `yt-dlp.exe` and pipe URLs through it. Keep the integration toggleable in settings.
-- Lua scripts and user shaders. Build mpv with `-Dlua=enabled`, expose `~~/scripts/` and `~~/shaders/` folders under the app's user data directory, and surface those paths in the settings UI. Ship no scripts by default; users opt in.
+- yt-dlp integration for online video sites. Bundle or auto-fetch `yt-dlp.exe` and pipe URLs through it. Keep the integration toggleable in Preferences.
+- Lua scripts and user shaders. Build mpv with `-Dlua=enabled`, expose `~~/scripts/` and `~~/shaders/` folders under the app's user data directory, and surface those paths in the Preferences UI. Ship no scripts by default; users opt in.
 - DVD and Blu-ray playback through libdvdnav and libbluray. AACS/BD+ keys are not shipped; users supply their own per local law.
 
 Out of scope unless explicitly requested: DRM-protected streaming services (Netflix, Disney+, etc.), screen capture/recording, video editing, transcoding pipelines.
@@ -117,10 +117,24 @@ Out of scope unless explicitly requested: DRM-protected streaming services (Netf
 - Native Windows integrations are first-class: System Media Transport Controls (SMTC) for media keys and lock-screen controls, jump list entries, taskbar thumbnail buttons, file association registration, "Open with" support, prevent-sleep during playback, and per-monitor remembered window position/size/state.
 - Mini-player / picture-in-picture mode for keeping playback visible while working.
 - Multi-monitor aware: fullscreen on the active monitor, persist per-monitor preferences when reasonable.
-- Settings should be comprehensive but approachable, grouped into clear areas: Playback, Video, Audio, Subtitles, Input, Library, Shaders, Profiles, Network, Advanced (raw mpv).
+- Preferences should be comprehensive but approachable, grouped into clear areas: Playback, Video, Audio, Subtitles, Controls, Library, Shaders, Profiles, Network, Customization, Advanced (raw mpv).
 - Progressive disclosure: simple defaults up front, expert controls available without making the app feel like a spreadsheet.
-- Settings has search/filter, per-pane reset-to-defaults, exportable/importable profiles, and an Advanced pane that accepts raw mpv property strings for power users.
+- Preferences has search/filter, per-pane reset-to-defaults, exportable/importable profiles, and an Advanced pane that accepts raw mpv property strings for power users.
 - Window/state persistence: last position, last volume, last folder, last open file, watch-progress per file.
+
+## Product Terminology
+
+Use these terms consistently in user-facing UI, docs, menus, and roadmap language:
+
+- `Preferences`: the main persistent configuration surface. Use this for app behavior that should survive across sessions: playback defaults, renderer/video/audio choices, subtitle rules, library behavior, profiles, shader chains, network behavior, and raw mpv options. The primary menu item is `Preferences`, with `Ctrl+,` as the conventional shortcut when shortcut capture is added.
+- `Adjustments`: quick current-playback tweaks that feel temporary or media/session-specific, such as brightness, contrast, saturation, gamma, hue, sharpness, subtitle delay, audio delay, aspect/crop/zoom, and similar watch-now controls.
+- `Controls`: the user-facing Preferences page for keyboard, mouse, remote, and future gamepad bindings. Internally this can still be implemented by `Input/` services and binding models.
+- `Customization`: a page inside Preferences for appearance and chrome choices, such as theme, accent, transport layout, OSD behavior, and density. Do not use it as the top-level configuration name.
+- `Advanced`: expert/raw engine surface for mpv properties, diagnostic toggles, experimental renderer flags, import/export, and exact-control workflows.
+- `Settings`: avoid as the top-level user-facing name. Use it only for generic technical prose, low-level configuration concepts, or legacy code names until they are migrated.
+- `Control Panel`: do not use for Aethra. It reads as legacy Windows vocabulary and works against the modern native feel.
+
+The mental model is: Preferences are persistent app behavior, Adjustments are immediate playback tweaks, Controls are bindings, Customization is appearance, and Advanced is the expert escape hatch.
 
 ## Input
 
@@ -129,12 +143,12 @@ Out of scope unless explicitly requested: DRM-protected streaming services (Netf
 - Provide an in-app binding editor that captures the next input chord and maps it to a player command. No need to hand-edit text files for common cases, though raw `input.conf` editing remains available for power users.
 - Sensible defaults out of the box (space = BOSS KEY, arrows = seek, F = fullscreen, M = mute, scroll = volume, double-click = fullscreen, middle-click = play/pause). BOSS KEY is written in all caps and means pause playback and minimize the app.
 - Touch, pen, and gamepad/HID remote support are deferred until the GPU path is proven, then added in small reviewed steps. Do not block the architecture from accepting them.
-- Right-click, hotkeys, focus, and settings behavior must work through normal WinUI input routing.
+- Right-click, hotkeys, focus, and preferences behavior must work through normal WinUI input routing.
 
 ## Configuration
 
 - Single source of truth on disk: a user-data directory containing `mpv.conf`-equivalent settings (which mpv natively understands), `input.conf` for bindings, `scripts/`, `shaders/`, and Aethra-specific UI/profile state.
-- The settings UI reads and writes the same store. Hand-edits and GUI edits round-trip without loss.
+- The Preferences UI reads and writes the same store. Hand-edits and GUI edits round-trip without loss.
 - Default location follows Windows conventions (`%APPDATA%\Aethra\`), with an opt-in portable mode that puts config beside the .exe.
 
 ## Code Style

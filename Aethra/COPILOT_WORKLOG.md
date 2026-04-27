@@ -14,6 +14,7 @@ Purpose: keep short handoff context for future Copilot/Codex sessions so work ca
 - Do not add dependencies or broad refactors without a concrete request. Repo-readiness scaffolding (README, LICENSE, CONTRIBUTING, CI, CHANGELOG, etc.) is now in scope per `COPILOT_INSTRUCTIONS.md` and may be added in small reviewed steps.
 - Repo license: GPL-3.0-or-later. This unlocks GPL-licensed mpv/FFmpeg builds for broader codec/filter coverage.
 - Open-source distribution rule: Aethra is free and published on GitHub; prioritize the best native playback/GPU renderer while keeping third-party notices, source links, and build provenance current. No telemetry, analytics, or remote logging.
+- Product vocabulary: use Preferences for persistent app behavior, Adjustments for immediate playback tweaks, Controls for input bindings, Customization for appearance, Advanced for expert/raw options, and avoid Control Panel.
 
 ## Current Focus
 
@@ -41,9 +42,9 @@ Active steps:
 1. Keep the current working app path intact while the GPU renderer is built beside it.
 2. Re-evaluate the native runtime with the new open-source target: decide whether to rebuild mpv/FFmpeg/libplacebo with fuller GPU/playback features now that GPL-compatible dependencies are allowed.
 3. Finish the visible OpenGL/ANGLE-to-WinUI bridge so mpv-rendered frames appear in `GpuVideoSurface`.
-4. Switch playback to the GPU path behind a single local flag and verify seek, left-click play/pause, keyboard shortcuts, drag/drop, settings, resize, and fullscreen.
+4. Switch playback to the GPU path behind a single local flag and verify seek, left-click play/pause, keyboard shortcuts, drag/drop, preferences, resize, and fullscreen.
 5. Remove wrapper-era and software-only fallback code only after one reviewed GPU playback cycle.
-6. Build out settings against real backend profiles one category at a time.
+6. Build out Preferences against real backend profiles one category at a time.
 
 ## Done
 
@@ -666,6 +667,93 @@ Active steps:
   - On pointer exit, the 1-second hide countdown restarts.
 - Files touched in this follow-up: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
 - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors after transport auto-hide + hover hold updates.
+- Replaced the legacy right-click-opens-settings behavior with a native WinUI video context menu now that the command rail owns settings access.
+  - Added `AethraContextFlyoutPresenterStyle` in `MainWindow.xaml`: thin accent-soft border, 10px corner radius, 6px padding, dark text. Background intentionally unset so the WinUI 3 `MenuFlyoutPresenter` keeps its default Win11 acrylic backdrop, giving the "translucent pop-out" feel without introducing a separate overlay window (which the architecture rules forbid).
+  - Added a `MenuFlyout` (`VideoContextFlyout`) on `VideoContainer.ContextFlyout`. Placement is left at the WinUI default; `ContextFlyout` already positions at the right-click point. (Initial pass tried `Placement="MouseOverElement"`, which is a legacy UWP `MenuFlyoutPlacementMode` value and not present in WinUI 3's `FlyoutPlacementMode`; build failed with WMC0 and was fixed by removing the attribute.) Items: Play/Pause, Back 10s, Forward 30s, Enter/Exit fullscreen, separator, Open file..., Open folder..., Recent files, separator, Settings. Items reuse `Segoe Fluent Icons` glyphs and surface the existing keyboard accelerators (Space, ←, →, F, S) via `KeyboardAcceleratorTextOverride` so the menu doubles as a discoverability surface.
+  - Added `VideoContextFlyout_Opening` in `MainWindow.xaml.cs`: hides the flyout if `FullSettingsHost` or `SettingsHost` is visible (preserves the prior right-click suppression rule), and live-updates the play/pause and fullscreen item text/icon to reflect current state.
+  - Added thin click handlers (`ContextPlayPauseItem_Click`, `ContextSeekBackItem_Click`, `ContextSeekForwardItem_Click`, `ContextFullscreenItem_Click`, `ContextOpenFileItem_Click`, `ContextOpenFolderItem_Click`, `ContextRecentItem_Click`, `ContextSettingsItem_Click`) that delegate to the existing `TogglePlayback` / `SeekRelative` / `ToggleFullscreen` / `Rail*Button_Click` / `ToggleSettingsPanel` paths. No new commands, no duplicated logic.
+  - Removed the `WM_RBUTTONUP` branch from `WindowSubclassProc` and the `WM_RBUTTONUP` constant. Right-click is now handled through normal WinUI input routing (`ContextRequested` → `ContextFlyout`), as `COPILOT_INSTRUCTIONS.md:132` requires. The HWND subclass now handles only the keyboard paths it was originally added for (`F`, `S`, `Escape`).
+  - Follow-up after first user run: removed a second legacy right-click path that was duplicating the side settings flyout. `RootGrid.PointerPressed` was wired to `RootGrid_PointerPressed`, which checked `IsRightButtonPressed` and called `ToggleSettingsPanel()`. Right-click bubbled from `VideoContainer` to `RootGrid`, so the new context menu and the old side flyout opened simultaneously and fought each other. Deleted the `RootGrid_PointerPressed` method and removed the `PointerPressed="RootGrid_PointerPressed"` attribute from `RootGrid` in `MainWindow.xaml`. The handler did nothing other than the right-click duplicate, so it could be cut entirely.
+  - Second follow-up after user run: the context menu's Play/Pause label and icon were inverted relative to the transport button. The existing transport button at `ApplyPlayPauseVisualState` interprets the field as `_isPlaybackPaused ? E769(pause-icon) : E768(play-icon)`, but my menu used the opposite mapping (`_isPlaybackPaused ? "Play" : "Pause"`), so the two surfaces disagreed about what the field meant. Flipped the menu's text and icon ternaries to `_isPlaybackPaused ? "Pause"/E769 : "Play"/E768`, matching the transport button. Both surfaces now report the same state for the same field value.
+  - Open issue (NOT touched in this step): the field name `_isPlaybackPaused` is misleading. Whichever convention is "right," the field semantics are inconsistent with the name (the codebase consistently uses field=true to mean "show the Pause affordance," which usually corresponds to playing). A separate small step should rename the field to `_isPlaying` (or invert it) and audit `LoadMedia`, `PausePlayback`, `TogglePlayback`, and `ApplyPlayPauseVisualState` for consistency with the renamed semantics. Out of scope here.
+- Files touched: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+- Build: not run from this session. Needs `dotnet build .\Aethra.slnx -p:Platform=x64` locally to confirm zero warnings/errors, then a manual right-click pass: (a) menu appears at the cursor over the video, (b) menu does NOT appear when the full settings panel or the inline settings flyout is visible, (c) Play/Pause label and icon flip correctly with playback state, (d) Enter/Exit fullscreen label and icon flip with fullscreen state, (e) all eight commands invoke the same behavior as their command-rail/keyboard equivalents, (f) right-click in fullscreen brings the cursor and transport bar back via the existing `RootGrid_PointerMoved` path.
+- Follow-up to consider in a later step: route the menu items through `Commands/AethraCommandIds` once the dispatcher gains the matching `aethra:*` IDs (play-pause, seek, fullscreen, open-file, open-folder, recent, settings). Today only `aethra:boss-key` exists; growing the command catalog is part of Roadmap section 2 and is intentionally out of scope for this UI step.
+
+- Cleanup follow-up so the play/pause inversion mistake cannot recur: introduced a single source of truth for the play/pause label and glyph and refactored both visual surfaces to read from it.
+  - The root cause of the original menu inversion was not a single wrong line; it was that two surfaces (the bottom transport `PlayPauseButton` and the new video context menu) independently mapped the same `_isPlaybackPaused` field with opposite assumptions. Inconsistency was the bug. A future third surface (SMTC, jump list, mini-player) would have hit the same trap.
+  - Added `private static (string Label, string Glyph) PlayPauseVisualFor(bool isPaused)` in `MainWindow.xaml.cs` as the only place the field-to-visual mapping is encoded.
+  - Final mapping follows action semantics requested by the user: paused returns Play / E768, playing returns Pause / E769.
+  - Refactored `ApplyPlayPauseVisualState()` to call `PlayPauseVisualFor(_isPlaybackPaused)` for its glyph. The accent/black border swap stays inline because it's a separate visual concern (mode coloring, not pause iconography).
+  - Refactored `VideoContextFlyout_Opening()` to call `PlayPauseVisualFor(_isPlaybackPaused)` for both label and glyph, replacing the two ternaries that previously had to be hand-kept-in-sync with the transport button.
+  - Added a clarifying comment at the `_isPlaybackPaused` field declaration: the field stores playback state, while visual surfaces show the action available to the user.
+  - The helper consolidates the mapping without renaming `_isPlaybackPaused`, keeping `LoadMedia`, `PausePlayback`, `TogglePlayback`, and the BOSS KEY path small.
+  - Files touched: `Aethra/MainWindow.xaml.cs`, `Aethra/COPILOT_WORKLOG.md`.
+  - Build: not run from this session. Needs `dotnet build .\Aethra.slnx -p:Platform=x64` locally to confirm zero warnings/errors. Manual smoke pass: open a file, observe that the bottom transport play/pause icon and the right-click menu Play/Pause label both reflect the same state at the same time through at least three toggles.
+
+- 2026-04-26 completed the interrupted right-side cleanup and adjustments work:
+  - Retired the legacy inline settings surface: removed `SettingsHost`, removed `SettingsPanel.xaml` / `.cs`, removed its project entries, and made `ToggleSettingsPanel()` open `FullSettingsHost` directly for `S`, Preferences, Help -> Open settings, and the context menu Settings item.
+  - Kept the native video right-click menu as the universal action menu, while moving the bottom-right transport button to the new adjustments drawer.
+  - Added `VideoAdjustments.cs` plus `VideoAdjustmentsPanel.xaml` / `.cs` with sliders for brightness, contrast, saturation, gamma, hue, sharpness, subtitle delay, and audio delay, each with reset affordances plus Reset all.
+  - Added `RightDrawerHost` as the single right-side drawer slot. Today it hosts adjustments; future playlist/track/effects panels can occupy the same slot without reworking the shell.
+  - Added `SetProperty(string name, double value)` to both native mpv player backends and wired adjustment changes to mpv properties with invariant-culture numeric formatting.
+  - Updated Escape, Back, fullscreen entry, context-menu suppression, and cursor-hide gating so the right drawer behaves like a first-class overlay.
+  - Corrected the shared play/pause visual helper back to the requested action semantics: paused shows Play with the accent ring; playing shows Pause on a black button.
+  - Repaired interruption artifacts in `MainWindow.xaml` / `.cs` (trailing NUL bytes and a truncated drag/drop handler).
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 fixed the play/pause visual inversion reported after the drawer work:
+  - Root cause: the UI was relying on `_isPlaybackPaused` guesses while the native player can change actual pause state independently, including the current startup/test-file path. That made both the transport button and right-click menu wrong together because they correctly shared the same stale value.
+  - Both native mpv player backends now observe the mpv `pause` property as `MPV_FORMAT_FLAG` and raise `PlaybackPausedChanged`.
+  - `MainWindow` listens for `PlaybackPausedChanged`, updates `_isPlaybackPaused` from mpv's real state, and reapplies the shared play/pause visual helper.
+  - The helper remains the single renderer for both surfaces: paused -> Play / accent ring, playing -> Pause / black button.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 fixed the adjustments drawer scrollbar overlap:
+  - User screenshot showed the vertical scrollbar overlay covering the per-slider reset buttons when the drawer is short enough to scroll.
+  - Added an 18px right padding gutter to the adjustments `ScrollViewer` content so reset buttons and readouts sit left of the overlay scrollbar.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 smoothed live video adjustment dragging:
+  - User reported playback stutter and delayed response while dragging brightness/contrast/etc. with the adjustments panel open.
+  - Root cause: each tiny `Slider.ValueChanged` event was immediately sending an mpv `set` command, creating a command backlog during drag.
+  - `VideoAdjustmentsPanel` now normalizes slider values to each adjustment's configured step and skips duplicate emitted values.
+  - `MainWindow` now coalesces pending video adjustment changes by mpv property and flushes the latest values on a 33ms `DispatcherTimer`, keeping live feedback without flooding mpv.
+  - Reset buttons still force their target values through the same coalesced path.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 started the focused Flyleaf-inspired import with playback activity handling:
+  - Added `PlaybackActivityController`, an Aethra-native version of Flyleaf's useful "active vs idle" idea without copying renderer/input code or LGPL implementation details.
+  - Moved fullscreen transport auto-hide decisions out of scattered `MainWindow` timer fields and into an explicit activity mode.
+  - Pointer movement, video clicks, right-click menu opening, and keyboard playback/seek/volume actions now mark playback active so the cursor and transport reappear intentionally.
+  - Windowed playback now keeps the transport visible; idle hiding is limited to fullscreen with no overlays open, no context menu open, and no pointer hover over the transport.
+  - The existing `CursorAwareGrid` cursor mechanism remains the visual implementation, so this improves behavior without changing the rendering stack.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 fixed cursor idle hiding after user reported the pointer still stayed visible:
+  - Broadened the activity gate so cursor hiding works during normal windowed playback as well as fullscreen, as long as playback is active and the pointer is idle over the video surface.
+  - Added root pointer position tracking plus playback-surface hit testing so the cursor stays visible over the title chrome, command rail, transport bar, embedded panels, right drawer, full settings, and context menu.
+  - Playback pause/resume/load now starts or stops the activity controller, instead of only starting it on fullscreen entry.
+  - Added a native cursor backup path: subclasses the main HWND and WinUI child HWNDs for `WM_SETCURSOR`, calls `SetCursor(NULL)` while idle-hidden, and reinforces it with a lightweight 100ms timer only while hiding. This supports the existing `CursorAwareGrid.ProtectedCursor` path when WinUI content-island cursor restoration fights it.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 added PotPlayer-style video-surface window dragging:
+  - Changed the video-surface left-click behavior from immediate pause on `PointerPressed` to a thresholded press gesture.
+  - Press/release without meaningful movement still toggles playback.
+  - Press/hold/move past a 6px threshold starts a native window drag via `ReleaseCapture()` + `WM_NCLBUTTONDOWN/HTCAPTION`, and does not toggle playback.
+  - Dragging is disabled while in fullscreen, where the gesture just counts as playback activity.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 fixed stuck video-surface dragging:
+  - User reported that the native caption-message drag did not move while the button was held, then got stuck moving the player after release until another click.
+  - Replaced the `ReleaseCapture()` + `WM_NCLBUTTONDOWN/HTCAPTION` approach with manual `AppWindow.Move(...)` during captured pointer movement, using `GetCursorPos` screen coordinates and the starting window position.
+  - Release/cancel now simply ends the captured drag state; no native modal move loop remains to get stuck after mouse-up.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-26 hardened cursor hiding after user confirmed it still did not disappear:
+  - Restored the native display-counter approach used by serious Windows players: on hide, call `ShowCursor(false)` in a bounded loop until the counter is hidden; on show, call `ShowCursor(true)` until the counter is visible again.
+  - Kept `SetCursor(NULL)` and the `WM_SETCURSOR` main/child-HWND guards, but made them secondary to the display-counter state instead of the only hiding mechanism.
+  - Reintroduced class-cursor clobbering for the main HWND and WinUI child HWNDs while hidden, with original class cursor values cached and restored when the cursor becomes visible.
+  - Added `WM_MOUSEMOVE` / `WM_NCMOUSEMOVE` handling in the main and child subclass procs so hidden-cursor movement wakes playback activity even if WinUI pointer routing does not surface the move first.
+  - Added a deactivation safety valve: if the Aethra window loses focus while hidden, restore the cursor immediately.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-27 clarified configuration vocabulary in the guiding docs:
+  - Added a `Product Terminology` section to `COPILOT_INSTRUCTIONS.md`: Preferences is the full persistent configuration surface; Adjustments is for current-playback tweaks; Controls is the bindings page; Customization is appearance inside Preferences; Advanced is raw/expert options; Control Panel is avoided; Settings is legacy/generic only.
+  - Updated architecture/UI guidance and the current roadmap so future work says Preferences and Controls where those are the intended user-facing terms.
+  - Files touched: `Aethra/COPILOT_INSTRUCTIONS.md`, `Aethra/COPILOT_WORKLOG.md`.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
 
 ## Roadmap
 
@@ -677,32 +765,32 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 - Hide the mouse pointer after a short idle delay over the video surface, and show it immediately on movement.
 - Continue hardening true fullscreen behavior: validate monitor coverage, restore behavior, control reveal, and no renderer fallback.
 - Revisit the transport shelf spacing, icons, disabled states, hover states, and bottom action cluster so the player feels close to modern Windows Media Player but better suited to Aethra.
-- Keep BOSS KEY and `S` settings toggling as snappy reference interactions.
+- Keep BOSS KEY and `S` preferences toggling as snappy reference interactions.
 
 ### 2. Command and input architecture
 
-- Expand `Commands/` beyond BOSS KEY with native app command IDs and dispatcher cases for settings, fullscreen, play/pause, seek, volume, mute, A-B loop, favorites, HUD, and future clip/library workflows.
-- Add an `Input/` runtime service that maps WinUI keyboard/mouse gestures to already-loaded command IDs without disk IO, script calls, or settings parsing.
+- Expand `Commands/` beyond BOSS KEY with native app command IDs and dispatcher cases for preferences, fullscreen, play/pause, seek, volume, mute, A-B loop, favorites, HUD, and future clip/library workflows.
+- Add an `Input/` runtime service that maps WinUI keyboard/mouse gestures to already-loaded command IDs without disk IO, script calls, or preference parsing.
 - Move default binding models/catalog into the `Input/` area.
-- Add keyboard capture in Settings first.
+- Add keyboard capture in the Controls page of Preferences first.
 - Add mouse-button capture after keyboard capture works, including Scimitar-class extended buttons.
 - Add conflict detection, duplicate gesture warnings, clear/reset per binding, and per-section reset.
 - Add import from existing mpv `input.conf` as a migration helper, not as the runtime architecture.
 - Add export/save to Aethra's future `%APPDATA%\Aethra\input.conf` or native binding store only after the model and UI flow are approved.
 
-### 3. Settings UI rebuild
+### 3. Preferences UI rebuild
 
-- Redesign Settings as a serious native configuration surface, not the current scaffold.
-- Fix Input settings so it is easy to search, sort, capture, edit, reset, and understand what is native Aethra versus mpv passthrough.
-- Split Settings into clear pages: Playback, Video, Audio, Subtitles, Input, Library, Shaders, Profiles, Network, Advanced.
+- Redesign Preferences as a serious native configuration surface, not the current scaffold.
+- Fix the Controls page so it is easy to search, sort, capture, edit, reset, and understand what is native Aethra versus mpv passthrough.
+- Split Preferences into clear pages: Playback, Video, Audio, Subtitles, Controls, Library, Shaders, Profiles, Network, Customization, Advanced.
 - Add per-page reset-to-defaults, import/export profiles, and clear applied/pending state.
-- Keep advanced controls available without making the default settings page feel like a spreadsheet.
-- Move settings code toward `Settings/` plus view models when the UI becomes more than a simple shell.
+- Keep advanced controls available without making the default Preferences page feel like a spreadsheet.
+- Move configuration UI code toward `Preferences/` plus view models when the UI becomes more than a simple shell.
 
 ### 4. Native replacement plan for `input.conf`
 
 - Treat every old `input.conf` row as intent to translate into a native Aethra command or native mpv passthrough.
-- Native Aethra commands should cover app behavior: BOSS KEY, settings, fullscreen, HUD, favorites, A-B loop, playlist UI, chapter/clip workflows, screenshots UI, and window actions.
+- Native Aethra commands should cover app behavior: BOSS KEY, preferences, fullscreen, HUD, favorites, A-B loop, playlist UI, chapter/clip workflows, screenshots UI, and window actions.
 - mpv passthrough remains appropriate for engine-owned playback operations: seek, frame step, volume, track switching, subtitle delay, audio delay, speed, video filters, and raw properties.
 - Store bindings in a native model first; only export/import text files for compatibility and power users.
 
@@ -720,8 +808,8 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 
 ### 6. Shaders, scripts, and extension surface
 
-- Shaders are first-class: expose shader folders, shader chains, enable/disable ordering, presets, and per-profile application in Settings.
-- Built-in shader workflows should be native Aethra settings/profile choices.
+- Shaders are first-class: expose shader folders, shader chains, enable/disable ordering, presets, and per-profile application in Preferences.
+- Built-in shader workflows should be native Aethra preferences/profile choices.
 - Lua/mpv scripts are optional user/community extensions only. Surface a scripts folder and script enable/disable management later, but do not depend on scripts for first-party Aethra features.
 - For features that used to be scripts, first ask for the clean native Aethra command/service design.
 
@@ -748,6 +836,7 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 
 ## Notes
 
+- 2026-04-27 terminology decision: user-facing configuration vocabulary is now explicit. `Preferences` is the full persistent configuration surface; `Adjustments` is for current-playback tweaks; `Controls` is the bindings page; `Customization` is appearance inside Preferences; `Advanced` is raw/expert options; avoid `Control Panel`; use `Settings` only for generic technical prose or legacy code names until migrated.
 - 2026-04-25 rebrand: renamed the app to Aethra across project identity, namespace, resource keys, commands, manifests, docs, and visible title chrome. Brand line: "Bright media. Pure playback." Tagline: "Clarity in every frame." The app project is now `Aethra/Aethra.csproj` and the solution is `Aethra.slnx`.
 - 2026-04-25 repo reset: created a clean standalone repo root at `C:\Users\rjh\source\repos\Aethra`, copied the renamed solution/app/smoke harness plus required local native runtime assets, and initialized a fresh Git repository on `main`.
 - 2026-04-25 GitHub bootstrap: connected the clean repo to `https://github.com/hedglen/Aethra.git`, pushed `main`, then fixed the remote-clone build by removing the stale root `libmpv-2.dll` project item and tracking the intended `NativeRuntime\x64` DLL bundle.

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Aethra.VideoAdjustmentsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Aethra"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="DrawerCloseButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
+        </Style>
+
+        <Style x:Key="DrawerResetSmallButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraMutedTextBrush}"/>
+        </Style>
+
+        <Style x:Key="DrawerResetAllButtonStyle" TargetType="Button">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Background" Value="{StaticResource AethraPanelElevatedBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AethraDividerBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="{StaticResource AethraPanelBrush}"
+            BorderBrush="{StaticResource AethraDividerBrush}"
+            BorderThickness="1,0,0,0">
+        <Grid Padding="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Adjustments"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource AethraTextBrush}"/>
+                    <TextBlock Text="Tune the picture and sync without leaving playback."
+                               FontSize="11"
+                               Margin="0,2,0,0"
+                               Foreground="{StaticResource AethraMutedTextBrush}"/>
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Style="{StaticResource DrawerCloseButtonStyle}"
+                        Click="CloseButton_Click"
+                        ToolTipService.ToolTip="Close adjustments">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE711;" FontSize="12"/>
+                </Button>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="0,4,18,4">
+                <StackPanel x:Name="SlidersHost" Spacing="14"/>
+            </ScrollViewer>
+
+            <Button Grid.Row="2"
+                    Style="{StaticResource DrawerResetAllButtonStyle}"
+                    Click="ResetAllButton_Click"
+                    Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE777;" FontSize="14"/>
+                    <TextBlock Text="Reset all"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

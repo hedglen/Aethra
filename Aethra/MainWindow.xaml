@@ -9,7 +9,7 @@
     mc:Ignorable="d"
     Title="Aethra">
 
-    <controls:CursorAwareGrid x:Name="RootGrid" Background="{StaticResource AethraSurfaceBrush}" AllowDrop="True" DragEnter="Grid_DragEnter" Drop="Grid_Drop" PointerPressed="RootGrid_PointerPressed" PointerMoved="RootGrid_PointerMoved">
+    <controls:CursorAwareGrid x:Name="RootGrid" Background="{StaticResource AethraSurfaceBrush}" AllowDrop="True" DragEnter="Grid_DragEnter" Drop="Grid_Drop" PointerMoved="RootGrid_PointerMoved">
         <Grid.Resources>
         <Style x:Key="ChromeIconButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="40"/>
@@ -22,24 +22,40 @@
         </Style>
 
         <Style x:Key="TransportIconButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="40"/>
-            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="36"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraMutedTextBrush}"/>
+        </Style>
+
+        <Style x:Key="PrimaryPlayButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="{StaticResource AethraVideoBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AethraAccentBrush}"/>
+            <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="CornerRadius" Value="20"/>
             <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
         </Style>
 
-        <Style x:Key="PrimaryPlayButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="64"/>
-            <Setter Property="Height" Value="64"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Background" Value="{StaticResource AethraVideoBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AethraAccentBrush}"/>
-            <Setter Property="BorderThickness" Value="4"/>
-            <Setter Property="CornerRadius" Value="32"/>
+        <Style x:Key="TransportTimeTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
+        </Style>
+
+        <Style x:Key="TransportMetaTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraMutedTextBrush}"/>
         </Style>
 
         <Style x:Key="RailButtonStyle" TargetType="Button">
@@ -76,12 +92,92 @@
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
         </Style>
+
+        <Style x:Key="AethraContextFlyoutPresenterStyle" TargetType="MenuFlyoutPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource AethraAccentSoftBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Foreground" Value="{StaticResource AethraTextBrush}"/>
+        </Style>
         </Grid.Resources>
         <controls:CursorAwareGrid x:Name="VideoContainer"
                                   Background="{StaticResource AethraVideoBrush}"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Stretch"
-                                  PointerPressed="VideoContainer_PointerPressed">
+                                  PointerPressed="VideoContainer_PointerPressed"
+                                  PointerMoved="VideoContainer_PointerMoved"
+                                  PointerReleased="VideoContainer_PointerReleased"
+                                  PointerCanceled="VideoContainer_PointerCanceled">
+            <controls:CursorAwareGrid.ContextFlyout>
+                <MenuFlyout x:Name="VideoContextFlyout"
+                            MenuFlyoutPresenterStyle="{StaticResource AethraContextFlyoutPresenterStyle}"
+                            Opening="VideoContextFlyout_Opening"
+                            Closed="VideoContextFlyout_Closed">
+                    <MenuFlyoutItem x:Name="ContextPlayPauseItem"
+                                    Text="Play"
+                                    Click="ContextPlayPauseItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon x:Name="ContextPlayPauseIcon"
+                                      FontFamily="Segoe Fluent Icons"
+                                      Glyph="&#xE768;"/>
+                        </MenuFlyoutItem.Icon>
+                        <MenuFlyoutItem.KeyboardAcceleratorTextOverride>Space</MenuFlyoutItem.KeyboardAcceleratorTextOverride>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem Text="Back 10s"
+                                    Click="ContextSeekBackItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEB9E;"/>
+                        </MenuFlyoutItem.Icon>
+                        <MenuFlyoutItem.KeyboardAcceleratorTextOverride>Left</MenuFlyoutItem.KeyboardAcceleratorTextOverride>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem Text="Forward 30s"
+                                    Click="ContextSeekForwardItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEB9D;"/>
+                        </MenuFlyoutItem.Icon>
+                        <MenuFlyoutItem.KeyboardAcceleratorTextOverride>Right</MenuFlyoutItem.KeyboardAcceleratorTextOverride>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem x:Name="ContextFullscreenItem"
+                                    Text="Enter fullscreen"
+                                    Click="ContextFullscreenItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon x:Name="ContextFullscreenIcon"
+                                      FontFamily="Segoe Fluent Icons"
+                                      Glyph="&#xE740;"/>
+                        </MenuFlyoutItem.Icon>
+                        <MenuFlyoutItem.KeyboardAcceleratorTextOverride>F</MenuFlyoutItem.KeyboardAcceleratorTextOverride>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutSeparator/>
+                    <MenuFlyoutItem Text="Open file..."
+                                    Click="ContextOpenFileItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8E5;"/>
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem Text="Open folder..."
+                                    Click="ContextOpenFolderItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8B7;"/>
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutItem Text="Recent files"
+                                    Click="ContextRecentItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE823;"/>
+                        </MenuFlyoutItem.Icon>
+                    </MenuFlyoutItem>
+                    <MenuFlyoutSeparator/>
+                    <MenuFlyoutItem Text="Settings"
+                                    Click="ContextSettingsItem_Click">
+                        <MenuFlyoutItem.Icon>
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;"/>
+                        </MenuFlyoutItem.Icon>
+                        <MenuFlyoutItem.KeyboardAcceleratorTextOverride>S</MenuFlyoutItem.KeyboardAcceleratorTextOverride>
+                    </MenuFlyoutItem>
+                </MenuFlyout>
+            </controls:CursorAwareGrid.ContextFlyout>
+
             <SwapChainPanel x:Name="GpuVideoSurface"
                             Visibility="Collapsed"
                             IsHitTestVisible="False"/>
@@ -139,7 +235,7 @@
 
         <Border x:Name="CommandRail"
                 Width="64"
-                Margin="0,40,0,156"
+                Margin="0,40,0,70"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
                 Background="{StaticResource AethraRailBrush}"
@@ -345,7 +441,7 @@
         <Border x:Name="EmbeddedPanelHost"
                 Visibility="Collapsed"
                 Width="360"
-                Margin="64,40,0,156"
+                Margin="64,40,0,70"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
                 Background="{StaticResource AethraPanelBrush}"
@@ -500,146 +596,152 @@
 
         <Grid x:Name="TransportBar"
               VerticalAlignment="Bottom"
-              Height="156"
-              Padding="24,10,20,18"
-              Background="{StaticResource AethraChromeBrush}"
+              Height="70"
+              Padding="8,0,8,4"
+              Background="#E60E0F12"
               PointerEntered="TransportBar_PointerEntered"
               PointerExited="TransportBar_PointerExited">
             <Grid.RowDefinitions>
-                <RowDefinition Height="46"/>
+                <RowDefinition Height="22"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
+            <Grid.Resources>
+                <SolidColorBrush x:Key="SliderTrackFill" Color="#4A4A4F"/>
+                <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#626268"/>
+                <SolidColorBrush x:Key="SliderTrackValueFill" Color="#DCDDE2"/>
+                <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#FFFFFF"/>
+                <SolidColorBrush x:Key="SliderThumbBackground" Color="#F4F4F6"/>
+                <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FFFFFF"/>
+                <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#FFFFFF"/>
+            </Grid.Resources>
 
             <Border Grid.RowSpan="2"
                     Height="1"
                     VerticalAlignment="Top"
-                    Background="{StaticResource AethraAccentSubtleBrush}"/>
+                    Background="#33FFFFFF"/>
 
-            <Grid>
+            <Slider x:Name="NativeProgressBar"
+                    Grid.Row="0"
+                    Minimum="0"
+                    Maximum="100"
+                    Value="0"
+                    StepFrequency="0.01"
+                    SmallChange="0.1"
+                    LargeChange="5"
+                    Margin="0,-3,0,0"
+                    Height="22"
+                    MinHeight="0"
+                    VerticalAlignment="Center"
+                    Foreground="{StaticResource AethraAccentBrush}"
+                    ValueChanged="NativeProgressBar_ValueChanged"/>
+
+            <Grid Grid.Row="1" Margin="0,2,0,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock x:Name="CurrentTimeText"
-                           Text="0:00"
-                           VerticalAlignment="Center"
-                           FontSize="18"
-                           Foreground="{StaticResource AethraTextBrush}"/>
-
-                <Slider x:Name="NativeProgressBar"
-                        Grid.Column="1"
-                        Minimum="0"
-                        Maximum="100"
-                        Value="0"
-                        StepFrequency="0.01"
-                        SmallChange="0.1"
-                        LargeChange="5"
-                        Margin="20,0"
-                        VerticalAlignment="Center"
-                        Foreground="{StaticResource AethraAccentBrush}"
-                        ValueChanged="NativeProgressBar_ValueChanged"/>
-
-                <TextBlock x:Name="DurationText"
-                           Grid.Column="2"
-                           Text="--:--"
-                           VerticalAlignment="Center"
-                           FontSize="18"
-                           Foreground="{StaticResource AethraTextBrush}"/>
-            </Grid>
-
-            <Grid Grid.Row="1" Margin="0,8,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock x:Name="MediaTitleText"
-                           Text="Ready"
-                           VerticalAlignment="Center"
-                           FontSize="24"
-                           FontWeight="SemiBold"
-                           Foreground="{StaticResource AethraTextBrush}"/>
-
-                <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
+                <StackPanel Orientation="Horizontal"
                             VerticalAlignment="Center"
-                            Spacing="12">
-                    <Button Style="{StaticResource TransportIconButtonStyle}"
-                            IsEnabled="False"
-                            ToolTipService.ToolTip="Previous">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE892;" FontSize="20"/>
+                            Spacing="2">
+                    <Button x:Name="PlayPauseButton"
+                            Style="{StaticResource PrimaryPlayButtonStyle}"
+                            Click="PlayPauseButton_Click"
+                            ToolTipService.ToolTip="Play or pause">
+                        <FontIcon x:Name="PlayPauseIcon" FontFamily="Segoe Fluent Icons" Glyph="&#xE768;" FontSize="18"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             Click="SeekBackButton_Click"
                             ToolTipService.ToolTip="Back 10 seconds">
-                        <TextBlock Text="↶10"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"/>
-                    </Button>
-
-                    <Button x:Name="PlayPauseButton"
-                            Style="{StaticResource PrimaryPlayButtonStyle}"
-                            Click="PlayPauseButton_Click"
-                            ToolTipService.ToolTip="Play or pause">
-                        <FontIcon x:Name="PlayPauseIcon" FontFamily="Segoe Fluent Icons" Glyph="&#xE769;" FontSize="28"/>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEB9E;" FontSize="15"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             Click="SeekForwardButton_Click"
                             ToolTipService.ToolTip="Forward 30 seconds">
-                        <TextBlock Text="30↷"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"/>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEB9D;" FontSize="15"/>
+                    </Button>
+
+                    <Button Style="{StaticResource TransportIconButtonStyle}"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="Previous">
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE892;" FontSize="16"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             IsEnabled="False"
                             ToolTipService.ToolTip="Next">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE893;" FontSize="20"/>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE893;" FontSize="16"/>
                     </Button>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2"
+                <StackPanel Grid.Column="1"
+                            Margin="12,0,16,0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Spacing="5">
+                    <TextBlock x:Name="CurrentTimeText"
+                               Text="0:00"
+                               Style="{StaticResource TransportTimeTextStyle}"/>
+                    <TextBlock Text="/"
+                               Style="{StaticResource TransportMetaTextStyle}"/>
+                    <TextBlock x:Name="DurationText"
+                               Text="--:--"
+                               Style="{StaticResource TransportMetaTextStyle}"/>
+                </StackPanel>
+
+                <TextBlock x:Name="MediaTitleText"
+                           Grid.Column="2"
+                           Text="Ready"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource AethraMutedTextBrush}"/>
+
+                <StackPanel Grid.Column="3"
                             Orientation="Horizontal"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
-                            Spacing="8">
+                            Spacing="2">
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             IsEnabled="False"
                             ToolTipService.ToolTip="Captions">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEDE4;" FontSize="18"/>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEDE4;" FontSize="15"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             IsEnabled="False"
                             ToolTipService.ToolTip="Volume">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE767;" FontSize="18"/>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE767;" FontSize="15"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             Click="FullscreenButton_Click"
                             ToolTipService.ToolTip="Fullscreen">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE740;" FontSize="18"/>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE740;" FontSize="15"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
                             Click="MoreButton_Click"
-                            ToolTipService.ToolTip="More">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE712;" FontSize="18"/>
+                            ToolTipService.ToolTip="Adjustments">
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE712;" FontSize="15"/>
                     </Button>
                 </StackPanel>
             </Grid>
         </Grid>
 
-        <Grid x:Name="SettingsHost" Visibility="Collapsed" HorizontalAlignment="Right">
-            <local:SettingsPanel x:Name="Settings"
-                                 CloseRequested="Settings_CloseRequested"
-                                 OpenAllSettingsRequested="Settings_OpenAllSettingsRequested"/>
+        <Grid x:Name="RightDrawerHost"
+              Visibility="Collapsed"
+              Width="336"
+              Margin="0,40,0,70"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Stretch">
+            <local:VideoAdjustmentsPanel x:Name="VideoAdjustments"
+                                         CloseRequested="VideoAdjustments_CloseRequested"
+                                         AdjustmentChanged="VideoAdjustments_AdjustmentChanged"/>
         </Grid>
 
         <Grid x:Name="FullSettingsHost" Visibility="Collapsed">

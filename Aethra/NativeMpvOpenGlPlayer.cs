@@ -43,6 +43,7 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
     }
 
     internal event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
+    internal event EventHandler<bool>? PlaybackPausedChanged;
 
     internal void LoadFile(string path)
     {
@@ -58,6 +59,12 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
     internal void Pause()
     {
         EnqueueCommand("set", "pause", "yes");
+    }
+
+    internal void SetProperty(string name, double value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        EnqueueCommand("set", name, value.ToString(CultureInfo.InvariantCulture));
     }
 
     internal void Seek(double seconds)
@@ -135,6 +142,7 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
             context.Initialize();
             context.ObserveProperty(1, "time-pos", MpvNative.MpvFormat.Double);
             context.ObserveProperty(2, "duration", MpvNative.MpvFormat.Double);
+            context.ObserveProperty(3, "pause", MpvNative.MpvFormat.Flag);
 
             renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
             renderer.Create();
@@ -211,7 +219,17 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
             return;
 
         var property = Marshal.PtrToStructure<MpvNative.MpvEventProperty>(mpvEvent.Data);
-        if (property.Format != MpvNative.MpvFormat.Double || property.Data == IntPtr.Zero)
+        if (property.Data == IntPtr.Zero)
+            return;
+
+        if (mpvEvent.ReplyUserData == 3 && property.Format == MpvNative.MpvFormat.Flag)
+        {
+            var isPaused = Marshal.PtrToStructure<int>(property.Data) != 0;
+            QueuePlaybackPausedChanged(isPaused);
+            return;
+        }
+
+        if (property.Format != MpvNative.MpvFormat.Double)
             return;
 
         var value = Marshal.PtrToStructure<double>(property.Data);
@@ -252,5 +270,10 @@ internal sealed class NativeMpvOpenGlPlayer : IDisposable
 
         var progress = new NativeMpvPlaybackProgress(_position, _duration);
         _dispatcherQueue.TryEnqueue(() => ProgressChanged?.Invoke(this, progress));
+    }
+
+    private void QueuePlaybackPausedChanged(bool isPaused)
+    {
+        _dispatcherQueue.TryEnqueue(() => PlaybackPausedChanged?.Invoke(this, isPaused));
     }
 }

@@ -16,13 +16,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Page Remove="SettingsPanel.xaml" />
-    <Page Include="SettingsPanel.xaml">
+    <Page Remove="FullSettingsPanel.xaml" />
+    <Page Include="FullSettingsPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Remove="FullSettingsPanel.xaml" />
-    <Page Include="FullSettingsPanel.xaml">
+    <Page Remove="VideoAdjustmentsPanel.xaml" />
+    <Page Include="VideoAdjustmentsPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -81,10 +81,10 @@
 		</None>
 	</ItemGroup>
 	<ItemGroup>
-	  <None Update="SettingsPanel.xaml">
+	  <None Update="FullSettingsPanel.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </None>
-	  <None Update="FullSettingsPanel.xaml">
+	  <None Update="VideoAdjustmentsPanel.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </None>
 	</ItemGroup>

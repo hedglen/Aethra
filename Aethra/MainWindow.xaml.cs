@@ -1,6 +1,7 @@
 using Aethra.Commands;
 using Aethra.Native;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -21,6 +22,12 @@ namespace Aethra
         private D3D11SwapChainPanelHost? _gpuSurfaceSmokeHost;
         private readonly AethraCommandDispatcher _commandDispatcher;
         private readonly SUBCLASSPROC _windowSubclassProc;
+        private readonly SUBCLASSPROC _childCursorSubclassProc;
+        private readonly HashSet<IntPtr> _hookedCursorChildHwnds = new();
+        private readonly Dictionary<IntPtr, IntPtr> _originalClassCursors = new();
+        private readonly Dictionary<string, double> _pendingVideoAdjustments = new(StringComparer.Ordinal);
+        private readonly DispatcherTimer _videoAdjustmentFlushTimer;
+        private readonly DispatcherTimer _cursorHideEnforcementTimer;
         private bool _useGpuVideoSurface = true;
         private static bool RunGpuSurfaceSmoke =>
             string.Equals(Environment.GetEnvironmentVariable("AETHRA_GPU_SURFACE_SMOKE"), "1", StringComparison.Ordinal);
@@ -30,14 +37,25 @@ namespace Aethra
         private bool _isFullscreen;
         private bool _wasMaximizedBeforeFullscreen;
         private bool _isCommandRailExpanded;
-        private readonly DispatcherTimer _fullscreenControlsIdleTimer;
-        private Windows.Foundation.Point _lastFullscreenPointerPosition;
-        private bool _hasLastFullscreenPointerPosition;
-        private DateTime _fullscreenControlsHiddenAtUtc = DateTime.MinValue;
+        private readonly PlaybackActivityController _playbackActivity;
+        // True means playback is paused. Visual surfaces route through
+        // PlayPauseVisualFor so the transport button and context menu stay aligned.
         private bool _isPlaybackPaused = true;
         private bool _isPointerOverTransportBar;
+        private bool _isVideoContextFlyoutOpen;
+        private bool _isNativeCursorHidden;
+        private Windows.Foundation.Point _lastRootPointerPosition;
+        private bool _hasLastRootPointerPosition;
+        private Windows.Foundation.Point _videoPointerPressedAt;
+        private NativePoint _videoWindowDragStartCursorPosition;
+        private Windows.Graphics.PointInt32 _videoWindowDragStartWindowPosition;
+        private uint _videoPointerId;
+        private bool _isVideoPointerPressPending;
+        private bool _isVideoPointerDraggingWindow;
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
+        private const double TransportBarHeight = 70;
+        private const double WindowDragThreshold = 6;
 
         public MainWindow()
         {
@@ -45,21 +63,35 @@ namespace Aethra
             ApplyPlayPauseVisualState();
             CommandRail.Loaded += CommandRail_Loaded;
             SetCommandRailExpanded(false);
-            _fullscreenControlsIdleTimer = new DispatcherTimer
+            _playbackActivity = new PlaybackActivityController(TimeSpan.FromSeconds(1), CanLetPlaybackChromeIdle);
+            _playbackActivity.ModeChanged += PlaybackActivity_ModeChanged;
+            _videoAdjustmentFlushTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromSeconds(1)
+                Interval = TimeSpan.FromMilliseconds(33)
             };
-            _fullscreenControlsIdleTimer.Tick += FullscreenControlsIdleTimer_Tick;
+            _videoAdjustmentFlushTimer.Tick += VideoAdjustmentFlushTimer_Tick;
+            _cursorHideEnforcementTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _cursorHideEnforcementTimer.Tick += CursorHideEnforcementTimer_Tick;
             _commandDispatcher = new AethraCommandDispatcher(new AethraCommandContext(PausePlayback, MinimizeWindow));
             _windowSubclassProc = WindowSubclassProc;
+            _childCursorSubclassProc = ChildCursorSubclassProc;
             this.Activated += MainWindow_Activated;
+            this.Activated += MainWindow_CursorActivationChanged;
             this.Closed += MainWindow_Closed;
-            ShowFullscreenControls();
+            ApplyPlaybackActivityState();
         }
 
         private void MainWindow_Closed(object sender, WindowEventArgs args)
         {
-            UpdateCursorVisibility();
+            _videoAdjustmentFlushTimer.Stop();
+            _cursorHideEnforcementTimer.Stop();
+            _playbackActivity.Stop();
+            RootGrid.SetCursorVisible(true);
+            VideoContainer.SetCursorVisible(true);
+            ShowNativeCursorIfHidden();
             _gpuSurfaceSmokeHost?.Dispose();
             _gpuPlayer?.Dispose();
             _softwarePlayer?.Dispose();
@@ -68,6 +100,9 @@ namespace Aethra
             {
                 RemoveWindowSubclass(_mainHwnd, _windowSubclassProc, WINDOW_SUBCLASS_ID);
             }
+
+            foreach (var childHwnd in _hookedCursorChildHwnds)
+                RemoveWindowSubclass(childHwnd, _childCursorSubclassProc, CHILD_CURSOR_SUBCLASS_ID);
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
@@ -86,22 +121,27 @@ namespace Aethra
                 {
                     case Windows.System.VirtualKey.Space:
                         _commandDispatcher.Execute(AethraCommandIds.BossKey);
+                        MarkPlaybackActivity();
                         e.Handled = true;
                         break;
                     case Windows.System.VirtualKey.Right:
                         SeekRelative(10);
+                        MarkPlaybackActivity();
                         e.Handled = true;
                         break;
                     case Windows.System.VirtualKey.Left:
                         SeekRelative(-10);
+                        MarkPlaybackActivity();
                         e.Handled = true;
                         break;
                     case Windows.System.VirtualKey.Up:
                         AddVolume(5);
+                        MarkPlaybackActivity();
                         e.Handled = true;
                         break;
                     case Windows.System.VirtualKey.Down:
                         AddVolume(-5);
+                        MarkPlaybackActivity();
                         e.Handled = true;
                         break;
                     case Windows.System.VirtualKey.F:
@@ -116,17 +156,16 @@ namespace Aethra
                         if (FullSettingsHost.Visibility == Visibility.Visible)
                         {
                             FullSettingsHost.Visibility = Visibility.Collapsed;
-                            UpdateCursorVisibility();
+                            RefreshPlaybackActivityState();
                         }
-                        else if (SettingsHost.Visibility == Visibility.Visible)
+                        else if (RightDrawerHost.Visibility == Visibility.Visible)
                         {
-                            SettingsHost.Visibility = Visibility.Collapsed;
-                            UpdateCursorVisibility();
+                            CloseRightDrawer();
                         }
                         else if (EmbeddedPanelHost.Visibility == Visibility.Visible)
                         {
                             EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-                            UpdateCursorVisibility();
+                            RefreshPlaybackActivityState();
                         }
                         else if (_isFullscreen)
                         {
@@ -153,6 +192,19 @@ namespace Aethra
 
             // Keep keyboard focus on the main window.
             this.Activate();
+        }
+
+        private void MainWindow_CursorActivationChanged(object sender, WindowActivatedEventArgs args)
+        {
+            if (args.WindowActivationState == WindowActivationState.Deactivated)
+            {
+                RootGrid.SetCursorVisible(true);
+                VideoContainer.SetCursorVisible(true);
+                ShowNativeCursorIfHidden();
+                return;
+            }
+
+            RefreshPlaybackActivityState();
         }
 
         private void VideoContainer_Loaded(object sender, RoutedEventArgs e)
@@ -231,13 +283,16 @@ namespace Aethra
 
         private void ToggleSettingsPanel()
         {
-            var shouldShow = SettingsHost.Visibility != Visibility.Visible;
-            SettingsHost.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+            var shouldShow = FullSettingsHost.Visibility != Visibility.Visible;
+            FullSettingsHost.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
 
             if (shouldShow)
+            {
                 EmbeddedPanelHost.Visibility = Visibility.Collapsed;
+                CloseRightDrawer(updateCursor: false);
+            }
 
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void CommandRail_Loaded(object sender, RoutedEventArgs e)
@@ -376,10 +431,10 @@ namespace Aethra
 
         private void RailPreferencesButton_Click(object sender, RoutedEventArgs e)
         {
-            SettingsHost.Visibility = Visibility.Collapsed;
             EmbeddedPanelHost.Visibility = Visibility.Collapsed;
+            CloseRightDrawer(updateCursor: false);
             FullSettingsHost.Visibility = Visibility.Visible;
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void RailConverterButton_Click(object sender, RoutedEventArgs e)
@@ -390,7 +445,7 @@ namespace Aethra
         private void CloseEmbeddedPanelButton_Click(object sender, RoutedEventArgs e)
         {
             EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void ShowEmbeddedPanel(string panel, string title, string subtitle)
@@ -406,12 +461,12 @@ namespace Aethra
 
             EmbeddedPanelHost.Visibility = Visibility.Visible;
             UpdateEmbeddedPanelOffset();
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void UpdateEmbeddedPanelOffset()
         {
-            EmbeddedPanelHost.Margin = new Thickness(CommandRail.Width, 40, 0, 156);
+            EmbeddedPanelHost.Margin = new Thickness(CommandRail.Width, 40, 0, TransportBarHeight);
         }
 
         private IntPtr GetWindowHandle()
@@ -445,6 +500,7 @@ namespace Aethra
         {
             _mainHwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             SetWindowSubclass(_mainHwnd, _windowSubclassProc, WINDOW_SUBCLASS_ID, IntPtr.Zero);
+            EnsureChildCursorHooks();
         }
 
         private IntPtr WindowSubclassProc(
@@ -455,6 +511,17 @@ namespace Aethra
             UIntPtr uIdSubclass,
             IntPtr dwRefData)
         {
+            if (msg == WM_SETCURSOR && ShouldForceHideMouseCursor())
+            {
+                SetCursor(IntPtr.Zero);
+                return new IntPtr(1);
+            }
+
+            if ((msg == WM_MOUSEMOVE || msg == WM_NCMOUSEMOVE) && _isNativeCursorHidden)
+            {
+                DispatcherQueue.TryEnqueue(MarkPlaybackActivity);
+            }
+
             if (msg == WM_KEYDOWN)
             {
                 var vk = (int)wParam;
@@ -478,17 +545,16 @@ namespace Aethra
                     if (FullSettingsHost.Visibility == Visibility.Visible)
                     {
                         FullSettingsHost.Visibility = Visibility.Collapsed;
-                        UpdateCursorVisibility();
+                        RefreshPlaybackActivityState();
                     }
-                    else if (SettingsHost.Visibility == Visibility.Visible)
+                    else if (RightDrawerHost.Visibility == Visibility.Visible)
                     {
-                        SettingsHost.Visibility = Visibility.Collapsed;
-                        UpdateCursorVisibility();
+                        CloseRightDrawer();
                     }
                     else if (EmbeddedPanelHost.Visibility == Visibility.Visible)
                     {
                         EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-                        UpdateCursorVisibility();
+                        RefreshPlaybackActivityState();
                     }
                     else if (_isFullscreen)
                     {
@@ -498,38 +564,13 @@ namespace Aethra
                 return IntPtr.Zero;
             }
 
-            if (msg == WM_RBUTTONUP)
-            {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    if (FullSettingsHost.Visibility == Visibility.Visible)
-                        return;
-                    ToggleSettingsPanel();
-                });
-                return IntPtr.Zero;
-            }
-
             return DefSubclassProc(hWnd, msg, wParam, lParam);
-        }
-
-        private void Settings_CloseRequested(object? sender, EventArgs e)
-        {
-            SettingsHost.Visibility = Visibility.Collapsed;
-            UpdateCursorVisibility();
-        }
-
-        private void Settings_OpenAllSettingsRequested(object? sender, EventArgs e)
-        {
-            SettingsHost.Visibility = Visibility.Collapsed;
-            EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-            FullSettingsHost.Visibility = Visibility.Visible;
-            UpdateCursorVisibility();
         }
 
         private void FullSettings_CloseRequested(object? sender, EventArgs e)
         {
             FullSettingsHost.Visibility = Visibility.Collapsed;
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -539,17 +580,81 @@ namespace Aethra
 
         private void MoreButton_Click(object sender, RoutedEventArgs e)
         {
-            ToggleSettingsPanel();
+            ToggleRightDrawer(VideoAdjustments);
+        }
+
+        private void ToggleRightDrawer(UIElement panel)
+        {
+            var shouldShow = RightDrawerHost.Visibility != Visibility.Visible
+                || panel.Visibility != Visibility.Visible;
+
+            foreach (var child in RightDrawerHost.Children.OfType<UIElement>())
+                child.Visibility = Visibility.Collapsed;
+
+            if (shouldShow)
+            {
+                FullSettingsHost.Visibility = Visibility.Collapsed;
+                panel.Visibility = Visibility.Visible;
+                RightDrawerHost.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                RightDrawerHost.Visibility = Visibility.Collapsed;
+            }
+
+            RefreshPlaybackActivityState();
+        }
+
+        private void CloseRightDrawer(bool updateCursor = true)
+        {
+            RightDrawerHost.Visibility = Visibility.Collapsed;
+
+            if (updateCursor)
+                RefreshPlaybackActivityState();
+        }
+
+        private void VideoAdjustments_CloseRequested(object? sender, EventArgs e)
+        {
+            CloseRightDrawer();
+        }
+
+        private void VideoAdjustments_AdjustmentChanged(object? sender, VideoAdjustmentChangedEventArgs e)
+        {
+            _pendingVideoAdjustments[e.MpvProperty] = e.Value;
+
+            if (!_videoAdjustmentFlushTimer.IsEnabled)
+                _videoAdjustmentFlushTimer.Start();
+        }
+
+        private void VideoAdjustmentFlushTimer_Tick(object? sender, object e)
+        {
+            if (_pendingVideoAdjustments.Count == 0)
+            {
+                _videoAdjustmentFlushTimer.Stop();
+                return;
+            }
+
+            var adjustments = _pendingVideoAdjustments.ToArray();
+            _pendingVideoAdjustments.Clear();
+
+            foreach (var adjustment in adjustments)
+                ApplyVideoAdjustment(adjustment.Key, adjustment.Value);
+        }
+
+        private void ApplyVideoAdjustment(string mpvProperty, double value)
+        {
+            _gpuPlayer?.SetProperty(mpvProperty, value);
+            _softwarePlayer?.SetProperty(mpvProperty, value);
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            if (EmbeddedPanelHost.Visibility == Visibility.Visible)
+            if (RightDrawerHost.Visibility == Visibility.Visible)
+                CloseRightDrawer(updateCursor: false);
+            else if (EmbeddedPanelHost.Visibility == Visibility.Visible)
                 EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-            else if (SettingsHost.Visibility == Visibility.Visible)
-                SettingsHost.Visibility = Visibility.Collapsed;
 
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void SeekBackButton_Click(object sender, RoutedEventArgs e)
@@ -587,19 +692,17 @@ namespace Aethra
                 && presenter.State == OverlappedPresenterState.Maximized;
 
             _isFullscreen = true;
-            _hasLastFullscreenPointerPosition = false;
             TopChrome.Visibility = Visibility.Collapsed;
             CommandRail.Visibility = Visibility.Collapsed;
             EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-            SettingsHost.Visibility = Visibility.Collapsed;
+            RightDrawerHost.Visibility = Visibility.Collapsed;
             FullSettingsHost.Visibility = Visibility.Collapsed;
-            ShowFullscreenControls();
+            RefreshPlaybackActivityState();
             this.AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
         }
 
         private void ExitFullscreen()
         {
-            _fullscreenControlsIdleTimer.Stop();
             _isFullscreen = false;
             this.AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
 
@@ -611,10 +714,9 @@ namespace Aethra
 
             TopChrome.Visibility = Visibility.Visible;
             CommandRail.Visibility = Visibility.Visible;
-            ShowFullscreenControls();
             UpdateEmbeddedPanelOffset();
             ApplyTitleBarInsets();
-            UpdateCursorVisibility();
+            RefreshPlaybackActivityState();
         }
 
         private void InitializeNativeSoftwarePlayer()
@@ -623,12 +725,14 @@ namespace Aethra
                 DispatcherQueue,
                 bitmap => VideoFrame.Source = bitmap);
             _softwarePlayer.ProgressChanged += Player_ProgressChanged;
+            _softwarePlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
         }
 
         private void InitializeNativeGpuPlayer()
         {
             _gpuPlayer = new NativeMpvOpenGlPlayer(DispatcherQueue, GpuVideoSurface, GpuPlayer_Failed);
             _gpuPlayer.ProgressChanged += Player_ProgressChanged;
+            _gpuPlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
             GpuVideoSurface.SizeChanged += GpuVideoSurface_SizeChanged;
         }
 
@@ -654,13 +758,157 @@ namespace Aethra
             if (!point.Properties.IsLeftButtonPressed)
                 return;
 
-            TogglePlayback();
+            MarkPlaybackActivity();
+            _videoPointerPressedAt = point.Position;
+            _videoWindowDragStartWindowPosition = AppWindow.Position;
+            GetCursorPos(out _videoWindowDragStartCursorPosition);
+            _videoPointerId = e.Pointer.PointerId;
+            _isVideoPointerPressPending = true;
+            _isVideoPointerDraggingWindow = false;
+            VideoContainer.CapturePointer(e.Pointer);
             e.Handled = true;
         }
+
+        private void VideoContainer_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (e.Pointer.PointerId != _videoPointerId
+                || (!_isVideoPointerPressPending && !_isVideoPointerDraggingWindow))
+            {
+                return;
+            }
+
+            var point = e.GetCurrentPoint(VideoContainer);
+            if (!point.Properties.IsLeftButtonPressed)
+            {
+                ResetVideoPointerPress(e);
+                return;
+            }
+
+            if (_isVideoPointerDraggingWindow)
+            {
+                MoveWindowForVideoDrag();
+                e.Handled = true;
+                return;
+            }
+
+            var xDelta = Math.Abs(point.Position.X - _videoPointerPressedAt.X);
+            var yDelta = Math.Abs(point.Position.Y - _videoPointerPressedAt.Y);
+
+            if (xDelta < WindowDragThreshold && yDelta < WindowDragThreshold)
+                return;
+
+            _isVideoPointerDraggingWindow = true;
+            _isVideoPointerPressPending = false;
+            MarkPlaybackActivity();
+
+            if (!_isFullscreen)
+                BeginWindowDrag();
+
+            e.Handled = true;
+        }
+
+        private void VideoContainer_PointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (e.Pointer.PointerId != _videoPointerId)
+                return;
+
+            var shouldTogglePlayback = _isVideoPointerPressPending && !_isVideoPointerDraggingWindow;
+            ResetVideoPointerPress(e);
+
+            if (shouldTogglePlayback)
+            {
+                MarkPlaybackActivity();
+                TogglePlayback();
+            }
+
+            e.Handled = true;
+        }
+
+        private void VideoContainer_PointerCanceled(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (e.Pointer.PointerId == _videoPointerId)
+                ResetVideoPointerPress(e);
+        }
+
+        private void ResetVideoPointerPress(Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            if (_isVideoPointerPressPending || _isVideoPointerDraggingWindow)
+                VideoContainer.ReleasePointerCapture(e.Pointer);
+
+            _isVideoPointerPressPending = false;
+            _isVideoPointerDraggingWindow = false;
+            _videoPointerId = 0;
+        }
+
+        private void BeginWindowDrag()
+        {
+            ShowNativeCursorIfHidden();
+            MoveWindowForVideoDrag();
+        }
+
+        private void MoveWindowForVideoDrag()
+        {
+            if (!GetCursorPos(out var cursorPosition))
+                return;
+
+            var xDelta = cursorPosition.X - _videoWindowDragStartCursorPosition.X;
+            var yDelta = cursorPosition.Y - _videoWindowDragStartCursorPosition.Y;
+            AppWindow.Move(new Windows.Graphics.PointInt32(
+                _videoWindowDragStartWindowPosition.X + xDelta,
+                _videoWindowDragStartWindowPosition.Y + yDelta));
+        }
+
+        private void VideoContextFlyout_Opening(object? sender, object e)
+        {
+            if (FullSettingsHost.Visibility == Visibility.Visible
+                || RightDrawerHost.Visibility == Visibility.Visible)
+            {
+                _isVideoContextFlyoutOpen = false;
+                VideoContextFlyout.Hide();
+                return;
+            }
+
+            _isVideoContextFlyoutOpen = true;
+            MarkPlaybackActivity();
+            var (label, glyph) = PlayPauseVisualFor(_isPlaybackPaused);
+            ContextPlayPauseItem.Text = label;
+            ContextPlayPauseIcon.Glyph = glyph;
+            ContextFullscreenItem.Text = _isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
+            ContextFullscreenIcon.Glyph = _isFullscreen ? "\uE73F" : "\uE740";
+        }
+
+        private void VideoContextFlyout_Closed(object? sender, object e)
+        {
+            _isVideoContextFlyoutOpen = false;
+            RefreshPlaybackActivityState();
+        }
+
+        private void ContextPlayPauseItem_Click(object sender, RoutedEventArgs e) => TogglePlayback();
+
+        private void ContextSeekBackItem_Click(object sender, RoutedEventArgs e) => SeekRelative(-10);
+
+        private void ContextSeekForwardItem_Click(object sender, RoutedEventArgs e) => SeekRelative(30);
+
+        private void ContextFullscreenItem_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
+
+        private void ContextOpenFileItem_Click(object sender, RoutedEventArgs e) => RailOpenFileButton_Click(sender, e);
+
+        private void ContextOpenFolderItem_Click(object sender, RoutedEventArgs e) => RailOpenFolderButton_Click(sender, e);
+
+        private void ContextRecentItem_Click(object sender, RoutedEventArgs e) => RailRecentButton_Click(sender, e);
+
+        private void ContextSettingsItem_Click(object sender, RoutedEventArgs e) => ToggleSettingsPanel();
 
         private void Player_ProgressChanged(object? sender, NativeMpvPlaybackProgress progress)
         {
             UpdateProgress(progress.Position, progress.Duration);
+        }
+
+        private void Player_PlaybackPausedChanged(object? sender, bool isPaused)
+        {
+            _isPlaybackPaused = isPaused;
+            ApplyPlayPauseVisualState();
+            RefreshPlaybackActivityState();
         }
 
         private void GpuVideoSurface_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -683,6 +931,7 @@ namespace Aethra
             _gpuPlayer?.TogglePause();
             _softwarePlayer?.TogglePause();
             ApplyPlayPauseVisualState();
+            RefreshPlaybackActivityState();
         }
 
         private void PausePlayback()
@@ -691,6 +940,7 @@ namespace Aethra
             _gpuPlayer?.Pause();
             _softwarePlayer?.Pause();
             ApplyPlayPauseVisualState();
+            RefreshPlaybackActivityState();
         }
 
         private void SeekRelative(double seconds)
@@ -727,20 +977,23 @@ namespace Aethra
             _softwarePlayer?.LoadFile(path);
             _isPlaybackPaused = false;
             ApplyPlayPauseVisualState();
+            RefreshPlaybackActivityState();
         }
+
+        // Play/pause surfaces show the action available to the user.
+        private static (string Label, string Glyph) PlayPauseVisualFor(bool isPaused) =>
+            isPaused
+                ? ("Play", "\uE768")
+                : ("Pause", "\uE769");
 
         private void ApplyPlayPauseVisualState()
         {
-            if (_isPlaybackPaused)
-            {
-                PlayPauseIcon.Glyph = "\uE769";
-                PlayPauseButton.BorderBrush = (Brush)Application.Current.Resources["AethraAccentBrush"];
-            }
-            else
-            {
-                PlayPauseIcon.Glyph = "\uE768";
-                PlayPauseButton.BorderBrush = (Brush)Application.Current.Resources["AethraVideoBrush"];
-            }
+            var (_, glyph) = PlayPauseVisualFor(_isPlaybackPaused);
+            PlayPauseIcon.Glyph = glyph;
+            PlayPauseButton.Background = (Brush)Application.Current.Resources["AethraVideoBrush"];
+            PlayPauseButton.BorderBrush = _isPlaybackPaused
+                ? (Brush)Application.Current.Resources["AethraAccentBrush"]
+                : (Brush)Application.Current.Resources["AethraVideoBrush"];
         }
 
         private static string GetDisplayMediaName(string path)
@@ -764,97 +1017,97 @@ namespace Aethra
             TopChrome.Padding = new Thickness(0, 0, this.AppWindow.TitleBar.RightInset, 0);
         }
 
-        private void RootGrid_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
-        {
-            var point = e.GetCurrentPoint(RootGrid);
-            if (point.Properties.IsRightButtonPressed)
-            {
-                if (FullSettingsHost.Visibility == Visibility.Visible)
-                {
-                    e.Handled = true;
-                    return;
-                }
-
-                ToggleSettingsPanel();
-                e.Handled = true;
-            }
-        }
-
         private void RootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             var position = e.GetCurrentPoint(RootGrid).Position;
-            var justHidden = DateTime.UtcNow - _fullscreenControlsHiddenAtUtc < TimeSpan.FromMilliseconds(250);
-
-            if (!_hasLastFullscreenPointerPosition)
-            {
-                _lastFullscreenPointerPosition = position;
-                _hasLastFullscreenPointerPosition = true;
-
-                if (justHidden)
-                    return;
-            }
-            else
-            {
-                var xDelta = Math.Abs(position.X - _lastFullscreenPointerPosition.X);
-                var yDelta = Math.Abs(position.Y - _lastFullscreenPointerPosition.Y);
-
-                if (xDelta < 2 && yDelta < 2)
-                    return;
-
-                _lastFullscreenPointerPosition = position;
-            }
-
-            ShowFullscreenControls();
-        }
-
-        private void FullscreenControlsIdleTimer_Tick(object? sender, object e)
-        {
-            _fullscreenControlsIdleTimer.Stop();
-
-            if (_isPointerOverTransportBar)
-            {
-                _fullscreenControlsIdleTimer.Start();
-                return;
-            }
-
-            _fullscreenControlsHiddenAtUtc = DateTime.UtcNow;
-            TransportBar.Visibility = Visibility.Collapsed;
-            UpdateCursorVisibility();
-        }
-
-        private void ShowFullscreenControls()
-        {
-            TransportBar.Visibility = Visibility.Visible;
-            UpdateCursorVisibility();
-            _fullscreenControlsIdleTimer.Stop();
-            _fullscreenControlsIdleTimer.Start();
+            _lastRootPointerPosition = position;
+            _hasLastRootPointerPosition = true;
+            _playbackActivity.NotifyPointerMoved(position);
         }
 
         private void TransportBar_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             _isPointerOverTransportBar = true;
-            ShowFullscreenControls();
+            RefreshPlaybackActivityState();
         }
 
         private void TransportBar_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             _isPointerOverTransportBar = false;
-            _fullscreenControlsIdleTimer.Stop();
-            _fullscreenControlsIdleTimer.Start();
+            RefreshPlaybackActivityState();
+        }
+
+        private void PlaybackActivity_ModeChanged(object? sender, EventArgs e)
+        {
+            ApplyPlaybackActivityState();
+        }
+
+        private void MarkPlaybackActivity()
+        {
+            if (!_isPlaybackPaused)
+            {
+                if (!_playbackActivity.IsEnabled)
+                    _playbackActivity.Start();
+
+                _playbackActivity.MarkActive();
+            }
+
+            ApplyPlaybackActivityState();
+        }
+
+        private void RefreshPlaybackActivityState()
+        {
+            if (_isPlaybackPaused)
+            {
+                _playbackActivity.Stop();
+            }
+            else if (!_playbackActivity.IsEnabled)
+            {
+                _playbackActivity.Start();
+            }
+            else if (!CanLetPlaybackChromeIdle())
+            {
+                _playbackActivity.MarkActive();
+            }
+
+            ApplyPlaybackActivityState();
+        }
+
+        private void ApplyPlaybackActivityState()
+        {
+            var shouldShowTransport = !_isFullscreen
+                || _playbackActivity.Mode == PlaybackActivityMode.Active
+                || !CanLetPlaybackChromeIdle();
+
+            TransportBar.Visibility = shouldShowTransport ? Visibility.Visible : Visibility.Collapsed;
+            UpdateCursorVisibility();
+        }
+
+        private bool CanLetPlaybackChromeIdle()
+        {
+            if (_isPlaybackPaused
+                || _isPointerOverTransportBar
+                || _isVideoContextFlyoutOpen
+                || EmbeddedPanelHost.Visibility == Visibility.Visible
+                || RightDrawerHost.Visibility == Visibility.Visible
+                || FullSettingsHost.Visibility == Visibility.Visible)
+            {
+                return false;
+            }
+
+            if (!_hasLastRootPointerPosition)
+                return _isFullscreen;
+
+            return IsPointerOverPlaybackSurface(_lastRootPointerPosition);
         }
 
         // Single source of truth for cursor visibility. Called whenever any state
-        // that affects whether the cursor should be visible changes (fullscreen
-        // toggle, transport bar visibility, settings overlay visibility, pointer
-        // activity). The cursor hides only when fullscreen, idle (transport bar
-        // collapsed), and no overlay is visible.
+        // that affects whether the cursor should be visible changes. The cursor
+        // hides when playing media has entered idle mode over the playback area.
         private bool ShouldForceHideMouseCursor()
         {
-            return _isFullscreen
-                && TransportBar.Visibility == Visibility.Collapsed
-                && EmbeddedPanelHost.Visibility != Visibility.Visible
-                && SettingsHost.Visibility != Visibility.Visible
-                && FullSettingsHost.Visibility != Visibility.Visible;
+            return _playbackActivity.Mode == PlaybackActivityMode.Idle
+                && CanLetPlaybackChromeIdle();
         }
 
         private void UpdateCursorVisibility()
@@ -862,6 +1115,172 @@ namespace Aethra
             var shouldHide = ShouldForceHideMouseCursor();
             RootGrid.SetCursorVisible(!shouldHide);
             VideoContainer.SetCursorVisible(!shouldHide);
+            SetNativeCursorVisible(!shouldHide);
+        }
+
+        private bool IsPointerOverPlaybackSurface(Windows.Foundation.Point position)
+        {
+            if (!IsPointInsideElement(VideoContainer, position))
+                return false;
+
+            return !IsPointInsideElement(TopChrome, position)
+                && !IsPointInsideElement(CommandRail, position)
+                && !IsPointInsideElement(TransportBar, position)
+                && !IsPointInsideElement(EmbeddedPanelHost, position)
+                && !IsPointInsideElement(RightDrawerHost, position)
+                && !IsPointInsideElement(FullSettingsHost, position);
+        }
+
+        private bool IsPointInsideElement(FrameworkElement element, Windows.Foundation.Point position)
+        {
+            if (element.Visibility != Visibility.Visible
+                || element.ActualWidth <= 0
+                || element.ActualHeight <= 0)
+            {
+                return false;
+            }
+
+            var bounds = element.TransformToVisual(RootGrid)
+                .TransformBounds(new Windows.Foundation.Rect(0, 0, element.ActualWidth, element.ActualHeight));
+
+            return bounds.Contains(position);
+        }
+
+        private void SetNativeCursorVisible(bool isVisible)
+        {
+            if (isVisible)
+                ShowNativeCursorIfHidden();
+            else
+                HideNativeCursor();
+        }
+
+        private void HideNativeCursor()
+        {
+            EnsureChildCursorHooks();
+            ClobberClassCursors(IntPtr.Zero);
+
+            if (!_isNativeCursorHidden)
+            {
+                _isNativeCursorHidden = true;
+                HideCursorDisplayCounter();
+            }
+
+            SetCursor(IntPtr.Zero);
+
+            if (!_cursorHideEnforcementTimer.IsEnabled)
+                _cursorHideEnforcementTimer.Start();
+        }
+
+        private void ShowNativeCursorIfHidden()
+        {
+            _cursorHideEnforcementTimer.Stop();
+
+            if (!_isNativeCursorHidden)
+                return;
+
+            _isNativeCursorHidden = false;
+            var arrowCursor = LoadCursor(IntPtr.Zero, IDC_ARROW);
+            ClobberClassCursors(arrowCursor);
+            ShowCursorDisplayCounter();
+            SetCursor(arrowCursor);
+        }
+
+        private void CursorHideEnforcementTimer_Tick(object? sender, object e)
+        {
+            if (!ShouldForceHideMouseCursor())
+            {
+                UpdateCursorVisibility();
+                return;
+            }
+
+            EnsureChildCursorHooks();
+            ClobberClassCursors(IntPtr.Zero);
+            SetCursor(IntPtr.Zero);
+        }
+
+        private void EnsureChildCursorHooks()
+        {
+            var mainHwnd = GetWindowHandle();
+            EnumChildWindows(mainHwnd, EnumCursorChildHwnd, IntPtr.Zero);
+        }
+
+        private bool EnumCursorChildHwnd(IntPtr hWnd, IntPtr lParam)
+        {
+            if (_hookedCursorChildHwnds.Add(hWnd))
+                SetWindowSubclass(hWnd, _childCursorSubclassProc, CHILD_CURSOR_SUBCLASS_ID, IntPtr.Zero);
+
+            return true;
+        }
+
+        private void ClobberClassCursors(IntPtr cursor)
+        {
+            ApplyClassCursor(GetWindowHandle(), cursor);
+            EnumChildWindows(GetWindowHandle(), (hWnd, _) =>
+            {
+                ApplyClassCursor(hWnd, cursor);
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        private void ApplyClassCursor(IntPtr hWnd, IntPtr cursor)
+        {
+            if (cursor == IntPtr.Zero)
+            {
+                if (!_originalClassCursors.ContainsKey(hWnd))
+                    _originalClassCursors[hWnd] = GetClassLongPtr(hWnd, GCLP_HCURSOR);
+
+                SetClassLongPtr(hWnd, GCLP_HCURSOR, IntPtr.Zero);
+                return;
+            }
+
+            var cursorToRestore = _originalClassCursors.TryGetValue(hWnd, out var originalCursor)
+                ? originalCursor
+                : cursor;
+
+            if (cursorToRestore == IntPtr.Zero)
+                cursorToRestore = cursor;
+
+            SetClassLongPtr(hWnd, GCLP_HCURSOR, cursorToRestore);
+        }
+
+        private static void HideCursorDisplayCounter()
+        {
+            for (var i = 0; i < CursorCounterSafetyLimit; i++)
+            {
+                if (ShowCursor(false) < 0)
+                    return;
+            }
+        }
+
+        private static void ShowCursorDisplayCounter()
+        {
+            for (var i = 0; i < CursorCounterSafetyLimit; i++)
+            {
+                if (ShowCursor(true) >= 0)
+                    return;
+            }
+        }
+
+        private IntPtr ChildCursorSubclassProc(
+            IntPtr hWnd,
+            uint msg,
+            IntPtr wParam,
+            IntPtr lParam,
+            UIntPtr uIdSubclass,
+            IntPtr dwRefData)
+        {
+            if (msg == WM_SETCURSOR && ShouldForceHideMouseCursor())
+            {
+                SetCursor(IntPtr.Zero);
+                return new IntPtr(1);
+            }
+
+            if ((msg == WM_MOUSEMOVE || msg == WM_NCMOUSEMOVE) && _isNativeCursorHidden)
+            {
+                DispatcherQueue.TryEnqueue(MarkPlaybackActivity);
+            }
+
+            return DefSubclassProc(hWnd, msg, wParam, lParam);
         }
 
         private delegate IntPtr SUBCLASSPROC(
@@ -871,6 +1290,15 @@ namespace Aethra
             IntPtr lParam,
             UIntPtr uIdSubclass,
             IntPtr dwRefData);
+
+        private delegate bool EnumChildProc(IntPtr hWnd, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativePoint
+        {
+            internal int X;
+            internal int Y;
+        }
 
         [DllImport("comctl32.dll", SetLastError = true)]
         private static extern bool SetWindowSubclass(
@@ -888,12 +1316,39 @@ namespace Aethra
         [DllImport("comctl32.dll")]
         private static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool EnumChildWindows(IntPtr hWndParent, EnumChildProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetCursor(IntPtr hCursor);
+
+        [DllImport("user32.dll")]
+        private static extern int ShowCursor(bool bShow);
+
+        [DllImport("user32.dll", EntryPoint = "GetClassLongPtrW", SetLastError = true)]
+        private static extern IntPtr GetClassLongPtr(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", EntryPoint = "SetClassLongPtrW", SetLastError = true)]
+        private static extern IntPtr SetClassLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "LoadCursorW", SetLastError = true)]
+        private static extern IntPtr LoadCursor(IntPtr hInstance, IntPtr lpCursorName);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetCursorPos(out NativePoint lpPoint);
+
         private const int VK_ESCAPE = 0x1B;
         private const int VK_SPACE = 0x20;
         private const int VK_S = 0x53;
+        private const int GCLP_HCURSOR = -12;
+        private const int CursorCounterSafetyLimit = 64;
         private const uint WM_KEYDOWN = 0x0100;
-        private const uint WM_RBUTTONUP = 0x0205;
+        private const uint WM_SETCURSOR = 0x0020;
+        private const uint WM_MOUSEMOVE = 0x0200;
+        private const uint WM_NCMOUSEMOVE = 0x00A0;
         private static readonly UIntPtr WINDOW_SUBCLASS_ID = new(1);
+        private static readonly UIntPtr CHILD_CURSOR_SUBCLASS_ID = new(2);
+        private static readonly IntPtr IDC_ARROW = new(32512);
 
         private void UpdateProgress(double position, double duration)
         {
@@ -968,5 +1423,4 @@ namespace Aethra
             }
         }
     }
-
 }
