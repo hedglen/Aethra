@@ -85,6 +85,11 @@ public sealed partial class VideoAdjustmentsPanel : UserControl
                 LargeChange = Math.Max(adj.Step * 10, (adj.Max - adj.Min) / 20),
                 Tag = adj.Id,
                 IsThumbToolTipEnabled = false,
+                // Track value-fill follows the live AethraAccentBrush so adjustments
+                // sliders match the rest of the app instead of the Windows system accent.
+                // The brush instance is mutated in place by AccentColorService, so the
+                // slider auto-updates when the accent color is changed in Preferences.
+                Foreground = (Brush)Application.Current.Resources["AethraAccentBrush"],
             };
             slider.ValueChanged += Slider_ValueChanged;
             Grid.SetRow(slider, 1);

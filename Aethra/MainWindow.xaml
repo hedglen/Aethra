@@ -108,7 +108,8 @@
                                   PointerPressed="VideoContainer_PointerPressed"
                                   PointerMoved="VideoContainer_PointerMoved"
                                   PointerReleased="VideoContainer_PointerReleased"
-                                  PointerCanceled="VideoContainer_PointerCanceled">
+                                  PointerCanceled="VideoContainer_PointerCanceled"
+                                  PointerWheelChanged="VideoContainer_PointerWheelChanged">
             <controls:CursorAwareGrid.ContextFlyout>
                 <MenuFlyout x:Name="VideoContextFlyout"
                             MenuFlyoutPresenterStyle="{StaticResource AethraContextFlyoutPresenterStyle}"
@@ -187,37 +188,37 @@
                    IsHitTestVisible="False"/>
         </controls:CursorAwareGrid>
 
-        <Grid x:Name="TopChrome" VerticalAlignment="Top" Height="20" Background="{StaticResource AethraChromeBrush}">
+        <Grid x:Name="TopChrome" VerticalAlignment="Top" Height="32" Background="{StaticResource AethraChromeBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0"
-                        Margin="10,0,0,0"
+                        Margin="12,0,0,0"
                         Orientation="Horizontal"
                         VerticalAlignment="Center"
-                        Spacing="6">
+                        Spacing="8">
                 <TextBlock Text="Aethra"
                            VerticalAlignment="Center"
-                           FontSize="12"
+                           FontSize="14"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource AethraTextBrush}"/>
 
                 <Button Style="{StaticResource ChromeIconButtonStyle}"
-                        Width="18"
-                        Height="18"
+                        Width="26"
+                        Height="26"
                         Click="TopLeftMenuButton_Click"
                         ToolTipService.ToolTip="Playback menu">
-                    <Border Width="14"
-                            Height="14"
-                            CornerRadius="7"
+                    <Border Width="20"
+                            Height="20"
+                            CornerRadius="10"
                             BorderBrush="{StaticResource AethraAccentBrush}"
                             BorderThickness="1"
                             Background="{StaticResource AethraPanelElevatedBrush}">
                         <FontIcon FontFamily="Segoe Fluent Icons"
                                   Glyph="&#xE700;"
-                                  FontSize="8"
+                                  FontSize="11"
                                   Foreground="{StaticResource AethraAccentBrush}"
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"/>
@@ -228,7 +229,7 @@
 
         <Border x:Name="CommandRail"
                 Width="64"
-                Margin="0,20,0,70"
+                Margin="0,32,0,70"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
                 Background="{StaticResource AethraRailBrush}"
@@ -434,7 +435,7 @@
         <Border x:Name="EmbeddedPanelHost"
                 Visibility="Collapsed"
                 Width="360"
-                Margin="64,20,0,70"
+                Margin="64,32,0,70"
                 HorizontalAlignment="Left"
                 VerticalAlignment="Stretch"
                 Background="{StaticResource AethraPanelBrush}"
@@ -632,6 +633,42 @@
                         SizeChanged="NativeProgressBar_SizeChanged"
                         PointerMoved="NativeProgressBar_PointerMoved"
                         PointerExited="NativeProgressBar_PointerExited"/>
+                <!-- A and B loop point markers shown directly on the seek bar,
+                     mirroring the chapter ticks but in icon form. A points right
+                     (play icon) where the loop starts; B points left (reverse-play)
+                     where the loop wraps back. Both arrows point INTO the loop
+                     region. White fill so they stay visible against both the gray
+                     track and the accent fill. Canvas.ZIndex puts them above the
+                     slider's value-fill. -->
+                <Polygon x:Name="LoopAMarker"
+                         Canvas.ZIndex="2"
+                         Visibility="Collapsed"
+                         IsHitTestVisible="False"
+                         Width="9"
+                         Height="13"
+                         HorizontalAlignment="Left"
+                         VerticalAlignment="Center"
+                         Points="0,0 0,13 9,6.5"
+                         Fill="#F2FFFFFF">
+                    <Polygon.RenderTransform>
+                        <TranslateTransform x:Name="LoopAMarkerTransform" X="0" Y="0"/>
+                    </Polygon.RenderTransform>
+                </Polygon>
+
+                <Polygon x:Name="LoopBMarker"
+                         Canvas.ZIndex="2"
+                         Visibility="Collapsed"
+                         IsHitTestVisible="False"
+                         Width="9"
+                         Height="13"
+                         HorizontalAlignment="Left"
+                         VerticalAlignment="Center"
+                         Points="9,0 9,13 0,6.5"
+                         Fill="#F2FFFFFF">
+                    <Polygon.RenderTransform>
+                        <TranslateTransform x:Name="LoopBMarkerTransform" X="0" Y="0"/>
+                    </Polygon.RenderTransform>
+                </Polygon>
                 <!-- Chapter markers and floating tooltip. Non-hit-testing so the slider
                      keeps full pointer interaction; hover detection is driven from the
                      slider's PointerMoved/Exited handlers. -->
@@ -708,6 +745,36 @@
                             ToolTipService.ToolTip="Next">
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE893;" FontSize="16"/>
                     </Button>
+
+                    <!-- A/B loop points. Letter is muted by default; flips to the
+                         live AethraAccentBrush when set, mirroring the rest of the
+                         app's accent surfaces. Click captures current playback
+                         position; click again clears the point. -->
+                    <Button x:Name="LoopAButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="LoopAButton_Click"
+                            ToolTipService.ToolTip="Set A loop point">
+                        <TextBlock x:Name="LoopAText"
+                                   Text="A"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AethraMutedTextBrush}"/>
+                    </Button>
+
+                    <Button x:Name="LoopBButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="LoopBButton_Click"
+                            ToolTipService.ToolTip="Set B loop point">
+                        <TextBlock x:Name="LoopBText"
+                                   Text="B"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AethraMutedTextBrush}"/>
+                    </Button>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
@@ -745,9 +812,64 @@
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
-                            IsEnabled="False"
-                            ToolTipService.ToolTip="Volume">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE767;" FontSize="15"/>
+                            x:Name="VolumeButton"
+                            ToolTipService.ToolTip="Volume"
+                            PointerWheelChanged="VolumeButton_PointerWheelChanged">
+                        <Button.Flyout>
+                            <Flyout Placement="Top">
+                                <Flyout.FlyoutPresenterStyle>
+                                    <!-- Override the default light-theme FlyoutPresenter so the
+                                         popup matches the right-click context menu (same accent
+                                         border + corner radius as AethraContextFlyoutPresenterStyle). -->
+                                    <Style TargetType="FlyoutPresenter">
+                                        <Setter Property="Background" Value="{StaticResource AethraPanelBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{StaticResource AethraAccentSoftBrush}"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="CornerRadius" Value="10"/>
+                                        <Setter Property="Padding" Value="12,10"/>
+                                        <Setter Property="MinWidth" Value="0"/>
+                                        <Setter Property="MaxWidth" Value="320"/>
+                                    </Style>
+                                </Flyout.FlyoutPresenterStyle>
+                                <Grid ColumnSpacing="10" Width="260" PointerWheelChanged="VolumeButton_PointerWheelChanged">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon Grid.Column="0"
+                                              x:Name="VolumeFlyoutIcon"
+                                              FontFamily="Segoe Fluent Icons"
+                                              Glyph="&#xE767;"
+                                              FontSize="16"
+                                              VerticalAlignment="Center"
+                                              Foreground="{StaticResource AethraTextBrush}"/>
+                                    <Slider Grid.Column="1"
+                                            x:Name="VolumeSlider"
+                                            Minimum="0"
+                                            Maximum="100"
+                                            StepFrequency="1"
+                                            SmallChange="1"
+                                            LargeChange="5"
+                                            Value="100"
+                                            VerticalAlignment="Center"
+                                            Foreground="{StaticResource AethraAccentBrush}"
+                                            ValueChanged="VolumeSlider_ValueChanged"/>
+                                    <TextBlock Grid.Column="2"
+                                               x:Name="VolumeValueText"
+                                               Text="100%"
+                                               MinWidth="34"
+                                               TextAlignment="Right"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource AethraMutedTextBrush}"/>
+                                </Grid>
+                            </Flyout>
+                        </Button.Flyout>
+                        <FontIcon x:Name="VolumeButtonIcon"
+                                  FontFamily="Segoe Fluent Icons"
+                                  Glyph="&#xE767;"
+                                  FontSize="15"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"
@@ -768,7 +890,7 @@
         <Grid x:Name="RightDrawerHost"
               Visibility="Collapsed"
               Width="336"
-              Margin="0,20,0,70"
+              Margin="0,32,0,70"
               HorizontalAlignment="Right"
               VerticalAlignment="Stretch">
             <local:VideoAdjustmentsPanel x:Name="VideoAdjustments"
@@ -780,5 +902,37 @@
             <local:FullSettingsPanel x:Name="FullSettings"
                                      CloseRequested="FullSettings_CloseRequested"/>
         </Grid>
+
+        <!-- Transient volume readout shown while the user adjusts volume via the
+             scroll wheel. Non-hit-testing so it never blocks input; placed last so
+             it overlays the rest of the chrome. Sits below the system caption
+             buttons (~32px tall) so it doesn't fight them. -->
+        <Border x:Name="VolumeOsd"
+                Visibility="Collapsed"
+                IsHitTestVisible="False"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,48,16,0"
+                Background="#CC1C1824"
+                BorderBrush="{StaticResource AethraAccentSoftBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="14,10">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <FontIcon FontFamily="Segoe Fluent Icons"
+                          Glyph="&#xE767;"
+                          FontSize="18"
+                          VerticalAlignment="Center"
+                          Foreground="{StaticResource AethraTextBrush}"/>
+                <TextBlock x:Name="VolumeOsdText"
+                           Text="100%"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           MinWidth="48"
+                           TextAlignment="Right"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource AethraTextBrush}"/>
+            </StackPanel>
+        </Border>
     </controls:CursorAwareGrid>
 </Window>

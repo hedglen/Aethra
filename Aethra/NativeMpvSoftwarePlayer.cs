@@ -64,9 +64,25 @@ internal sealed class NativeMpvSoftwarePlayer : IDisposable
         EnqueueCommand("set", name, value.ToString(CultureInfo.InvariantCulture));
     }
 
+    internal void SetProperty(string name, string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(value);
+        EnqueueCommand("set", name, value);
+    }
+
     internal void Seek(double seconds)
     {
         EnqueueCommand("seek", seconds.ToString(CultureInfo.InvariantCulture));
+    }
+
+    internal void SeekToTime(double seconds)
+    {
+        if (double.IsNaN(seconds) || double.IsInfinity(seconds))
+            return;
+
+        var clamped = Math.Max(0.0, seconds);
+        EnqueueCommand("seek", clamped.ToString(CultureInfo.InvariantCulture), "absolute");
     }
 
     internal void SeekToPercent(double percent)
@@ -81,6 +97,15 @@ internal sealed class NativeMpvSoftwarePlayer : IDisposable
     internal void AddVolume(int amount)
     {
         EnqueueCommand("add", "volume", amount.ToString(CultureInfo.InvariantCulture));
+    }
+
+    internal void SetVolume(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+            return;
+
+        var clamped = Math.Clamp(value, 0.0, 100.0);
+        EnqueueCommand("set", "volume", clamped.ToString(CultureInfo.InvariantCulture));
     }
 
     public void Dispose()

@@ -773,6 +773,24 @@ Active steps:
   - Caveat: with `AppWindow.TitleBar.ExtendsContentIntoTitleBar = true` and `PreferredHeightOption.Standard` (~32px), the system caption buttons overhang the new 20px chrome by ~12px. Cosmetic only; flagged to the user for follow-up.
   - Files touched: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`.
   - Build verification: agent sandbox has no .NET SDK; user to run `dotnet build .\Aethra.slnx -p:Platform=x64` locally.
+- 2026-04-27 wired the bottom-panel volume button to a real volume slider flyout:
+  - Replaced the disabled transport volume button with a flyout that opens from the button and contains a compact volume slider plus percentage readout.
+  - Styled the slider with `Foreground="{StaticResource AethraAccentBrush}"` so it follows the current accent color selected in Preferences.
+  - Added `SetVolume(double)` to both native player backends and wired `MainWindow` so slider changes set mpv `volume` directly on whichever backend is active.
+  - Updated keyboard volume hotkeys (`Up`/`Down`) to keep the slider and percentage text synchronized with the app's current in-memory volume value.
+  - Files touched: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`, `Aethra/NativeMpvOpenGlPlayer.cs`, `Aethra/NativeMpvSoftwarePlayer.cs`, `Aethra/COPILOT_WORKLOG.md`.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-27 polished the volume flyout, added mouse-wheel volume, and added a top-right volume OSD:
+  - Replaced the bare `Border` inside the volume flyout with an explicit `Flyout.FlyoutPresenterStyle` so the popup matches the rest of the player chrome instead of falling back to WinUI's light-theme presenter.
+  - Re-laid the flyout contents as a single horizontal row (`speaker icon | slider | percentage`) inside a 260px Grid; removed the standalone label TextBlock; gave the slider `SmallChange=1`, `LargeChange=5` so keyboard fine-tuning behaves as expected.
+  - Switched the flyout placement from `TopEdgeAlignedRight` to `Top` so it opens centered above the volume button.
+  - Wired `PointerWheelChanged` on `VideoContainer` and on the `VolumeButton` (and its open flyout grid) so scrolling the wheel anywhere over the video — or over the volume button/popup — adjusts volume. Both routes share a single `HandleVolumeWheel` that translates the wheel delta (Windows notch = 120) into 5-unit `AddVolume(...)` steps and marks the event handled. Deliberately did NOT wire wheel on the seek/transport bar so future wheel-to-seek stays available.
+  - Added a transient top-right volume OSD: a non-hit-testing `Border` named `VolumeOsd` placed last in `RootGrid` so it overlays everything (including drawers and settings hosts), anchored top-right with `Margin="0,44,16,0"` to clear the system caption buttons. Contents are a horizontal `speaker icon + 20pt SemiBold percentage` row; the text has a min-width so the digits don't jitter.
+  - Backed the OSD with `_volumeOsdHideTimer` (`DispatcherTimer`, `VolumeOsdLingerDuration = 1500ms`). `ShowVolumeOsd()` updates the text, makes the border visible, and stops + restarts the timer so a continuous scroll keeps the readout up the whole time and only fades 1.5s after the last notch. Timer is stopped in `MainWindow_Closed`.
+  - Aligned the visual frame of both volume surfaces to match the right-click context menu (`AethraContextFlyoutPresenterStyle`): switched both the OSD `Border` and the volume flyout's `FlyoutPresenterStyle` from `AethraDividerBrush` to `AethraAccentSoftBrush`, and bumped the OSD corner radius 8 -> 10. Same accent border + 10px radius now reads as one design system across the right-click menu, the volume flyout, and the volume OSD.
+  - Tuned OSD background opacity from `#E61C1824` (90%) to `#CC1C1824` (80%) to match the system `MenuFlyoutPresenter` transparency the right-click menu renders at, so the three popups feel coherent layered over video.
+  - Files touched: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`.
+  - Build verification: agent sandbox has no .NET SDK; user has been verifying `dotnet build .\Aethra.slnx -p:Platform=x64` and the working app launch locally throughout the session.
 
 ## Roadmap
 
@@ -820,4 +838,44 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
   - Video profile: hardware decode, scaling, debanding, interpolation, aspect, rotation, HDR/tone mapping.
   - Audio profile: WASAPI mode, exclusive/shared, passthrough, channel layout, audio delay.
   - Subtitle profile: default language, scale, delay, visibility, style overrides.
-  - Network profi
+  - Network profile: cache, streaming options, yt-dlp behavior.
+  - Advanced profile: raw mpv options for users who want exact control.
+- Apply those profiles to libmpv through backend profile APIs, not scattered `set` calls across UI code.
+- Keep hand-edit/import/export paths, but make the first-class UI native and understandable.
+
+### 6. Shaders, scripts, and extension surface
+
+- Shaders are first-class: expose shader folders, shader chains, enable/disable ordering, presets, and per-profile application in Preferences.
+- Built-in shader workflows should be native Aethra preferences/profile choices.
+- Lua/mpv scripts are optional user/community extensions only. Surface a scripts folder and script enable/disable management later, but do not depend on scripts for first-party Aethra features.
+- For features that used to be scripts, first ask for the clean native Aethra command/service design.
+
+### 7. Backend and runtime cleanup
+
+- Keep the GPU renderer as the primary path.
+- Keep software fallback for now, but stop broadening it unless needed for diagnostics or recovery.
+- Keep native runtime resolution fully rooted in `NativeRuntime\x64`; do not reintroduce root-level prototype native binaries.
+- Rebuild the native media bundle for the free/GPL GitHub direction: mpv `-Dgpl=true`, FFmpeg `--enable-gpl`, Lua enabled, shader/script support enabled, and notices updated.
+- Validate true fullscreen, resize, snap, drag/drop reload, seek, long playback, and no `GPU renderer task failed` lines.
+
+### 8. Windows integration and persistence
+
+- Add SMTC for media keys and lock-screen controls.
+- Add window/state persistence: position, size, monitor, volume, last folder, last file, watch progress.
+- Add prevent-sleep during playback.
+- Add file associations and "Open with" support.
+- Add mini-player / picture-in-picture after the main player shell is stable.
+
+### 9. Repo readiness
+
+- Add README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CI, and release packaging in small reviewed steps.
+- Keep `ThirdPartyNotices/THIRD_PARTY_NOTICES.md` current whenever native binaries change.
+
+## Notes
+
+- 2026-04-27 terminology decision: user-facing configuration vocabulary is now explicit. `Preferences` is the full persistent configuration surface; `Adjustments` is for current-playback tweaks; `Controls` is the bindings page; `Customization` is appearance inside Preferences; `Advanced` is raw/expert options; avoid `Control Panel`; use `Settings` only for generic technical prose or legacy code names until migrated.
+- 2026-04-25 rebrand: renamed the app to Aethra across project identity, namespace, resource keys, commands, manifests, docs, and visible title chrome. Brand line: "Bright media. Pure playback." Tagline: "Clarity in every frame." The app project is now `Aethra/Aethra.csproj` and the solution is `Aethra.slnx`.
+- 2026-04-25 repo reset: created a clean standalone repo root at `C:\Users\rjh\source\repos\Aethra`, copied the renamed solution/app/smoke harness plus required local native runtime assets, and initialized a fresh Git repository on `main`.
+- 2026-04-25 GitHub bootstrap: connected the clean repo to `https://github.com/hedglen/Aethra.git`, pushed `main`, then fixed the remote-clone build by removing the stale root `libmpv-2.dll` project item and tracking the intended `NativeRuntime\x64` DLL bundle.
+- The repository had existing local edits before this worklog was added, including settings-panel files and main-window changes.
+- The app project now targets `net10.0-windows10.0.19041.0`. `TempMpv` still targets `net8.0` as a console smoke harness; decide separately whether to migrate it.

@@ -32,6 +32,8 @@ namespace Aethra
         private readonly Dictionary<string, double> _pendingVideoAdjustments = new(StringComparer.Ordinal);
         private readonly DispatcherTimer _videoAdjustmentFlushTimer;
         private readonly DispatcherTimer _cursorHideEnforcementTimer;
+        private readonly DispatcherTimer _volumeOsdHideTimer;
+        private static readonly TimeSpan VolumeOsdLingerDuration = TimeSpan.FromMilliseconds(1500);
         private bool _useGpuVideoSurface = true;
         private static bool RunGpuSurfaceSmoke =>
             string.Equals(Environment.GetEnvironmentVariable("AETHRA_GPU_SURFACE_SMOKE"), "1", StringComparison.Ordinal);
@@ -54,7 +56,21 @@ namespace Aethra
         private bool _isPlaybackPaused = true;
         private bool _isPointerOverTransportBar;
         private bool _isVideoContextFlyoutOpen;
+        private bool _suppressVolumeSliderValueChanged;
+        private double _currentVolume = 100;
+        // A/B loop point state. null means the point is not set; the value is
+        // the timestamp in seconds we wrote to mpv's ab-loop-{a,b} property.
+        private double? _loopPointA;
+        private double? _loopPointB;
+        private double _currentPlaybackPosition;
+        // Gradient assigned to NativeProgressBar.Foreground when A is set, so the
+        // slider's own value-fill draws gray from 0..A and accent from A..thumb.
+        // The gradient is mapped onto the value-fill rectangle (which spans 0..thumb),
+        // so the [A] cutoff fraction is A / current — re-applied each progress tick.
+        private LinearGradientBrush? _loopAccentGradient;
+        private bool _loopAccentSubscribed;
         private bool _isNativeCursorHidden;
+        private bool _isInitializing = true;
         private Windows.Foundation.Point _lastRootPointerPosition;
         private bool _hasLastRootPointerPosition;
         private Windows.Foundation.Point _videoPointerPressedAt;
@@ -66,17 +82,14 @@ namespace Aethra
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
         private const double TransportBarHeight = 70;
-        private const double TopChromeHeight = 20;
+        private const double TopChromeHeight = 32;
         private const double WindowDragThreshold = 6;
 
         public MainWindow()
         {
-            InitializeComponent();
-            ApplyPlayPauseVisualState();
-            CommandRail.Loaded += CommandRail_Loaded;
-            SetCommandRailExpanded(false);
             _playbackActivity = new PlaybackActivityController(TimeSpan.FromSeconds(1), CanLetPlaybackChromeIdle);
             _playbackActivity.ModeChanged += PlaybackActivity_ModeChanged;
+
             _videoAdjustmentFlushTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(33)
@@ -87,12 +100,24 @@ namespace Aethra
                 Interval = TimeSpan.FromMilliseconds(100)
             };
             _cursorHideEnforcementTimer.Tick += CursorHideEnforcementTimer_Tick;
+            _volumeOsdHideTimer = new DispatcherTimer
+            {
+                Interval = VolumeOsdLingerDuration
+            };
+            _volumeOsdHideTimer.Tick += VolumeOsdHideTimer_Tick;
+
+            InitializeComponent();
+            ApplyPlayPauseVisualState();
+            InitializeVolumeUi();
+            CommandRail.Loaded += CommandRail_Loaded;
+            SetCommandRailExpanded(false);
             _commandDispatcher = new AethraCommandDispatcher(new AethraCommandContext(PausePlayback, MinimizeWindow));
             _windowSubclassProc = WindowSubclassProc;
             _childCursorSubclassProc = ChildCursorSubclassProc;
             this.Activated += MainWindow_Activated;
             this.Activated += MainWindow_CursorActivationChanged;
             this.Closed += MainWindow_Closed;
+            _isInitializing = false;
             ApplyPlaybackActivityState();
         }
 
@@ -100,6 +125,12 @@ namespace Aethra
         {
             _videoAdjustmentFlushTimer.Stop();
             _cursorHideEnforcementTimer.Stop();
+            _volumeOsdHideTimer.Stop();
+            if (_loopAccentSubscribed)
+            {
+                AccentColorService.AccentColorChanged -= OnAccentColorChangedForLoopGradient;
+                _loopAccentSubscribed = false;
+            }
             _playbackActivity.Stop();
             RootGrid.SetCursorVisible(true);
             VideoContainer.SetCursorVisible(true);
@@ -977,8 +1008,304 @@ namespace Aethra
 
         private void AddVolume(int amount)
         {
-            _gpuPlayer?.AddVolume(amount);
-            _softwarePlayer?.AddVolume(amount);
+            _currentVolume = Math.Clamp(_currentVolume + amount, 0, 100);
+            SetVolume(_currentVolume);
+            UpdateVolumeUi();
+        }
+
+        private void SetVolume(double value)
+        {
+            var clamped = Math.Clamp(value, 0.0, 100.0);
+            _currentVolume = clamped;
+            _gpuPlayer?.SetVolume(clamped);
+            _softwarePlayer?.SetVolume(clamped);
+        }
+
+        private void UpdateVolumeUi()
+        {
+            if (VolumeValueText is not null)
+                VolumeValueText.Text = $"{Math.Round(_currentVolume):0}%";
+
+            if (VolumeSlider is null)
+                return;
+
+            _suppressVolumeSliderValueChanged = true;
+            try
+            {
+                VolumeSlider.Value = _currentVolume;
+            }
+            finally
+            {
+                _suppressVolumeSliderValueChanged = false;
+            }
+        }
+
+        private void VolumeSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        {
+            if (_isInitializing || _suppressVolumeSliderValueChanged)
+                return;
+
+            SetVolume(e.NewValue);
+            UpdateVolumeUi();
+            MarkPlaybackActivity();
+        }
+
+        private void VideoContainer_PointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            HandleVolumeWheel(e);
+        }
+
+        private void VolumeButton_PointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            HandleVolumeWheel(e);
+        }
+
+        private void HandleVolumeWheel(Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            // Standard Windows wheel notch is a delta of 120; treat each notch as a
+            // 5-unit volume change so a single scroll feels like one perceptible step.
+            const int VolumeStepPerNotch = 5;
+            const double WheelNotch = 120.0;
+
+            var delta = e.GetCurrentPoint(null).Properties.MouseWheelDelta;
+            if (delta == 0)
+                return;
+
+            var notches = (int)Math.Round(delta / WheelNotch);
+            if (notches == 0)
+                notches = delta > 0 ? 1 : -1;
+
+            AddVolume(notches * VolumeStepPerNotch);
+            ShowVolumeOsd();
+            MarkPlaybackActivity();
+            e.Handled = true;
+        }
+
+        private void LoopAButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleLoopPointA();
+            MarkPlaybackActivity();
+        }
+
+        private void LoopBButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleLoopPointB();
+            MarkPlaybackActivity();
+        }
+
+        private void ToggleLoopPointA()
+        {
+            if (_loopPointA.HasValue)
+            {
+                _loopPointA = null;
+                // mpv accepts the literal "no" to clear an ab-loop point.
+                _gpuPlayer?.SetProperty("ab-loop-a", "no");
+                _softwarePlayer?.SetProperty("ab-loop-a", "no");
+            }
+            else
+            {
+                _loopPointA = _currentPlaybackPosition;
+                _gpuPlayer?.SetProperty("ab-loop-a", _currentPlaybackPosition);
+                _softwarePlayer?.SetProperty("ab-loop-a", _currentPlaybackPosition);
+            }
+
+            UpdateLoopButtonVisuals();
+            RefreshSeekBarFill();
+            UpdateLoopMarkers();
+        }
+
+        private void ToggleLoopPointB()
+        {
+            if (_loopPointB.HasValue)
+            {
+                _loopPointB = null;
+                _gpuPlayer?.SetProperty("ab-loop-b", "no");
+                _softwarePlayer?.SetProperty("ab-loop-b", "no");
+            }
+            else
+            {
+                _loopPointB = _currentPlaybackPosition;
+                _gpuPlayer?.SetProperty("ab-loop-b", _currentPlaybackPosition);
+                _softwarePlayer?.SetProperty("ab-loop-b", _currentPlaybackPosition);
+
+                // Setting B activates the loop, so jump back to A immediately for
+                // instant feedback. If A wasn't set, the loop start is the file
+                // beginning — jump to 0.
+                var seekTarget = _loopPointA ?? 0.0;
+                _gpuPlayer?.SeekToTime(seekTarget);
+                _softwarePlayer?.SeekToTime(seekTarget);
+            }
+
+            UpdateLoopButtonVisuals();
+            RefreshSeekBarFill();
+            UpdateLoopMarkers();
+        }
+
+        private void UpdateLoopMarkers()
+        {
+            // For each arrow marker, we want the *apex* to land on the marked
+            // position (rather than the polygon's bounding-box center, which would
+            // visually look offset since the visual mass of a triangle isn't at the
+            // box center). A's apex is on the right edge of the polygon; B's apex
+            // is on the left edge. Both arrows then point INTO the loop region.
+            UpdateLoopMarker(LoopAMarker, LoopAMarkerTransform, _loopPointA, apexAtRight: true);
+            UpdateLoopMarker(LoopBMarker, LoopBMarkerTransform, _loopPointB, apexAtRight: false);
+        }
+
+        private void UpdateLoopMarker(
+            Microsoft.UI.Xaml.Shapes.Polygon? marker,
+            TranslateTransform? transform,
+            double? point,
+            bool apexAtRight)
+        {
+            if (marker is null || transform is null)
+                return;
+
+            if (!point.HasValue
+                || _lastKnownDurationSeconds <= 0
+                || NativeProgressBar.ActualWidth <= 0)
+            {
+                marker.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var percent = Math.Clamp(point.Value / _lastKnownDurationSeconds * 100.0, 0.0, 100.0);
+            var pointX = percent / 100.0 * NativeProgressBar.ActualWidth;
+            // Align the polygon's apex with the marked position.
+            // - apexAtRight (A): right edge of the polygon at pointX -> shift left by Width.
+            // - !apexAtRight (B): left edge of the polygon at pointX -> shift not needed.
+            transform.X = apexAtRight ? pointX - marker.Width : pointX;
+            marker.Visibility = Visibility.Visible;
+        }
+
+        private void RefreshSeekBarFill()
+        {
+            if (NativeProgressBar is null)
+                return;
+
+            // No A set: solid accent value-fill (the standard look).
+            if (!_loopPointA.HasValue)
+            {
+                NativeProgressBar.Foreground = (Brush)Application.Current.Resources["AethraAccentBrush"];
+                return;
+            }
+
+            // A set but the playhead hasn't passed it (or duration unknown):
+            // the value-fill rectangle is shorter than A's pixel offset, so the
+            // [A, current] portion is empty. Use solid accent and let the loop
+            // bounce the playhead forward; this state is normally short-lived.
+            if (_currentPlaybackPosition <= _loopPointA.Value || _lastKnownDurationSeconds <= 0)
+            {
+                NativeProgressBar.Foreground = (Brush)Application.Current.Resources["AethraAccentBrush"];
+                return;
+            }
+
+            EnsureLoopAccentGradient();
+            if (_loopAccentGradient is null)
+                return;
+
+            // The slider's value-fill rectangle spans [0, currentX] in slider coords,
+            // and a relative LinearGradientBrush is mapped onto that rectangle's
+            // bounds. So the cutoff fraction within the brush is A / current.
+            var aFraction = Math.Clamp(_loopPointA.Value / _currentPlaybackPosition, 0.0, 1.0);
+            _loopAccentGradient.GradientStops[1].Offset = aFraction;
+            _loopAccentGradient.GradientStops[2].Offset = aFraction;
+            NativeProgressBar.Foreground = _loopAccentGradient;
+        }
+
+        private void EnsureLoopAccentGradient()
+        {
+            if (_loopAccentGradient is not null)
+                return;
+
+            // Track color is local to TransportBar.Grid.Resources; pull the brush
+            // from there so it stays in sync if the resource value is ever changed.
+            // Falls back to the accent brush color so a missing resource won't crash.
+            var trackColor = TransportBar?.Resources?["SliderTrackFill"] is SolidColorBrush trackBrush
+                ? trackBrush.Color
+                : Microsoft.UI.Colors.Gray;
+
+            var accentBrush = (SolidColorBrush)Application.Current.Resources["AethraAccentBrush"];
+            var accentColor = accentBrush.Color;
+
+            _loopAccentGradient = new LinearGradientBrush
+            {
+                StartPoint = new Windows.Foundation.Point(0, 0.5),
+                EndPoint = new Windows.Foundation.Point(1, 0.5),
+            };
+            // Two stops at the same offset = hard color transition at A.
+            _loopAccentGradient.GradientStops.Add(new GradientStop { Offset = 0.0, Color = trackColor });
+            _loopAccentGradient.GradientStops.Add(new GradientStop { Offset = 0.0, Color = trackColor });
+            _loopAccentGradient.GradientStops.Add(new GradientStop { Offset = 0.0, Color = accentColor });
+            _loopAccentGradient.GradientStops.Add(new GradientStop { Offset = 1.0, Color = accentColor });
+
+            if (!_loopAccentSubscribed)
+            {
+                AccentColorService.AccentColorChanged += OnAccentColorChangedForLoopGradient;
+                _loopAccentSubscribed = true;
+            }
+        }
+
+        private void OnAccentColorChangedForLoopGradient(object? sender, AccentColorChangedEventArgs e)
+        {
+            if (_loopAccentGradient is null)
+                return;
+
+            // Stops 2 and 3 are the accent half of the gradient; refresh them so
+            // the loop fill follows accent changes from Preferences.
+            _loopAccentGradient.GradientStops[2].Color = e.Color;
+            _loopAccentGradient.GradientStops[3].Color = e.Color;
+        }
+
+        private void UpdateLoopButtonVisuals()
+        {
+            // Reach the brushes through Application.Resources rather than capturing
+            // them once: the AethraAccentBrush instance is the same one the rest of
+            // the app uses, so changing accent in Preferences updates these letters
+            // automatically without us having to subscribe to AccentColorChanged.
+            var resources = Application.Current.Resources;
+            var accentBrush = (Brush)resources["AethraAccentBrush"];
+            var mutedBrush = (Brush)resources["AethraMutedTextBrush"];
+
+            if (LoopAText is not null)
+                LoopAText.Foreground = _loopPointA.HasValue ? accentBrush : mutedBrush;
+
+            if (LoopBText is not null)
+                LoopBText.Foreground = _loopPointB.HasValue ? accentBrush : mutedBrush;
+
+            if (LoopAButton is not null)
+                ToolTipService.SetToolTip(LoopAButton,
+                    _loopPointA.HasValue
+                        ? $"Clear A (set at {FormatTime(_loopPointA.Value)})"
+                        : "Set A loop point");
+
+            if (LoopBButton is not null)
+                ToolTipService.SetToolTip(LoopBButton,
+                    _loopPointB.HasValue
+                        ? $"Clear B (set at {FormatTime(_loopPointB.Value)})"
+                        : "Set B loop point");
+        }
+
+        private void ShowVolumeOsd()
+        {
+            if (VolumeOsd is null || VolumeOsdText is null)
+                return;
+
+            VolumeOsdText.Text = $"{Math.Round(_currentVolume):0}%";
+            VolumeOsd.Visibility = Visibility.Visible;
+
+            // Restart the linger timer on every call so a continuous scroll keeps the
+            // readout visible the whole time and only fades after the user stops.
+            _volumeOsdHideTimer.Stop();
+            _volumeOsdHideTimer.Start();
+        }
+
+        private void VolumeOsdHideTimer_Tick(object? sender, object e)
+        {
+            _volumeOsdHideTimer.Stop();
+
+            if (VolumeOsd is not null)
+                VolumeOsd.Visibility = Visibility.Collapsed;
         }
 
         private void MinimizeWindow()
@@ -990,12 +1317,24 @@ namespace Aethra
                 presenter.Minimize();
         }
 
+        private void InitializeVolumeUi()
+        {
+            UpdateVolumeUi();
+        }
+
         private void LoadMedia(string path)
         {
             MediaTitleText.Text = GetDisplayMediaName(path);
             _gpuPlayer?.LoadFile(path);
             _softwarePlayer?.LoadFile(path);
             _isPlaybackPaused = false;
+            // mpv resets ab-loop across files; clear our cached state too so the
+            // A/B button colors don't claim a point is set against the new file.
+            _loopPointA = null;
+            _loopPointB = null;
+            UpdateLoopButtonVisuals();
+            RefreshSeekBarFill();
+            UpdateLoopMarkers();
             ClosePlayerShellCommandSurfacesForActivePlayback();
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
@@ -1412,6 +1751,10 @@ namespace Aethra
             if (duration <= 0)
                 return;
 
+            // Cached so the A/B loop click handlers can capture the live timestamp
+            // without having to plumb a separate position observer.
+            _currentPlaybackPosition = position;
+
             var percent = Math.Clamp(position / duration * 100, 0, 100);
             _suppressSliderValueChanged = true;
             try
@@ -1433,13 +1776,54 @@ namespace Aethra
             {
                 _lastKnownDurationSeconds = duration;
                 RebuildChapterMarkers();
+                // A's percent-of-duration depends on duration, so both the loop
+                // fill and the A/B markers need to refresh once duration is known.
+                RefreshSeekBarFill();
+                UpdateLoopMarkers();
             }
+
+            // The gradient cutoff is A / current, so the value-fill needs a refresh
+            // every time the playhead moves while A is set. UpdateProgress is the
+            // hot path; the early-out for the no-A case keeps it cheap.
+            if (_loopPointA.HasValue)
+                RefreshSeekBarFill();
         }
 
         private void NativeProgressBar_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
         {
             if (_suppressSliderValueChanged)
                 return;
+
+            // With B set, any seek past B is illegal in loop terms — mpv's ab-loop
+            // only fires when playback *reaches* B during forward play, not when
+            // the user clicks beyond it. Trap that case here and snap the playhead
+            // back to A (or to file start when A isn't set), matching the rule
+            // "clicking past B returns you to A".
+            if (_loopPointB.HasValue && _lastKnownDurationSeconds > 0)
+            {
+                var bPercent = _loopPointB.Value / _lastKnownDurationSeconds * 100.0;
+                if (e.NewValue > bPercent)
+                {
+                    var aTarget = _loopPointA ?? 0.0;
+                    _gpuPlayer?.SeekToTime(aTarget);
+                    _softwarePlayer?.SeekToTime(aTarget);
+
+                    // Snap the slider Value visually to A immediately so the thumb
+                    // doesn't briefly display past B before mpv's progress event
+                    // catches up. Suppressed so this assignment doesn't recurse.
+                    var aPercent = Math.Clamp(aTarget / _lastKnownDurationSeconds * 100.0, 0.0, 100.0);
+                    _suppressSliderValueChanged = true;
+                    try
+                    {
+                        NativeProgressBar.Value = aPercent;
+                    }
+                    finally
+                    {
+                        _suppressSliderValueChanged = false;
+                    }
+                    return;
+                }
+            }
 
             SeekToPercent(e.NewValue);
         }
@@ -1452,9 +1836,12 @@ namespace Aethra
 
         private void NativeProgressBar_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            // Marker x-positions are absolute pixels relative to the slider, so any
-            // resize requires re-laying them out.
+            // Chapter marker positions and the A/B icon positions are absolute
+            // pixels relative to the slider, so any resize requires re-laying them
+            // out. (The loop gradient is fraction-based and doesn't need a resize
+            // refresh — it's already mapped onto the value-fill rectangle.)
             RebuildChapterMarkers();
+            UpdateLoopMarkers();
         }
 
         private void NativeProgressBar_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
