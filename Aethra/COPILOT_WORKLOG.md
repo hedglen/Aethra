@@ -829,6 +829,7 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 - Redesign Preferences as a serious native configuration surface, not the current scaffold.
 - Fix the Controls page so it is easy to search, sort, capture, edit, reset, and understand what is native Aethra versus mpv passthrough.
 - Split Preferences into clear pages: Playback, Video, Audio, Subtitles, Controls, Library, Shaders, Profiles, Network, Customization, Advanced.
+- Add first-class quality presets in Video preferences (for example `Reference`, `Cinema`, `Anime`) backed by typed profile values, not ad hoc UI-side property writes.
 - Add per-page reset-to-defaults, import/export profiles, and clear applied/pending state.
 - Keep advanced controls available without making the default Preferences page feel like a spreadsheet.
 - Move configuration UI code toward `Preferences/` plus view models when the UI becomes more than a simple shell.
@@ -850,6 +851,7 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
   - Network profile: cache, streaming options, yt-dlp behavior.
   - Advanced profile: raw mpv options for users who want exact control.
 - Apply those profiles to libmpv through backend profile APIs, not scattered `set` calls across UI code.
+- Add an explicit backend options/profile service boundary so new preference surfaces and overlays read/write one typed API instead of issuing direct mpv commands from multiple UI call sites.
 - Keep hand-edit/import/export paths, but make the first-class UI native and understandable.
 
 ### 6. Shaders, scripts, and extension surface
@@ -858,10 +860,12 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 - Built-in shader workflows should be native Aethra preferences/profile choices.
 - Lua/mpv scripts are optional user/community extensions only. Surface a scripts folder and script enable/disable management later, but do not depend on scripts for first-party Aethra features.
 - For features that used to be scripts, first ask for the clean native Aethra command/service design.
+- Sequence rule: complete command/input architecture and typed profile plumbing first, then add script/shader management UI on top of that foundation.
 
 ### 7. Backend and runtime cleanup
 
 - Keep the GPU renderer as the primary path.
+- Complete the visible `SwapChainPanel` GPU presentation path as the default renderer path, with software kept as a fallback only.
 - Keep software fallback for now, but stop broadening it unless needed for diagnostics or recovery.
 - Keep native runtime resolution fully rooted in `NativeRuntime\x64`; do not reintroduce root-level prototype native binaries.
 - Rebuild the native media bundle for the free/GPL GitHub direction: mpv `-Dgpl=true`, FFmpeg `--enable-gpl`, Lua enabled, shader/script support enabled, and notices updated.
