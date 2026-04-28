@@ -2,7 +2,7 @@
   <Configurations>
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="Aethra/Aethra.csproj">
+  <Project Path="src/Aethra/Aethra.csproj">
     <Platform Solution="*|x64" Project="x64" />
     <Deploy />
   </Project>

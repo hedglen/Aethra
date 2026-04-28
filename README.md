@@ -24,19 +24,19 @@ dotnet build .\Aethra.slnx -p:Platform=x64
 
 Launch from Visual Studio/Visual Studio Code, or run the built executable from:
 
-`Aethra\bin\x64\Debug\net10.0-windows10.0.19041.0\`
+`src\Aethra\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64\`
 
 ## Architecture
 
-- App UI and shell: `Aethra/Views`
-- Preferences surfaces: `Aethra/Preferences`
-- Native playback interop: `Aethra/Native`
-- Commands: `Aethra/Commands`
-- Input runtime and bindings: `Aethra/Input`
-- Configuration and persistence: `Aethra/Configuration`
-- Profiles and domain types: `Aethra/Profiles`, `Aethra/Models`
-- Core app services: `Aethra/Services`
-- Runtime native binaries: `Aethra/NativeRuntime/x64`
+- App UI and shell: `src/Aethra/Views`
+- Preferences surfaces: `src/Aethra/Preferences`
+- Native playback interop: `src/Aethra/Native`
+- Commands: `src/Aethra/Commands`
+- Input runtime and bindings: `src/Aethra/Input`
+- Configuration and persistence: `src/Aethra/Configuration`
+- Profiles and domain types: `src/Aethra/Profiles`, `src/Aethra/Models`
+- Core app services: `src/Aethra/Services`
+- Runtime native binaries: `src/Aethra/NativeRuntime/x64`
 
 ## License
 
@@ -44,9 +44,10 @@ This repository is licensed under the [MIT License](LICENSE).
 
 ## Planning and Direction
 
-- Active roadmap: `Aethra/ROADMAP.md`
-- Architectural guidance for agent-driven changes: `Aethra/COPILOT_INSTRUCTIONS.md`
-- Historical implementation log: `Aethra/COPILOT_WORKLOG.md`
+- Documentation index: `docs/README.md`
+- Active roadmap: `docs/project/roadmap.md`
+- Architectural guidance for agent-driven changes: `docs/development/copilot-instructions.md`
+- Historical implementation log: `docs/development/worklog.md`
 
 ## Contributing
 

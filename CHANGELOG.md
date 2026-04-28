@@ -9,9 +9,9 @@ The format follows Keep a Changelog, and releases are versioned with SemVer.
 
 - Repository guardrails (`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.editorconfig`, `Directory.Build.props`).
 - GitHub governance scaffolding (`.github/workflows/build.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/CODEOWNERS`).
-- Input/runtime/profile/configuration architecture foundations (`Aethra/Input`, `Aethra/Configuration`, `Aethra/Profiles`, command dispatch expansion).
+- Input/runtime/profile/configuration architecture foundations (`src/Aethra/Input`, `src/Aethra/Configuration`, `src/Aethra/Profiles`, command dispatch expansion).
 
 ### Changed
 
-- Roadmap moved from `Aethra/COPILOT_WORKLOG.md` to `Aethra/ROADMAP.md`.
+- Roadmap moved from worklog history into `docs/project/roadmap.md` as the canonical execution map.
 - Project guidance aligned to MIT licensing, x64-first support, and unpackaged-first with optional MSIX-capable packaging.

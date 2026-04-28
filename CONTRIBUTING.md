@@ -7,14 +7,14 @@
 3. Build locally before opening a PR:
    - `dotnet build .\Aethra.slnx -p:Platform=x64`
 4. Run a manual playback smoke when touching playback/input/persistence (open file, play/pause, seek, volume, fullscreen, Preferences open/close).
-5. Update relevant docs/worklog when behavior or architecture changes (use `Aethra/COPILOT_WORKLOG.md` for implementation history and `Aethra/ROADMAP.md` for active sequencing).
+5. Update relevant docs/worklog when behavior or architecture changes (use `docs/development/worklog.md` for implementation history and `docs/project/roadmap.md` for active sequencing).
 
 ## Pull requests
 
 - Keep PRs narrow and reviewable.
 - Prefer one concern per PR (structure move, behavior change, or cleanup).
 - Include a short test plan in the PR description.
-- If native runtime binaries or their sourcing change, update `Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` in the same PR.
+- If native runtime binaries or their sourcing change, update `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` in the same PR.
 
 ## Coding conventions
 

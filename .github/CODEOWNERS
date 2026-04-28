@@ -1,11 +1,11 @@
 * @hedglen
 
-/Aethra/Views/ @hedglen
-/Aethra/Preferences/ @hedglen
-/Aethra/Native/ @hedglen
-/Aethra/Input/ @hedglen
-/Aethra/Profiles/ @hedglen
-/Aethra/Commands/ @hedglen
-/Aethra/Services/ @hedglen
-/Aethra/Configuration/ @hedglen
-/Aethra/ThirdPartyNotices/ @hedglen
+/src/Aethra/Views/ @hedglen
+/src/Aethra/Preferences/ @hedglen
+/src/Aethra/Native/ @hedglen
+/src/Aethra/Input/ @hedglen
+/src/Aethra/Profiles/ @hedglen
+/src/Aethra/Commands/ @hedglen
+/src/Aethra/Services/ @hedglen
+/src/Aethra/Configuration/ @hedglen
+/src/Aethra/ThirdPartyNotices/ @hedglen
