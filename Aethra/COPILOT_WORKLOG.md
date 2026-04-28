@@ -792,6 +792,15 @@ Active steps:
   - Files touched: `Aethra/MainWindow.xaml`, `Aethra/MainWindow.xaml.cs`.
   - Build verification: agent sandbox has no .NET SDK; user has been verifying `dotnet build .\Aethra.slnx -p:Platform=x64` and the working app launch locally throughout the session.
 
+- 2026-04-28 reorganized the project structure into clearer architectural folders:
+  - Added `Views/`, `Models/`, `Services/`, and `Configuration/` directories.
+  - Moved XAML views into `Views/` (`MainWindow`, `FullSettingsPanel`, `VideoAdjustmentsPanel`) and updated `.csproj` XAML item paths.
+  - Moved data models into `Models/` (`MpvChapter`, `VideoAdjustments`, `InputBindingSetting`).
+  - Moved app services into `Services/` (`AccentColorService`, `PlaybackActivityController`).
+  - Moved input catalog into `Configuration/` (`InputBindingCatalog`).
+  - Moved mpv interop helpers into `Native/` (`NativeMpvOpenGlPlayer`, `NativeMpvSoftwarePlayer`, `NativeMpvPlaybackProgress`).
+  - Verified `dotnet build` passes after the move.
+
 ## Roadmap
 
 The GPU path is proven under core use, BOSS KEY feels instant, and the next phase is making the app feel intentional instead of prototype-shaped. Preserve the hot input path: live keyboard/mouse handling must stay native, synchronous, and already-loaded in memory.
