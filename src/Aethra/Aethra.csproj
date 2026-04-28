@@ -75,6 +75,11 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.1721" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260317003" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Aethra.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution

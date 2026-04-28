@@ -869,6 +869,23 @@ Active steps:
     - Command-routing smoke was validated through static wiring checks and compile-time integration; full interactive playback smoke (open/play/pause/seek/volume/fullscreen/preferences) still needs one manual in-app pass on a local desktop session.
   - Remaining gap for next pass:
     - add command-coverage telemetry or a focused integration smoke harness so dispatcher routing regressions are automatically caught before manual QA.
+- 2026-04-28 completed reliability hardening sprint for Phase 2:
+  - Added a focused test project at `tests/Aethra.Tests` and wired it into `Aethra.slnx`.
+  - Added `InternalsVisibleTo("Aethra.Tests")` in `src/Aethra/Aethra.csproj` so command dispatcher internals can be tested directly without widening runtime visibility.
+  - Added dispatcher coverage in `tests/Aethra.Tests/Commands/AethraCommandDispatcherTests.cs`:
+    - validates every current `aethra:*` command ID maps to the expected `AethraCommandContext` action,
+    - verifies unknown command behavior returns `false` with no side effects,
+    - verifies `AethraCommandIds.IsAethraCommand` prefix behavior.
+  - Added input-runtime coverage in `tests/Aethra.Tests/Input/InputRuntimeServiceTests.cs`:
+    - parses keyboard modifiers, mouse button tokens, wheel tokens, alias-style text,
+    - rejects invalid gestures,
+    - validates duplicate-gesture overwrite behavior in runtime binding map.
+  - Extended `InputRuntimeService` keypad token parsing to include `KP0..KP9` so imported gesture aliases normalize correctly under the test baseline.
+  - Updated GitHub Actions workflow (`.github/workflows/build.yml`) to run `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` after build.
+  - Validation:
+    - `dotnet test Aethra.slnx -p:Platform=x64` passes locally with 38 passing tests.
+  - Remaining gap:
+    - manual in-app shell smoke loop (open/play/pause/seek/volume/fullscreen/Preferences) should still be run on desktop sessions before release-oriented changes.
 
 ## Roadmap
 

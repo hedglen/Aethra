@@ -15,8 +15,9 @@ This roadmap is the execution map for building a fully customizable, native, mod
 - Done: foundational `aethra:*` command dispatch exists with keyboard runtime binding support and A-B loop essentials.
 - Done: initial Preferences expansion exists (video presets, shader/script bootstrap surfaces, portable-config import).
 - Done: foundational persistence exists (last media, position, volume, window geometry).
-- In progress: full Controls experience, fully typed profile coverage, and deep Preferences UX consistency.
-- Next: complete command/input architecture, finish typed profile parity, and harden Windows-native integrations.
+- Done: Phase 2 command/input architecture is complete with native command routing, configurable keyboard/mouse Controls UX, and persisted bindings.
+- In progress: reliability hardening is adding automated command/input regression coverage in CI and closing remaining manual shell smoke gaps.
+- Next: Phase 3 typed profile parity and deeper Preferences consistency across major categories.
 
 ## Phase 1 - Shell correctness and playback reliability
 
