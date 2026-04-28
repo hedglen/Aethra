@@ -846,6 +846,12 @@ Active steps:
   - Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` top-level distribution guidance so it no longer implies GPL as the default repo posture.
   - Updated contributor-facing docs (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`) to tighten architecture/process guidance and remove mismatches.
   - Updated `Aethra.csproj` and `Aethra.slnx` to reflect x64-first platform declarations in the project/solution matrix.
+- 2026-04-28 full v1 roadmap refresh:
+  - Rebuilt `ROADMAP.md` into a full-v1 execution map aligned to `COPILOT_INSTRUCTIONS.md` end-state and `COPILOT_WORKLOG.md` implementation reality.
+  - Added a top-level current-state snapshot (done/in-progress/next) so execution starts from current repo truth instead of historical assumptions.
+  - Reframed roadmap into dependency-ordered phases with explicit goal, in-scope, out-of-scope, dependencies, and exit criteria for each phase.
+  - Locked roadmap language to current repo posture: MIT, x64-first, unpackaged-first with optional MSIX-capable packaging.
+  - Added explicit non-v1 deferrals and operating rules to reduce scope drift while preserving hot-path/native architecture constraints.
 
 ## Roadmap
 

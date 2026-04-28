@@ -1,84 +1,214 @@
-# Aethra Roadmap
+# Aethra Roadmap (Full V1)
 
-The GPU path is proven under core use, BOSS KEY feels instant, and the next phase is making the app feel intentional instead of prototype-shaped. Preserve the hot input path: live keyboard/mouse handling must stay native, synchronous, and already-loaded in memory.
+This roadmap is the execution map for building a fully customizable, native, modern Aethra. It aligns to `COPILOT_INSTRUCTIONS.md` and current implementation history in `COPILOT_WORKLOG.md`.
 
-## 1. Player UI polish and shell correctness
+## Locked Direction
 
-- Fix the central play/pause button visual so it reads as a polished native media control.
-- Hide the mouse pointer after a short idle delay over the video surface, and show it immediately on movement.
-- Continue hardening true fullscreen behavior: validate monitor coverage, restore behavior, control reveal, and no renderer fallback.
-- Revisit the transport shelf spacing, icons, disabled states, hover states, and bottom action cluster so the player feels close to modern Windows Media Player but better suited to Aethra.
-- Keep BOSS KEY and `S` preferences toggling as snappy reference interactions.
+- License baseline: MIT.
+- Platform baseline: Windows x64-first.
+- Packaging baseline: unpackaged-first, with optional MSIX-capable packaging.
+- Architecture baseline: one main WinUI window, mpv render API, app-owned command/input/config behavior, no telemetry.
 
-## 2. Command and input architecture
+## Current State Snapshot
 
-- Expand `Commands/` beyond BOSS KEY with native app command IDs and dispatcher cases for preferences, fullscreen, play/pause, seek, volume, mute, A-B loop, favorites, HUD, and future clip/library workflows.
-- Add an `Input/` runtime service that maps WinUI keyboard/mouse gestures to already-loaded command IDs without disk IO, script calls, or preference parsing.
-- Move default binding models/catalog into the `Input/` area.
-- Add keyboard capture in the Controls page of Preferences first.
-- Add mouse-button capture after keyboard capture works, including Scimitar-class extended buttons.
-- Add conflict detection, duplicate gesture warnings, clear/reset per binding, and per-section reset.
-- Add import from existing mpv `input.conf` as a migration helper, not as the runtime architecture.
-- Add export/save to Aethra's future `%APPDATA%\Aethra\input.conf` or native binding store only after the model and UI flow are approved.
+- Done: GPU-first playback path is working via OpenGL through ANGLE with software fallback retained.
+- Done: foundational `aethra:*` command dispatch exists with keyboard runtime binding support and A-B loop essentials.
+- Done: initial Preferences expansion exists (video presets, shader/script bootstrap surfaces, portable-config import).
+- Done: foundational persistence exists (last media, position, volume, window geometry).
+- In progress: full Controls experience, fully typed profile coverage, and deep Preferences UX consistency.
+- Next: complete command/input architecture, finish typed profile parity, and harden Windows-native integrations.
 
-## 3. Preferences UI rebuild
+## Phase 1 - Shell correctness and playback reliability
 
-- Redesign Preferences as a serious native configuration surface, not the current scaffold.
-- Fix the Controls page so it is easy to search, sort, capture, edit, reset, and understand what is native Aethra versus mpv passthrough.
-- Split Preferences into clear pages: Playback, Video, Audio, Subtitles, Controls, Library, Shaders, Profiles, Network, Customization, Advanced.
-- Add first-class quality presets in Video preferences (for example `Reference`, `Cinema`, `Anime`) backed by typed profile values, not ad hoc UI-side property writes.
-- Add per-page reset-to-defaults, import/export profiles, and clear applied/pending state.
-- Keep advanced controls available without making the default Preferences page feel like a spreadsheet.
-- Move configuration UI code toward `Preferences/` plus view models when the UI becomes more than a simple shell.
+Goal: make the current player shell consistently native-feeling and production-stable before expanding major surface area.
 
-## 4. Native replacement plan for `input.conf`
+In scope:
+- Harden fullscreen behavior (monitor coverage, restore logic, overlays, no renderer fallback regressions).
+- Finalize transport interactions and visual coherence with modern Fluent expectations.
+- Ensure cursor/controls reveal and hide behavior is predictable across playback states.
+- Keep BOSS KEY and Preferences toggle paths instant and reliable.
 
-- Treat every old `input.conf` row as intent to translate into a native Aethra command or native mpv passthrough.
-- Native Aethra commands should cover app behavior: BOSS KEY, preferences, fullscreen, HUD, favorites, A-B loop, playlist UI, chapter/clip workflows, screenshots UI, and window actions.
-- mpv passthrough remains appropriate for engine-owned playback operations: seek, frame step, volume, track switching, subtitle delay, audio delay, speed, video filters, and raw properties.
-- Store bindings in a native model first; only export/import text files for compatibility and power users.
+Out of scope:
+- Mini-player/PiP.
+- New extension ecosystems.
 
-## 5. Native replacement plan for `mpv.conf`
+Dependencies:
+- Existing GPU path and command foundations.
 
-- Build typed Aethra profile models before exposing raw option text:
-  - Playback profile: resume, loop, speed defaults, playlist behavior.
-  - Video profile: hardware decode, scaling, debanding, interpolation, aspect, rotation, HDR/tone mapping.
-  - Audio profile: WASAPI mode, exclusive/shared, passthrough, channel layout, audio delay.
-  - Subtitle profile: default language, scale, delay, visibility, style overrides.
-  - Network profile: cache, streaming options, yt-dlp behavior.
-  - Advanced profile: raw mpv options for users who want exact control.
-- Apply those profiles to libmpv through backend profile APIs, not scattered `set` calls across UI code.
-- Add an explicit backend options/profile service boundary so new preference surfaces and overlays read/write one typed API instead of issuing direct mpv commands from multiple UI call sites.
-- Keep hand-edit/import/export paths, but make the first-class UI native and understandable.
+Exit criteria:
+- Manual smoke pass succeeds for open/play/pause/seek/volume/fullscreen/Preferences across repeated cycles.
+- No known shell interaction regressions tracked in worklog.
 
-## 6. Shaders, scripts, and extension surface
+## Phase 2 - Command catalog and unified input runtime
 
-- Shaders are first-class: expose shader folders, shader chains, enable/disable ordering, presets, and per-profile application in Preferences.
-- Built-in shader workflows should be native Aethra preferences/profile choices.
-- Lua/mpv scripts are optional user/community extensions only. Surface a scripts folder and script enable/disable management later, but do not depend on scripts for first-party Aethra features.
-- For features that used to be scripts, first ask for the clean native Aethra command/service design.
-- Sequence rule: complete command/input architecture and typed profile plumbing first, then add script/shader management UI on top of that foundation.
+Goal: complete a single native command/input architecture that is fast, customizable, and resilient.
 
-## 7. Backend and runtime cleanup
+In scope:
+- Expand `Commands/` coverage for first-party behaviors: Preferences, fullscreen, playback core, volume/mute, A-B loop, favorites, HUD, playlist/library entry points, window actions.
+- Complete runtime input mapping for keyboard plus mouse buttons (including extended buttons).
+- Build Controls workflows: capture-next-input, conflict detection, duplicate warning, clear/reset, section reset.
+- Keep mpv `input.conf` import as migration support only.
+- Introduce durable binding persistence in Aethra-native model/store and optional export path.
 
-- Keep the GPU renderer as the primary path.
-- Complete the visible `SwapChainPanel` GPU presentation path as the default renderer path, with software kept as a fallback only.
-- Keep software fallback for now, but stop broadening it unless needed for diagnostics or recovery.
-- Keep native runtime resolution fully rooted in `NativeRuntime\x64`; do not reintroduce root-level prototype native binaries.
-- Rebuild and document the native media bundle for the MIT-licensed GitHub direction: prioritize reproducible, high-quality playback builds with clear third-party notices and release obligations.
-- Validate true fullscreen, resize, snap, drag/drop reload, seek, long playback, and no `GPU renderer task failed` lines.
+Out of scope:
+- Gamepad/touch/pen as first-class defaults (can remain deferred).
 
-## 8. Windows integration and persistence
+Dependencies:
+- Phase 1 stability.
 
-- Add SMTC for media keys and lock-screen controls.
-- Add window/state persistence: position, size, monitor, volume, last folder, last file, watch progress.
-- Add prevent-sleep during playback.
-- Add file associations and "Open with" support.
-- Add mini-player / picture-in-picture after the main player shell is stable.
+Exit criteria:
+- App-owned actions route through `aethra:*` command IDs by default.
+- Input hot path remains in-memory and allocation-light with no disk/script dependency.
+- Controls page supports real capture/edit/reset workflows for keyboard and mouse bindings.
 
-## 9. Repo readiness
+## Phase 3 - Preferences depth and typed profiles parity
 
-- Keep README/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG current as architecture and process evolve.
-- Add issue templates when triage volume warrants them; keep PR templates and CI in sync with current workflow.
-- Expand CI from build-only toward smoke/release automation in reviewed increments.
-- Keep `ThirdPartyNotices/THIRD_PARTY_NOTICES.md` current whenever native binaries change.
+Goal: make Preferences the authoritative persistent configuration surface with typed, understandable models.
+
+In scope:
+- Complete page model: Playback, Video, Audio, Subtitles, Controls, Library, Shaders, Profiles, Network, Customization, Advanced.
+- Expand typed profile coverage for playback/video/audio/subtitles/network/advanced options.
+- Route preference application through backend profile APIs, not scattered UI `set` calls.
+- Add per-page reset-to-defaults and clear applied/pending states.
+- Preserve import/export and round-trip compatibility without making raw text primary UX.
+
+Out of scope:
+- New major media features not tied to profile/config parity.
+
+Dependencies:
+- Phase 2 command/input architecture.
+
+Exit criteria:
+- Major preference categories are backed by typed models and consistent apply/reset flows.
+- Controls, Preferences, and Adjustments terminology is consistent in UI copy and docs.
+
+## Phase 4 - Customization-first modern UX
+
+Goal: deliver modern personalization depth while preserving native simplicity for default users.
+
+In scope:
+- Build first-class Customization page: theme, accent, transport layout, OSD behavior, density.
+- Ensure progressive disclosure (simple defaults first, expert controls discoverable).
+- Add Preferences search/filter with stable results across pages.
+- Align panel layouts, spacing, and interaction affordances with Fluent modern baseline.
+
+Out of scope:
+- Replacing core playback architecture.
+
+Dependencies:
+- Phase 3 Preferences/page framework.
+
+Exit criteria:
+- Customization settings are persistent, discoverable, and coherent across sessions.
+- Preferences remains approachable for defaults and powerful for advanced users.
+
+## Phase 5 - Shaders and scripts extension layer (optional-first)
+
+Goal: support advanced extensibility without making first-party behavior depend on scripts.
+
+In scope:
+- First-class shader management: folders, chains, ordering, presets, per-profile application.
+- Script extension management: enable/disable, script folder configuration, visibility of active extensions.
+- Keep first-party features implemented in native commands/services.
+
+Out of scope:
+- Shipping mandatory first-party Lua script dependencies.
+
+Dependencies:
+- Phase 3 typed profile plumbing and Phase 4 Preferences UX.
+
+Exit criteria:
+- Shader workflows are complete in Preferences.
+- Script management is optional and does not gate core app behavior.
+
+## Phase 6 - Windows-native integrations
+
+Goal: make Aethra feel like a first-class Windows media app in system-level interactions.
+
+In scope:
+- SMTC media key and lock-screen control support.
+- Prevent-sleep during active playback.
+- File associations and "Open with" support.
+- Taskbar/jump-list/media-session integration polish.
+
+Out of scope:
+- Broad installer/distribution automation details beyond reviewed scope.
+
+Dependencies:
+- Phases 1-3 for stable playback/state/commands.
+
+Exit criteria:
+- Core Windows integration features work consistently and are documented.
+
+## Phase 7 - Persistence and state parity completion
+
+Goal: complete session continuity and watch-later parity expected from a serious player.
+
+In scope:
+- Expand persistence for monitor-aware window state and playback session details.
+- Add durable state for last folder, recent media context, and per-file progress refinements.
+- Ensure persistence interactions remain fast and do not pollute hot input paths.
+
+Out of scope:
+- Telemetry-based behavior tracking.
+
+Dependencies:
+- Phase 3 settings model and Phase 6 integration hooks.
+
+Exit criteria:
+- Restart/restore flows feel reliable for common daily usage.
+- Persistence behavior is predictable and testable across reopen scenarios.
+
+## Phase 8 - Native runtime and rendering hardening
+
+Goal: harden native media/runtime layer for sustained reliability and quality targets.
+
+In scope:
+- Keep GPU path primary with software fallback limited to diagnostics/recovery.
+- Validate long-playback stability, resize/fullscreen transitions, and multi-monitor transitions.
+- Keep runtime rooted in `NativeRuntime\\x64` and avoid prototype binary drift.
+- Maintain reproducible native build provenance and clear third-party notices per runtime updates.
+- Continue quality-bar improvements (HDR/tone mapping/scalers/sync/audio passthrough) as native capabilities mature.
+
+Out of scope:
+- Non-x64 runtime shipping commitments before explicit decision.
+
+Dependencies:
+- Phases 1-3 functional stability.
+
+Exit criteria:
+- No known blocking runtime instability in long-form manual playback tests.
+- Third-party notices and native build provenance remain current for shipped runtime bundle.
+
+## Phase 9 - Release and repo hardening
+
+Goal: make execution and release flow dependable for contributors and public users.
+
+In scope:
+- Keep README/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG aligned with implementation.
+- Expand CI from build-only toward smoke and release checks in reviewed increments.
+- Add issue templates when triage/review volume warrants them.
+- Keep roadmap and worklog roles clear: roadmap for execution order, worklog for historical progress.
+
+Out of scope:
+- Force-fitting process overhead before the team needs it.
+
+Dependencies:
+- Ongoing across all phases.
+
+Exit criteria:
+- Contributor docs match real workflow and architecture.
+- CI meaningfully protects against regressions beyond compile-only checks.
+
+## Explicit Deferrals (Non-V1 Unless Re-prioritized)
+
+- DRM streaming service support (Netflix/Disney+/etc.).
+- Screen recording/capture and editing/transcoding pipelines.
+- Mandatory script-based first-party features.
+- Non-x64 production runtime support before dedicated native/runtime work.
+
+## Operating Rules During Execution
+
+- Keep one reviewed step at a time with `dotnet build .\\Aethra.slnx -p:Platform=x64`.
+- Update `COPILOT_WORKLOG.md` after each completed step.
+- Keep command/input hot path in-memory, native, and non-blocking.
