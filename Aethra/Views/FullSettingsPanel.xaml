@@ -189,6 +189,8 @@
                             <ComboBoxItem Content="Reference"/>
                             <ComboBoxItem Content="Cinema"/>
                             <ComboBoxItem Content="Anime"/>
+                            <ComboBoxItem Content="LowResBoost"/>
+                            <ComboBoxItem Content="NativeClean"/>
                         </ComboBox>
                     </StackPanel>
 
@@ -308,6 +310,30 @@
                                        FontSize="12"/>
                         </Grid>
 
+                        <TextBlock Text="Import from portable_config" Style="{StaticResource GroupHeaderStyle}"/>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="PortableConfigPathBox"
+                                     Grid.Column="0"
+                                     PlaceholderText="C:\Users\...\mpv\portable_config"
+                                     Foreground="White"/>
+                            <Button Grid.Column="1"
+                                    Click="ImportPortableConfigButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Import"/>
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="PortableImportStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <TextBlock x:Name="ImportedShaderCountText" Foreground="#9FA0A4" FontSize="12"/>
+                        <TextBlock x:Name="ImportedScriptCountText" Foreground="#9FA0A4" FontSize="12"/>
+
                         <Border BorderBrush="#303030"
                                 BorderThickness="1"
                                 CornerRadius="6"
@@ -422,13 +448,31 @@
                         <TextBlock Text="Upscalers and post-processing profiles." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Active shader profile" Style="{StaticResource GroupHeaderStyle}"/>
-                        <RadioButton GroupName="FullShaders" Content="None (basic scaling)" IsChecked="True" Foreground="White"/>
-                        <RadioButton GroupName="FullShaders" Content="FSRCNNX (live action)" Foreground="White"/>
-                        <RadioButton GroupName="FullShaders" Content="Anime4K (animation)" Foreground="White"/>
-                        <RadioButton GroupName="FullShaders" Content="SSimDownscaler + FSRCNNX" Foreground="White"/>
+                        <ComboBox x:Name="ShaderPresetCombo"
+                                  SelectedIndex="0"
+                                  SelectionChanged="ShaderPresetCombo_SelectionChanged"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
+                            <ComboBoxItem Content="None (basic scaling)"/>
+                            <ComboBoxItem Content="FSRCNNX (live action)"/>
+                            <ComboBoxItem Content="Anime4K (animation)"/>
+                            <ComboBoxItem Content="SSimDownscaler + FSRCNNX"/>
+                        </ComboBox>
 
                         <TextBlock Text="Custom" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBlock Text="Custom shader chain editor coming soon." Style="{StaticResource ComingSoonStyle}"/>
+                        <TextBox x:Name="CustomShaderChainBox"
+                                 PlaceholderText="~~/shaders/file1.glsl:~~/shaders/file2.glsl"
+                                 Foreground="White"/>
+                        <Button Click="ApplyCustomShaderChainButton_Click"
+                                Padding="12,8"
+                                Background="#1F1F1F"
+                                BorderBrush="#3A3A3A"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Foreground="White">
+                            <TextBlock Text="Apply custom chain"/>
+                        </Button>
+                        <TextBlock x:Name="ShaderStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="ProfilesPanel" Spacing="12" Visibility="Collapsed">
@@ -521,6 +565,35 @@
 
                         <TextBlock Text="Extra mpv options" Style="{StaticResource GroupHeaderStyle}"/>
                         <TextBox PlaceholderText="key=value pairs, one per line" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Foreground="White"/>
+
+                        <TextBlock Text="Script extensions" Style="{StaticResource GroupHeaderStyle}"/>
+                        <ToggleSwitch x:Name="ScriptsEnabledToggle"
+                                      Header="Enable optional Lua scripts"
+                                      Toggled="ScriptsEnabledToggle_Toggled"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ScriptsFolderBox"
+                                     Grid.Column="0"
+                                     PlaceholderText="Scripts folder path"
+                                     Foreground="White"/>
+                            <Button Grid.Column="1"
+                                    Click="ScriptsFolderApplyButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save"/>
+                            </Button>
+                        </Grid>
+                        <TextBlock x:Name="ScriptStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

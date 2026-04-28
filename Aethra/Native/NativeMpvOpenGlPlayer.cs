@@ -1,3 +1,4 @@
+using Aethra.Configuration;
 using Aethra.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
@@ -160,6 +161,7 @@ internal sealed class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
             context.SetOptionString("osd-level", "0");
             context.TrySetOptionString("input-default-bindings", "no");
             context.TrySetOptionString("input-vo-keyboard", "no");
+            ApplyRuntimeBootstrapOptions(context);
             context.SetWakeupCallback(() => Interlocked.Exchange(ref _frameRequested, 1));
             context.Initialize();
             context.ObserveProperty(1, "time-pos", MpvNative.MpvFormat.Double);
@@ -344,5 +346,28 @@ internal sealed class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
     private void QueueChaptersChanged(IReadOnlyList<MpvChapter> chapters)
     {
         _dispatcherQueue.TryEnqueue(() => ChaptersChanged?.Invoke(this, chapters));
+    }
+
+    private static void ApplyRuntimeBootstrapOptions(NativeMpvContext context)
+    {
+        var scriptsEnabled = ScriptExtensionSettingsStore.ScriptsEnabled;
+        context.TrySetOptionString("load-scripts", scriptsEnabled ? "yes" : "no");
+
+        var scriptsFolder = ScriptExtensionSettingsStore.ScriptsFolder;
+        if (!string.IsNullOrWhiteSpace(scriptsFolder))
+            context.TrySetOptionString("scripts", scriptsFolder);
+
+        var imported = MpvRuntimeBootstrapSettings.Instance.ImportedMpvOptions;
+        TryApplyImportedOption(context, imported, "gpu-api");
+        TryApplyImportedOption(context, imported, "gpu-context");
+        TryApplyImportedOption(context, imported, "video-sync");
+        TryApplyImportedOption(context, imported, "tscale");
+        TryApplyImportedOption(context, imported, "target-peak");
+    }
+
+    private static void TryApplyImportedOption(NativeMpvContext context, IReadOnlyDictionary<string, string> options, string key)
+    {
+        if (options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            context.TrySetOptionString(key, value);
     }
 }

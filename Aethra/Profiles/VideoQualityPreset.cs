@@ -4,5 +4,7 @@ public enum VideoQualityPreset
 {
     Reference,
     Cinema,
-    Anime
+    Anime,
+    LowResBoost,
+    NativeClean
 }

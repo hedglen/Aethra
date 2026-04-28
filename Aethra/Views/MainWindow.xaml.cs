@@ -1,4 +1,6 @@
 using Aethra.Commands;
+using Aethra.Configuration;
+using Aethra.Input;
 using Aethra.Services;
 using Aethra.Models;
 using Aethra.Native;
@@ -10,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Windowing;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -18,6 +21,7 @@ using Microsoft.UI.Xaml.Media;
 // also contains a `Path` type which collides with `System.IO.Path` used here.
 using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
 using Windows.Storage.Pickers;
+using Windows.System;
 
 namespace Aethra
 {
@@ -54,6 +58,8 @@ namespace Aethra
         private bool _isCommandRailExpanded;
         private readonly PlaybackActivityController _playbackActivity;
         private readonly PlaybackOptionsService _playbackOptions;
+        private readonly InputRuntimeService _inputRuntimeService = new();
+        private readonly PlaybackPersistenceSnapshot _playbackPersistence;
         // True means playback is paused. Visual surfaces route through
         // PlayPauseVisualFor so the transport button and context menu stay aligned.
         private bool _isPlaybackPaused = true;
@@ -82,6 +88,8 @@ namespace Aethra
         private uint _videoPointerId;
         private bool _isVideoPointerPressPending;
         private bool _isVideoPointerDraggingWindow;
+        private string? _lastLoadedMediaPath;
+        private bool _startupMediaLoaded;
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
         private const double TransportBarHeight = 70;
@@ -90,6 +98,10 @@ namespace Aethra
 
         public MainWindow()
         {
+            _playbackPersistence = PlaybackPersistenceStore.Load();
+            _currentVolume = _playbackPersistence.LastVolume;
+            _lastLoadedMediaPath = _playbackPersistence.LastMediaPath;
+            InitializeInputRuntime();
             _playbackActivity = new PlaybackActivityController(TimeSpan.FromSeconds(1), CanLetPlaybackChromeIdle);
             _playbackActivity.ModeChanged += PlaybackActivity_ModeChanged;
             _playbackOptions = PlaybackOptionsService.Instance;
@@ -114,7 +126,20 @@ namespace Aethra
             InitializeVolumeUi();
             CommandRail.Loaded += CommandRail_Loaded;
             SetCommandRailExpanded(false);
-            _commandDispatcher = new AethraCommandDispatcher(new AethraCommandContext(PausePlayback, MinimizeWindow));
+            _commandDispatcher = new AethraCommandDispatcher(new AethraCommandContext(
+                PausePlayback,
+                MinimizeWindow,
+                ToggleSettingsPanel,
+                ToggleFullscreen,
+                TogglePlayback,
+                () => SeekRelative(-10),
+                () => SeekRelative(30),
+                () => AddVolume(5),
+                () => AddVolume(-5),
+                HandleEscapeCommand,
+                ToggleLoopPointA,
+                ToggleLoopPointB,
+                ResetLoopPoints));
             _windowSubclassProc = WindowSubclassProc;
             _childCursorSubclassProc = ChildCursorSubclassProc;
             this.Activated += MainWindow_Activated;
@@ -129,6 +154,13 @@ namespace Aethra
             _videoAdjustmentBatcher.Dispose();
             _cursorHideEnforcementTimer.Stop();
             _volumeOsdHideTimer.Stop();
+            PlaybackPersistenceStore.SaveVolume(_currentVolume);
+            PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
+            PlaybackPersistenceStore.SaveWindow(
+                AppWindow.Position.X,
+                AppWindow.Position.Y,
+                AppWindow.Size.Width,
+                AppWindow.Size.Height);
             _playbackOptions.PropertyApplyRequested -= PlaybackOptions_PropertyApplyRequested;
             if (_loopAccentSubscribed)
             {
@@ -166,67 +198,23 @@ namespace Aethra
 
             this.Content.KeyDown += (s, e) =>
             {
-                switch (e.Key)
+                if (TryExecuteRuntimeInput(e.Key))
                 {
-                    case Windows.System.VirtualKey.Space:
-                        _commandDispatcher.Execute(AethraCommandIds.BossKey);
-                        MarkPlaybackActivity();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.Right:
-                        SeekRelative(10);
-                        MarkPlaybackActivity();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.Left:
-                        SeekRelative(-10);
-                        MarkPlaybackActivity();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.Up:
-                        AddVolume(5);
-                        MarkPlaybackActivity();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.Down:
-                        AddVolume(-5);
-                        MarkPlaybackActivity();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.F:
-                        ToggleFullscreen();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.S:
-                        ToggleSettingsPanel();
-                        e.Handled = true;
-                        break;
-                    case Windows.System.VirtualKey.Escape:
-                        if (FullSettingsHost.Visibility == Visibility.Visible)
-                        {
-                            FullSettingsHost.Visibility = Visibility.Collapsed;
-                            RefreshPlaybackActivityState();
-                        }
-                        else if (RightDrawerHost.Visibility == Visibility.Visible)
-                        {
-                            CloseRightDrawer();
-                        }
-                        else if (EmbeddedPanelHost.Visibility == Visibility.Visible)
-                        {
-                            EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-                            RefreshPlaybackActivityState();
-                        }
-                        else if (_isFullscreen)
-                        {
-                            ExitFullscreen();
-                        }
-                        e.Handled = true;
-                        break;
+                    MarkPlaybackActivity();
+                    e.Handled = true;
+                    return;
+                }
+
+                if (HandleLegacyKeyDown(e.Key))
+                {
+                    MarkPlaybackActivity();
+                    e.Handled = true;
                 }
             };
 
             this.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
             ApplyTitleBarInsets();
+            ApplyPersistedWindowState();
             EnsureWindowMessageHook();
 
             this.AppWindow.Changed += (s, e) =>
@@ -296,6 +284,7 @@ namespace Aethra
 
                     InitializeNativeGpuPlayer();
                     _visiblePlayerInitialized = true;
+                    TryLoadStartupMedia();
                     return;
                 }
             }
@@ -313,6 +302,7 @@ namespace Aethra
             ApplyVideoSurfaceMode();
             InitializeNativeSoftwarePlayer();
             _visiblePlayerInitialized = true;
+            TryLoadStartupMedia();
         }
 
         private void ApplyVideoSurfaceMode()
@@ -582,40 +572,20 @@ namespace Aethra
                 var vk = (int)wParam;
                 if (vk == 0x46) // F
                 {
-                    DispatcherQueue.TryEnqueue(ToggleFullscreen);
+                    DispatcherQueue.TryEnqueue(() => _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen));
                     return IntPtr.Zero;
                 }
             }
 
             if (msg == WM_KEYDOWN && wParam == (IntPtr)VK_S)
             {
-                DispatcherQueue.TryEnqueue(ToggleSettingsPanel);
+                DispatcherQueue.TryEnqueue(() => _commandDispatcher.Execute(AethraCommandIds.ToggleSettings));
                 return IntPtr.Zero;
             }
 
             if (msg == WM_KEYDOWN && wParam == (IntPtr)VK_ESCAPE)
             {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    if (FullSettingsHost.Visibility == Visibility.Visible)
-                    {
-                        FullSettingsHost.Visibility = Visibility.Collapsed;
-                        RefreshPlaybackActivityState();
-                    }
-                    else if (RightDrawerHost.Visibility == Visibility.Visible)
-                    {
-                        CloseRightDrawer();
-                    }
-                    else if (EmbeddedPanelHost.Visibility == Visibility.Visible)
-                    {
-                        EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-                        RefreshPlaybackActivityState();
-                    }
-                    else if (_isFullscreen)
-                    {
-                        ExitFullscreen();
-                    }
-                });
+                DispatcherQueue.TryEnqueue(() => _commandDispatcher.Execute(AethraCommandIds.ExitOverlayOrFullscreen));
                 return IntPtr.Zero;
             }
 
@@ -1306,6 +1276,7 @@ namespace Aethra
         private void LoadMedia(string path)
         {
             MediaTitleText.Text = GetDisplayMediaName(path);
+            _lastLoadedMediaPath = path;
             ForEachPlayerBackend(player => player.LoadFile(path));
             _isPlaybackPaused = false;
             // mpv resets ab-loop across files; clear our cached state too so the
@@ -2009,6 +1980,245 @@ namespace Aethra
             if (!string.IsNullOrEmpty(pathToLoad))
             {
                 LoadMedia(pathToLoad);
+            }
+        }
+
+        private void InitializeInputRuntime()
+        {
+            var bindings = InputBindingCatalog.CreateDefaults().ToList();
+            var portablePath = ScriptExtensionSettingsStore.PortableConfigPath;
+            if (!string.IsNullOrWhiteSpace(portablePath) && Directory.Exists(portablePath))
+            {
+                try
+                {
+                    var imported = MpvPortableConfigImporter.Import(portablePath);
+                    MpvRuntimeBootstrapSettings.Instance.ApplyImportedConfig(imported);
+                    bindings = imported.InputBindings.ToList();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to import portable config from '{portablePath}'. {ex}");
+                }
+            }
+
+            _inputRuntimeService.LoadBindings(bindings);
+        }
+
+        private bool TryExecuteRuntimeInput(VirtualKey key)
+        {
+            var gesture = new InputGesture(
+                key,
+                IsModifierPressed(VirtualKey.Control),
+                IsModifierPressed(VirtualKey.Shift),
+                IsModifierPressed(VirtualKey.Menu));
+            if (!_inputRuntimeService.TryGetCommand(gesture, out var command))
+                return false;
+
+            return ExecuteInputCommand(command);
+        }
+
+        private static bool IsModifierPressed(VirtualKey key)
+        {
+            var state = InputKeyboardSource.GetKeyStateForCurrentThread(key);
+            return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+        }
+
+        private bool ExecuteInputCommand(string command)
+        {
+            if (string.IsNullOrWhiteSpace(command))
+                return false;
+
+            if (AethraCommandIds.IsAethraCommand(command))
+                return _commandDispatcher.Execute(command);
+
+            var normalized = command.Trim();
+            if (string.Equals(normalized, "cycle pause", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause);
+                return true;
+            }
+
+            if (string.Equals(normalized, "cycle fullscreen", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "set fullscreen yes", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
+                return true;
+            }
+
+            if (string.Equals(normalized, "set fullscreen no", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_isFullscreen)
+                    ExitFullscreen();
+
+                return true;
+            }
+
+            if (normalized.StartsWith("seek ", StringComparison.OrdinalIgnoreCase))
+            {
+                var seekArg = normalized[5..].Trim();
+                var seekParts = seekArg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (seekParts.Length > 0 && double.TryParse(seekParts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
+                {
+                    if (seekParts.Length > 1 && seekParts[1].Equals("absolute-percent", StringComparison.OrdinalIgnoreCase))
+                        SeekToPercent(seconds);
+                    else
+                        SeekRelative(seconds);
+
+                    return true;
+                }
+            }
+
+            if (normalized.StartsWith("add volume ", StringComparison.OrdinalIgnoreCase))
+            {
+                var valueText = normalized["add volume ".Length..].Trim();
+                if (int.TryParse(valueText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount))
+                {
+                    AddVolume(amount);
+                    return true;
+                }
+            }
+
+            if (normalized.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
+            {
+                var setParts = normalized.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+                if (setParts.Length == 3)
+                {
+                    _playbackOptions.ApplyStringProperty(setParts[1], setParts[2]);
+                    return true;
+                }
+            }
+
+            if (normalized.StartsWith("change-list glsl-shaders", StringComparison.OrdinalIgnoreCase))
+            {
+                var shaderValue = normalized.Contains(" clr", StringComparison.OrdinalIgnoreCase)
+                    ? string.Empty
+                    : ExtractQuotedSegment(normalized);
+                _playbackOptions.ApplyCustomShaderChain(shaderValue);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string ExtractQuotedSegment(string command)
+        {
+            var first = command.IndexOf('"');
+            if (first < 0)
+                return string.Empty;
+
+            var second = command.IndexOf('"', first + 1);
+            if (second <= first)
+                return string.Empty;
+
+            return command[(first + 1)..second];
+        }
+
+        private void HandleEscapeCommand()
+        {
+            if (FullSettingsHost.Visibility == Visibility.Visible)
+            {
+                FullSettingsHost.Visibility = Visibility.Collapsed;
+                RefreshPlaybackActivityState();
+                return;
+            }
+
+            if (RightDrawerHost.Visibility == Visibility.Visible)
+            {
+                CloseRightDrawer();
+                return;
+            }
+
+            if (EmbeddedPanelHost.Visibility == Visibility.Visible)
+            {
+                EmbeddedPanelHost.Visibility = Visibility.Collapsed;
+                RefreshPlaybackActivityState();
+                return;
+            }
+
+            if (_isFullscreen)
+                ExitFullscreen();
+        }
+
+        private void ResetLoopPoints()
+        {
+            _loopPointA = null;
+            _loopPointB = null;
+            _playbackOptions.ApplyStringProperty("ab-loop-a", "no");
+            _playbackOptions.ApplyStringProperty("ab-loop-b", "no");
+            UpdateLoopButtonVisuals();
+            RefreshSeekBarFill();
+            UpdateLoopMarkers();
+        }
+
+        private void ApplyPersistedWindowState()
+        {
+            if (_playbackPersistence.WindowX is null
+                || _playbackPersistence.WindowY is null
+                || _playbackPersistence.WindowWidth is null
+                || _playbackPersistence.WindowHeight is null)
+            {
+                return;
+            }
+
+            try
+            {
+                AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(
+                    _playbackPersistence.WindowX.Value,
+                    _playbackPersistence.WindowY.Value,
+                    _playbackPersistence.WindowWidth.Value,
+                    _playbackPersistence.WindowHeight.Value));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to restore window geometry. {ex}");
+            }
+        }
+
+        private void TryLoadStartupMedia()
+        {
+            if (_startupMediaLoaded)
+                return;
+
+            if (string.IsNullOrWhiteSpace(_lastLoadedMediaPath) || !File.Exists(_lastLoadedMediaPath))
+                return;
+
+            _startupMediaLoaded = true;
+            LoadMedia(_lastLoadedMediaPath);
+            if (_playbackPersistence.LastPositionSeconds > 0)
+            {
+                ForEachPlayerBackend(player => player.SeekToTime(_playbackPersistence.LastPositionSeconds));
+            }
+        }
+
+        private bool HandleLegacyKeyDown(VirtualKey key)
+        {
+            switch (key)
+            {
+                case VirtualKey.Space:
+                    return _commandDispatcher.Execute(AethraCommandIds.BossKey);
+                case VirtualKey.Right:
+                    SeekRelative(10);
+                    return true;
+                case VirtualKey.Left:
+                    SeekRelative(-10);
+                    return true;
+                case VirtualKey.Up:
+                    AddVolume(5);
+                    return true;
+                case VirtualKey.Down:
+                    AddVolume(-5);
+                    return true;
+                case VirtualKey.F:
+                    ToggleFullscreen();
+                    return true;
+                case VirtualKey.S:
+                    ToggleSettingsPanel();
+                    return true;
+                case VirtualKey.Escape:
+                    HandleEscapeCommand();
+                    return true;
+                default:
+                    return false;
             }
         }
 

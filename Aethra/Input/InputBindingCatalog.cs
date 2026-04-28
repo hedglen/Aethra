@@ -123,6 +123,14 @@ internal static class InputBindingCatalog
             new InputBindingSetting("Aethra", "SPACE", "aethra:boss-key", "BOSS KEY: pause and minimize", "Native"),
             new InputBindingSetting("Aethra", "S", "aethra:settings", "Open settings", "Native"),
             new InputBindingSetting("Aethra", "F", "aethra:fullscreen", "Toggle window fullscreen/maximize", "Native"),
+            new InputBindingSetting("Aethra", "ESC", "aethra:escape", "Close overlay or exit fullscreen", "Native"),
+            new InputBindingSetting("Aethra", "LEFT", "aethra:seek-back-10", "Seek back 10 seconds", "Native"),
+            new InputBindingSetting("Aethra", "RIGHT", "aethra:seek-forward-30", "Seek forward 30 seconds", "Native"),
+            new InputBindingSetting("Aethra", "UP", "aethra:volume-up-5", "Volume up 5", "Native"),
+            new InputBindingSetting("Aethra", "DOWN", "aethra:volume-down-5", "Volume down 5", "Native"),
+            new InputBindingSetting("Aethra", "CTRL+A", "aethra:ab-loop-mark-a", "Mark A/B loop A point", "Native"),
+            new InputBindingSetting("Aethra", "CTRL+B", "aethra:ab-loop-mark-b", "Mark A/B loop B point", "Native"),
+            new InputBindingSetting("Aethra", "CTRL+R", "aethra:ab-loop-reset", "Reset A/B loop points", "Native"),
             new InputBindingSetting("Aethra", "MBTN_LEFT", "aethra:play-pause", "Video click play/pause", "Native"),
             new InputBindingSetting("Aethra", "MBTN_RIGHT", "aethra:settings-menu", "Open settings flyout", "Native")
         };

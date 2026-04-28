@@ -825,6 +825,19 @@ Active steps:
   - Moved the active roadmap out of this worklog into a dedicated `ROADMAP.md` file.
   - Left a short pointer in the `## Roadmap` section here so this file stays a progress/history log.
   - Updated `COPILOT_INSTRUCTIONS.md` first-steps guidance to use `ROADMAP.md` as the execution-order source.
+- 2026-04-28 implemented MPV portable-config incorporation foundations:
+  - Added `Configuration` import and runtime settings services: `MpvPortableConfigImporter`, `MpvImportedConfig`, `MpvRuntimeBootstrapSettings`, `PlaybackPersistenceStore`, and `ScriptExtensionSettingsStore`.
+  - Added `InputRuntimeService` and expanded `aethra:*` command surface so keyboard handling routes through runtime bindings + command dispatcher instead of hardcoded key switch logic.
+  - Expanded `AethraCommandContext` / dispatcher with settings, fullscreen, play/pause, seek, volume, escape, and A-B loop actions.
+  - Expanded video quality presets (`Reference`, `Cinema`, `Anime`, `LowResBoost`, `NativeClean`) and added shader-chain presets/custom chain support in `PlaybackOptionsService`.
+  - Added Preferences surfaces for:
+    - importing `portable_config` (binds/mpv options/shader+script inventory),
+    - shader preset selection + custom shader chain apply,
+    - script extension enable/folder settings persistence.
+  - Wired native backends to apply bootstrap options at context startup (`load-scripts`, optional scripts folder, selected imported safe options).
+  - Added watch-later-style persistence for last media, last position, volume, and window geometry; `MainWindow` now restores these on startup and saves on close.
+  - Updated default input catalog with native command mappings for escape, seek, volume, and A-B loop hotkeys.
+  - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
 
 ## Roadmap
 

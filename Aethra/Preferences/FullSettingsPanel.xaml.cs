@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using Aethra.Configuration;
 using Aethra.Input;
 using Aethra.Profiles;
 using Aethra.Services;
@@ -15,6 +17,7 @@ public sealed partial class FullSettingsPanel : UserControl
     private readonly List<InputBindingSetting> _inputBindings = new();
     private readonly ObservableCollection<InputBindingSetting> _visibleInputBindings = new();
     private readonly PlaybackOptionsService _playbackOptions = PlaybackOptionsService.Instance;
+    private MpvImportedConfig? _importedConfig;
     private bool _isInitialized;
     private bool _syncingAccentText;
 
@@ -29,6 +32,8 @@ public sealed partial class FullSettingsPanel : UserControl
         _isInitialized = true;
         InitializeInputBindings();
         SyncVideoQualityPresetSelection();
+        SyncShaderPresetSelection();
+        InitializeExtensionControls();
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -105,6 +110,7 @@ public sealed partial class FullSettingsPanel : UserControl
     private void FullSettingsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         AccentColorService.AccentColorChanged -= AccentColorService_AccentColorChanged;
+        PersistExtensionControls();
     }
 
     private void SyncVideoQualityPresetSelection()
@@ -114,8 +120,23 @@ public sealed partial class FullSettingsPanel : UserControl
             VideoQualityPreset.Reference => 0,
             VideoQualityPreset.Cinema => 1,
             VideoQualityPreset.Anime => 2,
+            VideoQualityPreset.LowResBoost => 3,
+            VideoQualityPreset.NativeClean => 4,
             _ => 0
         };
+    }
+
+    private void SyncShaderPresetSelection()
+    {
+        ShaderPresetCombo.SelectedIndex = _playbackOptions.CurrentShaderPreset switch
+        {
+            ShaderChainPreset.None => 0,
+            ShaderChainPreset.Fsrcnnx => 1,
+            ShaderChainPreset.Anime4k => 2,
+            ShaderChainPreset.SsimFsrcnnx => 3,
+            _ => 0
+        };
+        CustomShaderChainBox.Text = _playbackOptions.CurrentCustomShaderChain;
     }
 
     private void SyncAccentText(string hex)
@@ -135,7 +156,11 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         _inputBindings.Clear();
         _inputBindings.AddRange(InputBindingCatalog.CreateDefaults());
+        RefreshInputBindingCategoriesAndList();
+    }
 
+    private void RefreshInputBindingCategoriesAndList()
+    {
         InputCategoryFilter.Items.Clear();
         InputCategoryFilter.Items.Add("All");
 
@@ -242,9 +267,93 @@ public sealed partial class FullSettingsPanel : UserControl
         {
             1 => VideoQualityPreset.Cinema,
             2 => VideoQualityPreset.Anime,
+            3 => VideoQualityPreset.LowResBoost,
+            4 => VideoQualityPreset.NativeClean,
             _ => VideoQualityPreset.Reference
         };
 
         _playbackOptions.ApplyVideoQualityPreset(preset);
+    }
+
+    private void ShaderPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_isInitialized || ShaderStatusText is null)
+            return;
+
+        var preset = ShaderPresetCombo.SelectedIndex switch
+        {
+            1 => ShaderChainPreset.Fsrcnnx,
+            2 => ShaderChainPreset.Anime4k,
+            3 => ShaderChainPreset.SsimFsrcnnx,
+            _ => ShaderChainPreset.None
+        };
+        _playbackOptions.ApplyShaderPreset(preset);
+        ShaderStatusText.Text = $"Applied shader preset: {preset}.";
+    }
+
+    private void ApplyCustomShaderChainButton_Click(object sender, RoutedEventArgs e)
+    {
+        _playbackOptions.ApplyCustomShaderChain(CustomShaderChainBox.Text ?? string.Empty);
+        ShaderStatusText.Text = "Applied custom shader chain.";
+    }
+
+    private void ImportPortableConfigButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = (PortableConfigPathBox.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        {
+            PortableImportStatusText.Text = "Enter a valid portable_config directory path.";
+            return;
+        }
+
+        try
+        {
+            var imported = MpvPortableConfigImporter.Import(path);
+            _importedConfig = imported;
+            MpvRuntimeBootstrapSettings.Instance.ApplyImportedConfig(imported);
+            ScriptExtensionSettingsStore.PortableConfigPath = path;
+
+            _inputBindings.Clear();
+            _inputBindings.AddRange(imported.InputBindings);
+            RefreshInputBindingCategoriesAndList();
+
+            ImportedShaderCountText.Text = $"{imported.ShaderFiles.Count} shader files detected";
+            ImportedScriptCountText.Text = $"{imported.ScriptFiles.Count} script files detected";
+            PortableImportStatusText.Text = $"Imported {imported.InputBindings.Count} bindings and {imported.MpvOptions.Count} mpv options.";
+        }
+        catch (Exception ex)
+        {
+            PortableImportStatusText.Text = $"Import failed: {ex.Message}";
+        }
+    }
+
+    private void InitializeExtensionControls()
+    {
+        PortableConfigPathBox.Text = ScriptExtensionSettingsStore.PortableConfigPath;
+        ScriptsEnabledToggle.IsOn = ScriptExtensionSettingsStore.ScriptsEnabled;
+        ScriptsFolderBox.Text = ScriptExtensionSettingsStore.ScriptsFolder;
+        ImportedShaderCountText.Text = "0 shader files detected";
+        ImportedScriptCountText.Text = "0 script files detected";
+    }
+
+    private void PersistExtensionControls()
+    {
+        ScriptExtensionSettingsStore.PortableConfigPath = PortableConfigPathBox.Text ?? string.Empty;
+        ScriptExtensionSettingsStore.ScriptsEnabled = ScriptsEnabledToggle.IsOn;
+        ScriptExtensionSettingsStore.ScriptsFolder = ScriptsFolderBox.Text ?? string.Empty;
+    }
+
+    private void ScriptsEnabledToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        ScriptExtensionSettingsStore.ScriptsEnabled = ScriptsEnabledToggle.IsOn;
+        ScriptStatusText.Text = ScriptsEnabledToggle.IsOn
+            ? "Lua script loading will be enabled on next playback backend init."
+            : "Lua script loading is disabled.";
+    }
+
+    private void ScriptsFolderApplyButton_Click(object sender, RoutedEventArgs e)
+    {
+        ScriptExtensionSettingsStore.ScriptsFolder = ScriptsFolderBox.Text ?? string.Empty;
+        ScriptStatusText.Text = "Saved scripts folder path.";
     }
 }
