@@ -2,15 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Aethra.Input;
+using Aethra.Profiles;
+using Aethra.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
-namespace Aethra;
+namespace Aethra.Preferences;
 
 public sealed partial class FullSettingsPanel : UserControl
 {
     private readonly List<InputBindingSetting> _inputBindings = new();
     private readonly ObservableCollection<InputBindingSetting> _visibleInputBindings = new();
+    private readonly PlaybackOptionsService _playbackOptions = PlaybackOptionsService.Instance;
     private bool _isInitialized;
     private bool _syncingAccentText;
 
@@ -24,6 +28,7 @@ public sealed partial class FullSettingsPanel : UserControl
         Unloaded += FullSettingsPanel_Unloaded;
         _isInitialized = true;
         InitializeInputBindings();
+        SyncVideoQualityPresetSelection();
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -100,6 +105,17 @@ public sealed partial class FullSettingsPanel : UserControl
     private void FullSettingsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         AccentColorService.AccentColorChanged -= AccentColorService_AccentColorChanged;
+    }
+
+    private void SyncVideoQualityPresetSelection()
+    {
+        VideoQualityPresetCombo.SelectedIndex = _playbackOptions.CurrentVideoQualityPreset switch
+        {
+            VideoQualityPreset.Reference => 0,
+            VideoQualityPreset.Cinema => 1,
+            VideoQualityPreset.Anime => 2,
+            _ => 0
+        };
     }
 
     private void SyncAccentText(string hex)
@@ -218,5 +234,17 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         return !string.IsNullOrEmpty(value)
             && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void VideoQualityPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var preset = VideoQualityPresetCombo.SelectedIndex switch
+        {
+            1 => VideoQualityPreset.Cinema,
+            2 => VideoQualityPreset.Anime,
+            _ => VideoQualityPreset.Reference
+        };
+
+        _playbackOptions.ApplyVideoQualityPreset(preset);
     }
 }

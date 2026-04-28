@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Aethra"
+    xmlns:preferences="using:Aethra.Preferences"
     xmlns:controls="using:Aethra.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -899,7 +900,7 @@
         </Grid>
 
         <Grid x:Name="FullSettingsHost" Visibility="Collapsed">
-            <local:FullSettingsPanel x:Name="FullSettings"
+            <preferences:FullSettingsPanel x:Name="FullSettings"
                                      CloseRequested="FullSettings_CloseRequested"/>
         </Grid>
 

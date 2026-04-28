@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Aethra;
+namespace Aethra.Profiles;
 
 internal sealed record VideoAdjustment(
     string Id,

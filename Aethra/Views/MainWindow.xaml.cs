@@ -1,4 +1,6 @@
 using Aethra.Commands;
+using Aethra.Services;
+using Aethra.Models;
 using Aethra.Native;
 using System;
 using System.Collections.Generic;
@@ -23,14 +25,14 @@ namespace Aethra
     {
         private NativeMpvSoftwarePlayer? _softwarePlayer;
         private NativeMpvOpenGlPlayer? _gpuPlayer;
+        private readonly List<INativeMpvPlayerBackend> _activeBackends = new();
         private D3D11SwapChainPanelHost? _gpuSurfaceSmokeHost;
         private readonly AethraCommandDispatcher _commandDispatcher;
         private readonly SUBCLASSPROC _windowSubclassProc;
         private readonly SUBCLASSPROC _childCursorSubclassProc;
         private readonly HashSet<IntPtr> _hookedCursorChildHwnds = new();
         private readonly Dictionary<IntPtr, IntPtr> _originalClassCursors = new();
-        private readonly Dictionary<string, double> _pendingVideoAdjustments = new(StringComparer.Ordinal);
-        private readonly DispatcherTimer _videoAdjustmentFlushTimer;
+        private readonly VideoAdjustmentBatcher _videoAdjustmentBatcher;
         private readonly DispatcherTimer _cursorHideEnforcementTimer;
         private readonly DispatcherTimer _volumeOsdHideTimer;
         private static readonly TimeSpan VolumeOsdLingerDuration = TimeSpan.FromMilliseconds(1500);
@@ -51,6 +53,7 @@ namespace Aethra
         private bool _wasMaximizedBeforeFullscreen;
         private bool _isCommandRailExpanded;
         private readonly PlaybackActivityController _playbackActivity;
+        private readonly PlaybackOptionsService _playbackOptions;
         // True means playback is paused. Visual surfaces route through
         // PlayPauseVisualFor so the transport button and context menu stay aligned.
         private bool _isPlaybackPaused = true;
@@ -89,12 +92,12 @@ namespace Aethra
         {
             _playbackActivity = new PlaybackActivityController(TimeSpan.FromSeconds(1), CanLetPlaybackChromeIdle);
             _playbackActivity.ModeChanged += PlaybackActivity_ModeChanged;
+            _playbackOptions = PlaybackOptionsService.Instance;
+            _playbackOptions.PropertyApplyRequested += PlaybackOptions_PropertyApplyRequested;
 
-            _videoAdjustmentFlushTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(33)
-            };
-            _videoAdjustmentFlushTimer.Tick += VideoAdjustmentFlushTimer_Tick;
+            _videoAdjustmentBatcher = new VideoAdjustmentBatcher(
+                TimeSpan.FromMilliseconds(33),
+                (property, value) => _playbackOptions.ApplyNumericProperty(property, value));
             _cursorHideEnforcementTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(100)
@@ -123,9 +126,10 @@ namespace Aethra
 
         private void MainWindow_Closed(object sender, WindowEventArgs args)
         {
-            _videoAdjustmentFlushTimer.Stop();
+            _videoAdjustmentBatcher.Dispose();
             _cursorHideEnforcementTimer.Stop();
             _volumeOsdHideTimer.Stop();
+            _playbackOptions.PropertyApplyRequested -= PlaybackOptions_PropertyApplyRequested;
             if (_loopAccentSubscribed)
             {
                 AccentColorService.AccentColorChanged -= OnAccentColorChangedForLoopGradient;
@@ -136,7 +140,9 @@ namespace Aethra
             VideoContainer.SetCursorVisible(true);
             ShowNativeCursorIfHidden();
             _gpuSurfaceSmokeHost?.Dispose();
+            UnregisterPlayerBackend(_gpuPlayer);
             _gpuPlayer?.Dispose();
+            UnregisterPlayerBackend(_softwarePlayer);
             _softwarePlayer?.Dispose();
 
             if (_mainHwnd != IntPtr.Zero)
@@ -298,6 +304,7 @@ namespace Aethra
                 Debug.WriteLine($"GPU renderer startup failed. Falling back to software rendering. {ex}");
                 _gpuSurfaceSmokeHost?.Dispose();
                 _gpuSurfaceSmokeHost = null;
+                UnregisterPlayerBackend(_gpuPlayer);
                 _gpuPlayer?.Dispose();
                 _gpuPlayer = null;
             }
@@ -668,31 +675,12 @@ namespace Aethra
 
         private void VideoAdjustments_AdjustmentChanged(object? sender, VideoAdjustmentChangedEventArgs e)
         {
-            _pendingVideoAdjustments[e.MpvProperty] = e.Value;
-
-            if (!_videoAdjustmentFlushTimer.IsEnabled)
-                _videoAdjustmentFlushTimer.Start();
+            _videoAdjustmentBatcher.Queue(e.MpvProperty, e.Value);
         }
 
-        private void VideoAdjustmentFlushTimer_Tick(object? sender, object e)
+        private void PlaybackOptions_PropertyApplyRequested(object? sender, PlaybackPropertyApplyEventArgs e)
         {
-            if (_pendingVideoAdjustments.Count == 0)
-            {
-                _videoAdjustmentFlushTimer.Stop();
-                return;
-            }
-
-            var adjustments = _pendingVideoAdjustments.ToArray();
-            _pendingVideoAdjustments.Clear();
-
-            foreach (var adjustment in adjustments)
-                ApplyVideoAdjustment(adjustment.Key, adjustment.Value);
-        }
-
-        private void ApplyVideoAdjustment(string mpvProperty, double value)
-        {
-            _gpuPlayer?.SetProperty(mpvProperty, value);
-            _softwarePlayer?.SetProperty(mpvProperty, value);
+            ForEachPlayerBackend(player => player.SetProperty(e.PropertyName, e.PropertyValue));
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)
@@ -774,6 +762,7 @@ namespace Aethra
             _softwarePlayer.ProgressChanged += Player_ProgressChanged;
             _softwarePlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
             _softwarePlayer.ChaptersChanged += Player_ChaptersChanged;
+            RegisterPlayerBackend(_softwarePlayer);
         }
 
         private void InitializeNativeGpuPlayer()
@@ -783,6 +772,7 @@ namespace Aethra
             _gpuPlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
             _gpuPlayer.ChaptersChanged += Player_ChaptersChanged;
             GpuVideoSurface.SizeChanged += GpuVideoSurface_SizeChanged;
+            RegisterPlayerBackend(_gpuPlayer);
         }
 
         private void GpuPlayer_Failed(Exception ex)
@@ -790,6 +780,7 @@ namespace Aethra
             Debug.WriteLine($"GPU renderer task failed. Falling back to software rendering. {ex}");
 
             GpuVideoSurface.SizeChanged -= GpuVideoSurface_SizeChanged;
+            UnregisterPlayerBackend(_gpuPlayer);
             _gpuPlayer?.Dispose();
             _gpuPlayer = null;
 
@@ -979,8 +970,7 @@ namespace Aethra
         {
             _isPlaybackPaused = !_isPlaybackPaused;
             ClosePlayerShellCommandSurfacesForActivePlayback();
-            _gpuPlayer?.TogglePause();
-            _softwarePlayer?.TogglePause();
+            ForEachPlayerBackend(player => player.TogglePause());
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
         }
@@ -988,22 +978,19 @@ namespace Aethra
         private void PausePlayback()
         {
             _isPlaybackPaused = true;
-            _gpuPlayer?.Pause();
-            _softwarePlayer?.Pause();
+            ForEachPlayerBackend(player => player.Pause());
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
         }
 
         private void SeekRelative(double seconds)
         {
-            _gpuPlayer?.Seek(seconds);
-            _softwarePlayer?.Seek(seconds);
+            ForEachPlayerBackend(player => player.Seek(seconds));
         }
 
         private void SeekToPercent(double percent)
         {
-            _gpuPlayer?.SeekToPercent(percent);
-            _softwarePlayer?.SeekToPercent(percent);
+            ForEachPlayerBackend(player => player.SeekToPercent(percent));
         }
 
         private void AddVolume(int amount)
@@ -1017,8 +1004,7 @@ namespace Aethra
         {
             var clamped = Math.Clamp(value, 0.0, 100.0);
             _currentVolume = clamped;
-            _gpuPlayer?.SetVolume(clamped);
-            _softwarePlayer?.SetVolume(clamped);
+            ForEachPlayerBackend(player => player.SetVolume(clamped));
         }
 
         private void UpdateVolumeUi()
@@ -1099,14 +1085,12 @@ namespace Aethra
             {
                 _loopPointA = null;
                 // mpv accepts the literal "no" to clear an ab-loop point.
-                _gpuPlayer?.SetProperty("ab-loop-a", "no");
-                _softwarePlayer?.SetProperty("ab-loop-a", "no");
+                _playbackOptions.ApplyStringProperty("ab-loop-a", "no");
             }
             else
             {
                 _loopPointA = _currentPlaybackPosition;
-                _gpuPlayer?.SetProperty("ab-loop-a", _currentPlaybackPosition);
-                _softwarePlayer?.SetProperty("ab-loop-a", _currentPlaybackPosition);
+                _playbackOptions.ApplyNumericProperty("ab-loop-a", _currentPlaybackPosition);
             }
 
             UpdateLoopButtonVisuals();
@@ -1119,21 +1103,18 @@ namespace Aethra
             if (_loopPointB.HasValue)
             {
                 _loopPointB = null;
-                _gpuPlayer?.SetProperty("ab-loop-b", "no");
-                _softwarePlayer?.SetProperty("ab-loop-b", "no");
+                _playbackOptions.ApplyStringProperty("ab-loop-b", "no");
             }
             else
             {
                 _loopPointB = _currentPlaybackPosition;
-                _gpuPlayer?.SetProperty("ab-loop-b", _currentPlaybackPosition);
-                _softwarePlayer?.SetProperty("ab-loop-b", _currentPlaybackPosition);
+                _playbackOptions.ApplyNumericProperty("ab-loop-b", _currentPlaybackPosition);
 
                 // Setting B activates the loop, so jump back to A immediately for
                 // instant feedback. If A wasn't set, the loop start is the file
                 // beginning — jump to 0.
                 var seekTarget = _loopPointA ?? 0.0;
-                _gpuPlayer?.SeekToTime(seekTarget);
-                _softwarePlayer?.SeekToTime(seekTarget);
+                ForEachPlayerBackend(player => player.SeekToTime(seekTarget));
             }
 
             UpdateLoopButtonVisuals();
@@ -1325,8 +1306,7 @@ namespace Aethra
         private void LoadMedia(string path)
         {
             MediaTitleText.Text = GetDisplayMediaName(path);
-            _gpuPlayer?.LoadFile(path);
-            _softwarePlayer?.LoadFile(path);
+            ForEachPlayerBackend(player => player.LoadFile(path));
             _isPlaybackPaused = false;
             // mpv resets ab-loop across files; clear our cached state too so the
             // A/B button colors don't claim a point is set against the new file.
@@ -1805,8 +1785,7 @@ namespace Aethra
                 if (e.NewValue > bPercent)
                 {
                     var aTarget = _loopPointA ?? 0.0;
-                    _gpuPlayer?.SeekToTime(aTarget);
-                    _softwarePlayer?.SeekToTime(aTarget);
+                    ForEachPlayerBackend(player => player.SeekToTime(aTarget));
 
                     // Snap the slider Value visually to A immediately so the thumb
                     // doesn't briefly display past B before mpv's progress event
@@ -2031,6 +2010,28 @@ namespace Aethra
             {
                 LoadMedia(pathToLoad);
             }
+        }
+
+        private void RegisterPlayerBackend(INativeMpvPlayerBackend player)
+        {
+            if (_activeBackends.Contains(player))
+                return;
+
+            _activeBackends.Add(player);
+        }
+
+        private void UnregisterPlayerBackend(INativeMpvPlayerBackend? player)
+        {
+            if (player is null)
+                return;
+
+            _activeBackends.Remove(player);
+        }
+
+        private void ForEachPlayerBackend(Action<INativeMpvPlayerBackend> action)
+        {
+            foreach (var player in _activeBackends)
+                action(player);
         }
     }
 }

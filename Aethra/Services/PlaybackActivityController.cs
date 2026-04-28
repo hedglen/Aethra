@@ -2,7 +2,7 @@ using System;
 using Microsoft.UI.Xaml;
 using Windows.Foundation;
 
-namespace Aethra;
+namespace Aethra.Services;
 
 internal enum PlaybackActivityMode
 {

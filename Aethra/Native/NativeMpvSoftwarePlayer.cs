@@ -1,4 +1,4 @@
-using Aethra.Native;
+using Aethra.Models;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
@@ -11,9 +11,9 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Aethra;
+namespace Aethra.Native;
 
-internal sealed class NativeMpvSoftwarePlayer : IDisposable
+internal sealed class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
 {
     private const int FrameWidth = 640;
     private const int FrameHeight = 360;
@@ -38,45 +38,45 @@ internal sealed class NativeMpvSoftwarePlayer : IDisposable
         _playerTask = Task.Run(() => RunAsync(_cancellationTokenSource.Token));
     }
 
-    internal event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
-    internal event EventHandler<bool>? PlaybackPausedChanged;
-    internal event EventHandler<IReadOnlyList<MpvChapter>>? ChaptersChanged;
+    public event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
+    public event EventHandler<bool>? PlaybackPausedChanged;
+    public event EventHandler<IReadOnlyList<MpvChapter>>? ChaptersChanged;
 
-    internal void LoadFile(string path)
+    public void LoadFile(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         EnqueueCommand("loadfile", path, "replace");
     }
 
-    internal void TogglePause()
+    public void TogglePause()
     {
         EnqueueCommand("cycle", "pause");
     }
 
-    internal void Pause()
+    public void Pause()
     {
         EnqueueCommand("set", "pause", "yes");
     }
 
-    internal void SetProperty(string name, double value)
+    public void SetProperty(string name, double value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         EnqueueCommand("set", name, value.ToString(CultureInfo.InvariantCulture));
     }
 
-    internal void SetProperty(string name, string value)
+    public void SetProperty(string name, string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(value);
         EnqueueCommand("set", name, value);
     }
 
-    internal void Seek(double seconds)
+    public void Seek(double seconds)
     {
         EnqueueCommand("seek", seconds.ToString(CultureInfo.InvariantCulture));
     }
 
-    internal void SeekToTime(double seconds)
+    public void SeekToTime(double seconds)
     {
         if (double.IsNaN(seconds) || double.IsInfinity(seconds))
             return;
@@ -85,7 +85,7 @@ internal sealed class NativeMpvSoftwarePlayer : IDisposable
         EnqueueCommand("seek", clamped.ToString(CultureInfo.InvariantCulture), "absolute");
     }
 
-    internal void SeekToPercent(double percent)
+    public void SeekToPercent(double percent)
     {
         if (double.IsNaN(percent) || double.IsInfinity(percent))
             return;
@@ -94,12 +94,7 @@ internal sealed class NativeMpvSoftwarePlayer : IDisposable
         EnqueueCommand("seek", clamped.ToString(CultureInfo.InvariantCulture), "absolute-percent");
     }
 
-    internal void AddVolume(int amount)
-    {
-        EnqueueCommand("add", "volume", amount.ToString(CultureInfo.InvariantCulture));
-    }
-
-    internal void SetVolume(double value)
+    public void SetVolume(double value)
     {
         if (double.IsNaN(value) || double.IsInfinity(value))
             return;
@@ -148,7 +143,6 @@ internal sealed class NativeMpvSoftwarePlayer : IDisposable
 
             renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
             renderer.Create();
-            EnqueueCommand("loadfile", @"C:\Users\rjh\Videos\test.mp4", "replace");
 
             Action<MpvNative.MpvEvent> eventHandler = mpvEvent => HandleMpvEvent(context, mpvEvent);
             while (!cancellationToken.IsCancellationRequested)

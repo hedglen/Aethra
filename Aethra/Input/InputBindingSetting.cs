@@ -1,4 +1,4 @@
-namespace Aethra;
+namespace Aethra.Input;
 
 public sealed class InputBindingSetting
 {

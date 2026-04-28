@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Aethra;
+namespace Aethra.Input;
 
 internal static class InputBindingCatalog
 {

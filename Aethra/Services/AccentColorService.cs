@@ -6,7 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Storage;
 using Windows.UI;
 
-namespace Aethra;
+namespace Aethra.Services;
 
 public sealed class AccentColorChangedEventArgs(string hex, Color color) : EventArgs
 {

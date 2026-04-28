@@ -6,7 +6,7 @@ Start here before making changes.
 
 1. Read `COPILOT_WORKLOG.md`.
 2. Confirm the current focus, completed work, and next items from the worklog.
-3. Use the `Roadmap` section in `COPILOT_WORKLOG.md` as the current execution order unless the user explicitly redirects.
+3. Use `ROADMAP.md` as the current execution order unless the user explicitly redirects.
 4. Plan the requested change as a numbered list before editing files.
 5. Make one small step only.
 6. Run `dotnet build .\Aethra.slnx -p:Platform=x64`.

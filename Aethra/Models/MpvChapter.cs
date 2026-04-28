@@ -1,4 +1,4 @@
-namespace Aethra;
+namespace Aethra.Models;
 
 /// <summary>
 /// A single chapter as reported by mpv via chapter-list/N/{time,title}.
