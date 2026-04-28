@@ -2,6 +2,8 @@
 
 Purpose: keep short handoff context for future Copilot/Codex sessions so work can continue without rediscovering the current state.
 
+Historical entries below capture decisions at the time they were made; when they differ from current policy, follow `COPILOT_INSTRUCTIONS.md` and the latest "guidance alignment" entry.
+
 ## Project Ground Rules
 
 - Native Windows 11 media player.
@@ -12,7 +14,7 @@ Purpose: keep short handoff context for future Copilot/Codex sessions so work ca
 - MVVM with CommunityToolkit.Mvvm when view models are introduced.
 - Plan before edits, take one small step at a time, run `dotnet build` after each step, and stop for review.
 - Do not add dependencies or broad refactors without a concrete request. Repo-readiness scaffolding (README, LICENSE, CONTRIBUTING, CI, CHANGELOG, etc.) is now in scope per `COPILOT_INSTRUCTIONS.md` and may be added in small reviewed steps.
-- Repo license: GPL-3.0-or-later. This unlocks GPL-licensed mpv/FFmpeg builds for broader codec/filter coverage.
+- Repo license: MIT.
 - Open-source distribution rule: Aethra is free and published on GitHub; prioritize the best native playback/GPU renderer while keeping third-party notices, source links, and build provenance current. No telemetry, analytics, or remote logging.
 - Product vocabulary: use Preferences for persistent app behavior, Adjustments for immediate playback tweaks, Controls for input bindings, Customization for appearance, Advanced for expert/raw options, and avoid Control Panel.
 
@@ -26,7 +28,7 @@ Visual direction: start from the clean, quiet, native feel of the modern Windows
 
 ## Current Plan: Best GPU Renderer Path
 
-Course correction as of 2026-04-25: Aethra will be free and published on GitHub. Stop optimizing around future proprietary/commercial LGPL-only distribution. Keep the repo license-compatible and notices clean, but choose the best native playback and GPU rendering stack available.
+Course correction as of 2026-04-25: Aethra will be free and published on GitHub. Stop optimizing around future proprietary/commercial LGPL-only distribution. Keep redistribution obligations and notices clean, but choose the best native playback and GPU rendering stack available.
 
 Renderer decision:
 
@@ -34,13 +36,13 @@ Renderer decision:
 - Prefer mpv + libplacebo GPU rendering for quality, shaders, scaling, HDR/tone-mapping paths, and long-term configurability.
 - The current source-built runtime exposes mpv OpenGL rendering and does not expose mpv's D3D11 render API. Offscreen mpv OpenGL rendering through ANGLE already works on this machine.
 - Continue the visible renderer path through OpenGL via ANGLE unless a source rebuild proves a better WinUI-compatible GPU path.
-- GPL-compatible native features are allowed if they materially improve playback/rendering, provided Aethra's repository license remains compatible. Do not use FFmpeg `--enable-nonfree` or opaque binaries without a separate explicit decision.
+- Native dependency choices should prioritize playback quality and maintainability while keeping redistribution obligations explicit. Do not use FFmpeg `--enable-nonfree` or opaque binaries without a separate explicit decision.
 - Keep the current software renderer as a fallback until the visible GPU path is proven.
 
 Active steps:
 
 1. Keep the current working app path intact while the GPU renderer is built beside it.
-2. Re-evaluate the native runtime with the new open-source target: decide whether to rebuild mpv/FFmpeg/libplacebo with fuller GPU/playback features now that GPL-compatible dependencies are allowed.
+2. Re-evaluate the native runtime with the open-source target: decide whether to rebuild mpv/FFmpeg/libplacebo with fuller GPU/playback features while maintaining clear redistribution obligations.
 3. Finish the visible OpenGL/ANGLE-to-WinUI bridge so mpv-rendered frames appear in `GpuVideoSurface`.
 4. Switch playback to the GPU path behind a single local flag and verify seek, left-click play/pause, keyboard shortcuts, drag/drop, preferences, resize, and fullscreen.
 5. Remove wrapper-era and software-only fallback code only after one reviewed GPU playback cycle.
@@ -838,6 +840,12 @@ Active steps:
   - Added watch-later-style persistence for last media, last position, volume, and window geometry; `MainWindow` now restores these on startup and saves on close.
   - Updated default input catalog with native command mappings for escape, seek, volume, and A-B loop hotkeys.
   - Verified `dotnet build .\Aethra.slnx -p:Platform=x64` passes with zero warnings and zero errors.
+- 2026-04-28 guidance alignment pass:
+  - Updated `COPILOT_INSTRUCTIONS.md` to align with current repo truth: MIT licensing, x64-first support, unpackaged-first with optional MSIX-capable packaging, and build/manual smoke testing without a missing `TempMpv` project requirement.
+  - Updated `ROADMAP.md` to remove stale repo-bootstrap items and to align runtime/legal language with the MIT baseline and current CI reality.
+  - Updated `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` top-level distribution guidance so it no longer implies GPL as the default repo posture.
+  - Updated contributor-facing docs (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`) to tighten architecture/process guidance and remove mismatches.
+  - Updated `Aethra.csproj` and `Aethra.slnx` to reflect x64-first platform declarations in the project/solution matrix.
 
 ## Roadmap
 

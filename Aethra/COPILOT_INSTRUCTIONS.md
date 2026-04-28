@@ -1,4 +1,4 @@
-1# Aethra Copilot Instructions
+# Aethra Copilot Instructions
 
 Start here before making changes.
 
@@ -16,18 +16,18 @@ Start here before making changes.
 
 ## Product Direction
 
-Aethra is a ground-up native Windows 11 media player: bright media, pure playback, and clarity in every frame. It should feel clean, modern, comprehensive, and intuitive without carrying over architecture from existing players. It is published as free, open-source software on GitHub under GPL-3.0-or-later, and aims for the highest practical quality on local files, network streams, and online video — comparable to or better than other mpv-based players on Windows, with the polish of a first-party Windows app.
+Aethra is a ground-up native Windows 11 media player: bright media, pure playback, and clarity in every frame. It should feel clean, modern, comprehensive, and intuitive without carrying over architecture from existing players. It is published as free, open-source software on GitHub under the MIT License, and aims for the highest practical quality on local files, network streams, and online video - comparable to or better than other mpv-based players on Windows, with the polish of a first-party Windows app.
 
 Core principles: free, easy, and the best of everything. C# runs only the UI and orchestration; all heavy media work happens in native libraries, so feature breadth does not trade off against UI snappiness.
 
 ## Project Rules
 
 - Language: C#.
-- Target framework: .NET 10 (latest stable). The csproj should target `net10.0-windows10.0.19041.0`; the existing `net8.0-...` target is a leftover and should be migrated in a reviewed step.
+- Target framework: .NET 10 (latest stable). The csproj should target `net10.0-windows10.0.19041.0`.
 - UI: WinUI 3 with the latest stable Windows App SDK.
-- App model: unpackaged.
-- Target: Windows-only, x64 first.
-- Repo license: GPL-3.0-or-later.
+- App model: unpackaged-first, with optional MSIX-capable packaging when needed.
+- Target: Windows-only, x64 first. Treat x86/ARM64 as future roadmap work until the native runtime and loader explicitly support them.
+- Repo license: MIT.
 - Do not use WPF, WinForms, UWP, MAUI, Electron, or web views for the player UI.
 - Do not add NuGet packages or native dependencies without explicit approval; the open-source distribution rules below describe what's allowed.
 - Do not refactor unrelated code in the same step.
@@ -95,14 +95,15 @@ Out of scope unless explicitly requested: DRM-protected streaming services (Netf
 
 ## Open Source Distribution
 
-- Aethra is free software, distributed on GitHub under GPL-3.0-or-later.
-- GPL-licensed native dependencies are allowed and encouraged when they materially improve playback, rendering, codec support, or shader support. Build mpv with `-Dgpl=true` and FFmpeg with `--enable-gpl` to maximize codec/filter coverage.
+- Aethra is free software, distributed on GitHub under the MIT License.
+- Choose native dependencies based on playback quality and maintainability, while keeping redistribution obligations clear and documented.
 - Do not use FFmpeg `--enable-nonfree`, opaque third-party redistributables, or native binaries with unclear provenance without explicit owner approval.
 - Build or source libmpv/mpv, FFmpeg, libplacebo, libass, libdvdnav, libbluray, ANGLE, and related native binaries from official or well-known reproducible sources.
 - Prefer the highest-quality mpv render API path available for WinUI: mpv + libplacebo GPU rendering, currently proven through OpenGL via ANGLE on this machine.
 - Keep native media/rendering libraries as separate DLLs and preserve their original names.
 - Preserve license text, source links, exact versions/commits, configure/build commands, and notices for all redistributed native binaries.
 - For ANGLE, include the matching license/notice text with the binaries.
+- If a distribution build includes copyleft components, document the resulting distribution obligations and update public release notes accordingly.
 - Update `ThirdPartyNotices\THIRD_PARTY_NOTICES.md` whenever a native dependency binary is added, replaced, or removed.
 - No telemetry, analytics, or remote logging of any kind. The app must be auditable and run fully offline.
 
@@ -164,8 +165,8 @@ The mental model is: Preferences are persistent app behavior, Adjustments are im
 
 ## Testing
 
-- The `TempMpv` console project is the smoke harness for the native backend. Add a smoke case there when adding any new native interop or render path before wiring it into the UI.
-- Smoke run: `dotnet run --project .\TempMpv\TempMpv.csproj -p:Platform=x64`.
+- Run `dotnet build .\Aethra.slnx -p:Platform=x64` for every reviewed step.
+- Run a manual playback smoke pass after input, playback, renderer, or persistence changes (open file, play/pause, seek, volume, fullscreen, Preferences open/close).
 - Unit tests (xUnit) are welcome when a piece of logic is non-trivial and managed-only. Don't add a test project just to have one.
 
 ## Repository Layout (GitHub-ready)
@@ -173,12 +174,12 @@ The mental model is: Preferences are persistent app behavior, Adjustments are im
 The "no broad scaffolding" moratorium is lifted now that Aethra targets a public GitHub release. The following may be added in small reviewed steps:
 
 - `README.md` (project overview, screenshots, install, build).
-- `LICENSE` (GPL-3.0-or-later text).
+- `LICENSE` (MIT text).
 - `CONTRIBUTING.md`.
 - `CODE_OF_CONDUCT.md`.
 - `SECURITY.md`.
-- `.github/ISSUE_TEMPLATE/` and `.github/PULL_REQUEST_TEMPLATE.md`.
-- `.github/workflows/` for CI: build, smoke, and release artifact packaging.
+- `.github/PULL_REQUEST_TEMPLATE.md` (and issue templates if/when added).
+- `.github/workflows/` for CI: build now, with smoke/release automation added in reviewed steps.
 - `CHANGELOG.md` (Keep a Changelog format; releases follow SemVer).
 - `ThirdPartyNotices/THIRD_PARTY_NOTICES.md` (already present).
 
@@ -190,12 +191,6 @@ Run from the solution folder:
 
 ```powershell
 dotnet build .\Aethra.slnx -p:Platform=x64
-```
-
-Native smoke harness:
-
-```powershell
-dotnet run --project .\TempMpv\TempMpv.csproj -p:Platform=x64
 ```
 
 ## Worklog Requirement

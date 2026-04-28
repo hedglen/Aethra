@@ -10,7 +10,7 @@ Built with WinUI 3 + C#.
 
 ## Status
 
-Active Windows-first development. The app currently targets x64 and uses a native libmpv backend with a WinUI shell.
+Active Windows-first development. The app currently targets x64-first and uses a native libmpv backend with a WinUI shell. Packaging is unpackaged-first, with MSIX-capable tooling kept optional.
 
 ## Build
 
@@ -29,10 +29,24 @@ Launch from Visual Studio/Visual Studio Code, or run the built executable from:
 ## Architecture
 
 - App UI and shell: `Aethra/Views`
+- Preferences surfaces: `Aethra/Preferences`
 - Native playback interop: `Aethra/Native`
 - Commands: `Aethra/Commands`
-- Domain models and services: `Aethra/Models`, `Aethra/Services`
+- Input runtime and bindings: `Aethra/Input`
+- Configuration and persistence: `Aethra/Configuration`
+- Profiles and domain types: `Aethra/Profiles`, `Aethra/Models`
+- Core app services: `Aethra/Services`
 - Runtime native binaries: `Aethra/NativeRuntime/x64`
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE).
+
+## Planning and Direction
+
+- Active roadmap: `Aethra/ROADMAP.md`
+- Architectural guidance for agent-driven changes: `Aethra/COPILOT_INSTRUCTIONS.md`
+- Historical implementation log: `Aethra/COPILOT_WORKLOG.md`
 
 ## Contributing
 

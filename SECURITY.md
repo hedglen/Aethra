@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you discover a security issue, please open a private security advisory on GitHub for this repository.
+If you discover a security issue, open a private GitHub Security Advisory for this repository. Do not open a public issue first.
 
 Include:
 - Affected version/commit
@@ -14,6 +14,7 @@ Include:
 
 - Initial triage: within 7 days
 - Remediation plan or mitigation guidance: as soon as practical based on severity
+- Coordinated disclosure timing: agreed in the advisory thread before public disclosure
 
 ## Scope notes
 

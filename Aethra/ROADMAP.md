@@ -65,7 +65,7 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 - Complete the visible `SwapChainPanel` GPU presentation path as the default renderer path, with software kept as a fallback only.
 - Keep software fallback for now, but stop broadening it unless needed for diagnostics or recovery.
 - Keep native runtime resolution fully rooted in `NativeRuntime\x64`; do not reintroduce root-level prototype native binaries.
-- Rebuild the native media bundle for the free/GPL GitHub direction: mpv `-Dgpl=true`, FFmpeg `--enable-gpl`, Lua enabled, shader/script support enabled, and notices updated.
+- Rebuild and document the native media bundle for the MIT-licensed GitHub direction: prioritize reproducible, high-quality playback builds with clear third-party notices and release obligations.
 - Validate true fullscreen, resize, snap, drag/drop reload, seek, long playback, and no `GPU renderer task failed` lines.
 
 ## 8. Windows integration and persistence
@@ -78,5 +78,7 @@ The GPU path is proven under core use, BOSS KEY feels instant, and the next phas
 
 ## 9. Repo readiness
 
-- Add README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CI, and release packaging in small reviewed steps.
+- Keep README/CONTRIBUTING/SECURITY/CODE_OF_CONDUCT/CHANGELOG current as architecture and process evolve.
+- Add issue templates when triage volume warrants them; keep PR templates and CI in sync with current workflow.
+- Expand CI from build-only toward smoke/release automation in reviewed increments.
 - Keep `ThirdPartyNotices/THIRD_PARTY_NOTICES.md` current whenever native binaries change.

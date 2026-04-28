@@ -5,8 +5,8 @@ This file tracks native dependencies that may ship with Aethra. Keep it current 
 ## Open Source Distribution Rules
 
 - Aethra is intended to be free and published on GitHub.
-- Prioritize best playback and GPU renderer quality over proprietary/commercial LGPL-only constraints.
-- GPL-compatible dependencies are allowed when Aethra's repository license and redistribution notices remain compatible.
+- Aethra is MIT-licensed at the repository level; keep all redistribution obligations explicit in release notes and notices.
+- Prioritize best playback and GPU renderer quality over proprietary/commercial constraints, while maintaining clean provenance and compliance.
 - Do not ship FFmpeg `--enable-nonfree`, opaque binaries, or binaries with unclear provenance without an explicit owner decision.
 - Keep native media/rendering libraries as separate DLLs.
 - Preserve license text, notices, source links, exact versions/commits, and build provenance for redistributed native binaries.
@@ -14,7 +14,7 @@ This file tracks native dependencies that may ship with Aethra. Keep it current 
 
 ## Course Correction - Free GitHub Distribution
 
-The earlier LGPL-clean source-build work below is retained as useful provenance and as a working runtime baseline, but it is no longer the product constraint. Future native-runtime work should choose the best open-source mpv/libplacebo/FFmpeg/ANGLE renderer stack for playback quality, shader support, HDR/tone mapping, and configurability.
+The earlier LGPL-clean source-build work below is retained as useful provenance and as a working runtime baseline, but it is no longer the only product constraint. Future native-runtime work should choose the best open-source mpv/libplacebo/FFmpeg/ANGLE renderer stack for playback quality, shader support, HDR/tone mapping, and configurability, then document the resulting redistribution obligations.
 
 Current renderer evidence:
 
@@ -25,7 +25,7 @@ Current renderer evidence:
 
 Next native-binary decision:
 
-- Decide whether to rebuild the runtime with fuller GPL-compatible mpv/FFmpeg/libplacebo features before finishing the visible GPU bridge.
+- Decide whether to rebuild the runtime with fuller mpv/FFmpeg/libplacebo features before finishing the visible GPU bridge.
 - Continue to avoid FFmpeg `--enable-nonfree` unless the owner explicitly chooses that licensing posture.
 - Keep this file updated with every binary copied into `NativeRuntime\x64`.
 
