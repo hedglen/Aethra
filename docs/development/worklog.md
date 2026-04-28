@@ -852,6 +852,23 @@ Active steps:
   - Reframed roadmap into dependency-ordered phases with explicit goal, in-scope, out-of-scope, dependencies, and exit criteria for each phase.
   - Locked roadmap language to current repo posture: MIT, x64-first, unpackaged-first with optional MSIX-capable packaging.
   - Added explicit non-v1 deferrals and operating rules to reduce scope drift while preserving hot-path/native architecture constraints.
+- 2026-04-28 completed Phase 2 command/input architecture pass:
+  - Expanded native command ownership in `Commands/` to include mute, media open/recent actions, playlist/tools/help/favorites panel actions, adjustments drawer toggle, and command rail toggle, then wired these through `AethraCommandContext` + `AethraCommandDispatcher`.
+  - Routed context menu actions through the dispatcher so keyboard, context menu, and command-rail interactions converge on the same `aethra:*` command path.
+  - Reworked `InputRuntimeService` into a unified keyboard+mouse gesture runtime with normalized in-memory gesture keys (`VirtualKey`, `MBTN_*`, `WHEEL_*`) and alias-aware parsing for imported gestures.
+  - Added pointer-button and mouse-wheel runtime dispatch in `MainWindow` (including modifier-aware mouse gestures) while preserving existing drag and fallback behavior.
+  - Implemented native binding persistence via new `Configuration/InputBindingSettingsStore` (JSON in local app data), plus `input.conf` export support.
+  - Upgraded Preferences > Input controls UX:
+    - capture-next-input on gesture fields for keyboard/mouse/wheel,
+    - per-binding clear action,
+    - conflict summary and save-status messaging,
+    - explicit Save bindings and Export input.conf actions,
+    - runtime sync via `FullSettingsPanel.InputBindingsChanged`.
+  - Validation:
+    - `dotnet build Aethra.slnx` passes with zero warnings and zero errors after this phase.
+    - Command-routing smoke was validated through static wiring checks and compile-time integration; full interactive playback smoke (open/play/pause/seek/volume/fullscreen/preferences) still needs one manual in-app pass on a local desktop session.
+  - Remaining gap for next pass:
+    - add command-coverage telemetry or a focused integration smoke harness so dispatcher routing regressions are automatically caught before manual QA.
 
 ## Roadmap
 

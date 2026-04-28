@@ -38,6 +38,9 @@ internal sealed class AethraCommandDispatcher
             case AethraCommandIds.VolumeDown5:
                 _context.VolumeDown5();
                 return true;
+            case AethraCommandIds.ToggleMute:
+                _context.ToggleMute();
+                return true;
             case AethraCommandIds.ExitOverlayOrFullscreen:
                 _context.EscapeAction();
                 return true;
@@ -49,6 +52,33 @@ internal sealed class AethraCommandDispatcher
                 return true;
             case AethraCommandIds.ResetLoop:
                 _context.ResetLoop();
+                return true;
+            case AethraCommandIds.OpenFile:
+                _context.OpenFile();
+                return true;
+            case AethraCommandIds.OpenFolder:
+                _context.OpenFolder();
+                return true;
+            case AethraCommandIds.OpenRecent:
+                _context.OpenRecent();
+                return true;
+            case AethraCommandIds.ShowPlaylist:
+                _context.ShowPlaylist();
+                return true;
+            case AethraCommandIds.ShowTools:
+                _context.ShowTools();
+                return true;
+            case AethraCommandIds.ShowHelp:
+                _context.ShowHelp();
+                return true;
+            case AethraCommandIds.ShowFavorites:
+                _context.ShowFavorites();
+                return true;
+            case AethraCommandIds.ToggleAdjustments:
+                _context.ToggleAdjustments();
+                return true;
+            case AethraCommandIds.ToggleCommandRail:
+                _context.ToggleCommandRail();
                 return true;
             default:
                 return false;

@@ -120,7 +120,8 @@ internal static class InputBindingCatalog
             new InputBindingSetting("Scimitar", "KP_DEC / KP_DEL", "cycle-values loop-file \"inf\" \"no\" ; show-text \"Loop: ${loop-file}\"", "Button 11: loop toggle", "Imported"),
             new InputBindingSetting("Scimitar", "KP_SUBTRACT", "aethra:ab-loop-mark-b", "Button 12: A-B mark B", "Native planned"),
 
-            new InputBindingSetting("Aethra", "SPACE", "aethra:boss-key", "BOSS KEY: pause and minimize", "Native"),
+            new InputBindingSetting("Aethra", "SPACE", "aethra:play-pause", "Play/pause", "Native"),
+            new InputBindingSetting("Aethra", "CTRL+SPACE", "aethra:boss-key", "BOSS KEY: pause and minimize", "Native"),
             new InputBindingSetting("Aethra", "S", "aethra:settings", "Open settings", "Native"),
             new InputBindingSetting("Aethra", "F", "aethra:fullscreen", "Toggle window fullscreen/maximize", "Native"),
             new InputBindingSetting("Aethra", "ESC", "aethra:escape", "Close overlay or exit fullscreen", "Native"),
@@ -128,11 +129,17 @@ internal static class InputBindingCatalog
             new InputBindingSetting("Aethra", "RIGHT", "aethra:seek-forward-30", "Seek forward 30 seconds", "Native"),
             new InputBindingSetting("Aethra", "UP", "aethra:volume-up-5", "Volume up 5", "Native"),
             new InputBindingSetting("Aethra", "DOWN", "aethra:volume-down-5", "Volume down 5", "Native"),
+            new InputBindingSetting("Aethra", "M", "aethra:mute", "Toggle mute", "Native"),
             new InputBindingSetting("Aethra", "CTRL+A", "aethra:ab-loop-mark-a", "Mark A/B loop A point", "Native"),
             new InputBindingSetting("Aethra", "CTRL+B", "aethra:ab-loop-mark-b", "Mark A/B loop B point", "Native"),
             new InputBindingSetting("Aethra", "CTRL+R", "aethra:ab-loop-reset", "Reset A/B loop points", "Native"),
             new InputBindingSetting("Aethra", "MBTN_LEFT", "aethra:play-pause", "Video click play/pause", "Native"),
-            new InputBindingSetting("Aethra", "MBTN_RIGHT", "aethra:settings-menu", "Open settings flyout", "Native")
+            new InputBindingSetting("Aethra", "MBTN_RIGHT", "aethra:settings", "Open settings", "Native"),
+            new InputBindingSetting("Aethra", "MBTN_MID", "aethra:adjustments", "Open video adjustments drawer", "Native"),
+            new InputBindingSetting("Aethra", "MBTN_BACK", "aethra:playlist", "Open playlist panel", "Native"),
+            new InputBindingSetting("Aethra", "MBTN_FORWARD", "aethra:tools", "Open tools panel", "Native"),
+            new InputBindingSetting("Aethra", "WHEEL_UP", "aethra:volume-up-5", "Volume up 5", "Native"),
+            new InputBindingSetting("Aethra", "WHEEL_DOWN", "aethra:volume-down-5", "Volume down 5", "Native")
         };
     }
 }

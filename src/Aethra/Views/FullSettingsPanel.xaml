@@ -272,6 +272,8 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
@@ -302,13 +304,36 @@
                                 </StackPanel>
                             </Button>
 
+                            <Button Grid.Column="2"
+                                    Click="SaveInputBindingsButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save bindings"/>
+                            </Button>
+
+                            <Button Grid.Column="3"
+                                    Click="ExportInputConfButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Export input.conf"/>
+                            </Button>
+
                             <TextBlock x:Name="InputBindingCountText"
-                                       Grid.Column="2"
+                                       Grid.Column="4"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Right"
                                        Foreground="#9FA0A4"
                                        FontSize="12"/>
                         </Grid>
+                        <TextBlock x:Name="InputBindingStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <TextBlock x:Name="InputConflictStatusText" Foreground="#D69E2E" FontSize="12"/>
 
                         <TextBlock Text="Import from portable_config" Style="{StaticResource GroupHeaderStyle}"/>
                         <Grid ColumnSpacing="12">
@@ -351,6 +376,7 @@
                                         <ColumnDefinition Width="2*"/>
                                         <ColumnDefinition Width="2*"/>
                                         <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="80"/>
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Text="Category" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
@@ -358,6 +384,7 @@
                                     <TextBlock Grid.Column="2" Text="Command" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
                                     <TextBlock Grid.Column="3" Text="Description" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
                                     <TextBlock Grid.Column="4" Text="Source" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="5" Text="Actions" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
                                 </Grid>
 
                                 <ListView x:Name="InputBindingsList"
@@ -375,6 +402,7 @@
                                                     <ColumnDefinition Width="2*"/>
                                                     <ColumnDefinition Width="2*"/>
                                                     <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="80"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <ComboBox SelectedValue="{Binding Category, Mode=TwoWay}"
@@ -401,6 +429,10 @@
                                                 <TextBox Grid.Column="1"
                                                          Text="{Binding Gesture, Mode=TwoWay}"
                                                          PlaceholderText="Key or mouse"
+                                                         TextChanged="InputBindingField_TextChanged"
+                                                         KeyDown="InputGestureTextBox_KeyDown"
+                                                         PointerPressed="InputGestureTextBox_PointerPressed"
+                                                         PointerWheelChanged="InputGestureTextBox_PointerWheelChanged"
                                                          Foreground="White"/>
 
                                                 <TextBox Grid.Column="2"
@@ -408,6 +440,7 @@
                                                          PlaceholderText="mpv command"
                                                          TextWrapping="Wrap"
                                                          AcceptsReturn="False"
+                                                         TextChanged="InputBindingField_TextChanged"
                                                          Foreground="White"/>
 
                                                 <TextBox Grid.Column="3"
@@ -415,6 +448,7 @@
                                                          PlaceholderText="What it does"
                                                          TextWrapping="Wrap"
                                                          AcceptsReturn="False"
+                                                         TextChanged="InputBindingField_TextChanged"
                                                          Foreground="White"/>
 
                                                 <TextBlock Grid.Column="4"
@@ -422,14 +456,24 @@
                                                            VerticalAlignment="Center"
                                                            Foreground="#9FA0A4"
                                                            FontSize="12"/>
+
+                                                <Button Grid.Column="5"
+                                                        Click="ClearBindingButton_Click"
+                                                        Padding="8,4"
+                                                        HorizontalAlignment="Right"
+                                                        Background="#1F1F1F"
+                                                        BorderBrush="#3A3A3A"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Foreground="White">
+                                                    <TextBlock Text="Clear"/>
+                                                </Button>
                                             </Grid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
                             </Grid>
                         </Border>
-
-                        <TextBlock Text="Keyboard capture, mouse-button capture, conflict warnings, and input.conf save/load come next." Style="{StaticResource ComingSoonStyle}"/>
                     </StackPanel>
 
                     <StackPanel x:Name="LibraryPanel" Spacing="12" Visibility="Collapsed">

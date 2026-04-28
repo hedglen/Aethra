@@ -1,11 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Windows.System;
 
 namespace Aethra.Input;
 
-public readonly record struct InputGesture(VirtualKey Key, bool Ctrl, bool Shift, bool Alt);
+public readonly record struct InputGesture(string Primary, bool Ctrl, bool Shift, bool Alt)
+{
+    public static InputGesture FromVirtualKey(VirtualKey key, bool ctrl, bool shift, bool alt)
+    {
+        return new InputGesture(NormalizePrimaryToken(key.ToString()), ctrl, shift, alt);
+    }
+
+    public static string NormalizePrimaryToken(string token)
+    {
+        return token.Trim().ToUpperInvariant();
+    }
+}
 
 public sealed class InputRuntimeService
 {
@@ -34,14 +44,17 @@ public sealed class InputRuntimeService
         if (string.IsNullOrWhiteSpace(gestureText))
             return false;
 
-        var tokens = gestureText.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var normalizedText = gestureText.Contains('/')
+            ? gestureText.Split('/', 2, StringSplitOptions.TrimEntries)[0]
+            : gestureText;
+        var tokens = normalizedText.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (tokens.Length == 0)
             return false;
 
         var ctrl = false;
         var shift = false;
         var alt = false;
-        VirtualKey? key = null;
+        string? primary = null;
 
         foreach (var token in tokens)
         {
@@ -63,77 +76,107 @@ public sealed class InputRuntimeService
                 continue;
             }
 
-            if (TryParseKeyToken(token, out var parsedKey))
-                key = parsedKey;
+            if (TryParsePrimaryToken(token, out var parsedPrimary))
+                primary = parsedPrimary;
         }
 
-        if (!key.HasValue)
+        if (string.IsNullOrWhiteSpace(primary))
             return false;
 
-        gesture = new InputGesture(key.Value, ctrl, shift, alt);
+        gesture = new InputGesture(primary, ctrl, shift, alt);
         return true;
     }
 
-    private static bool TryParseKeyToken(string token, out VirtualKey key)
+    private static bool TryParsePrimaryToken(string token, out string primary)
     {
-        key = default;
+        primary = string.Empty;
+        var normalized = InputGesture.NormalizePrimaryToken(token);
+        if (normalized.Length == 0)
+            return false;
 
-        if (Enum.TryParse<VirtualKey>(token, ignoreCase: true, out var enumKey))
+        if (normalized is "MBTN_LEFT" or "MBTN_RIGHT" or "MBTN_MID" or "MBTN_BACK" or "MBTN_FORWARD" or "WHEEL_UP" or "WHEEL_DOWN")
         {
-            key = enumKey;
+            primary = normalized;
             return true;
         }
 
-        if (token.Length == 1)
+        if (normalized.Length == 1)
         {
-            var ch = token[0];
+            var ch = normalized[0];
             if (char.IsLetter(ch))
             {
-                key = (VirtualKey)char.ToUpperInvariant(ch);
+                primary = ch.ToString();
                 return true;
             }
 
             if (char.IsDigit(ch))
             {
-                key = ch switch
+                primary = ch switch
                 {
-                    '0' => VirtualKey.Number0,
-                    '1' => VirtualKey.Number1,
-                    '2' => VirtualKey.Number2,
-                    '3' => VirtualKey.Number3,
-                    '4' => VirtualKey.Number4,
-                    '5' => VirtualKey.Number5,
-                    '6' => VirtualKey.Number6,
-                    '7' => VirtualKey.Number7,
-                    '8' => VirtualKey.Number8,
-                    '9' => VirtualKey.Number9,
-                    _ => default
+                    '0' => "NUMBER0",
+                    '1' => "NUMBER1",
+                    '2' => "NUMBER2",
+                    '3' => "NUMBER3",
+                    '4' => "NUMBER4",
+                    '5' => "NUMBER5",
+                    '6' => "NUMBER6",
+                    '7' => "NUMBER7",
+                    '8' => "NUMBER8",
+                    '9' => "NUMBER9",
+                    _ => string.Empty
                 };
-                return key != default;
+                return !string.IsNullOrWhiteSpace(primary);
             }
         }
 
-        return token.ToUpperInvariant() switch
+        if (TryMapSpecialToken(normalized, out primary))
+            return true;
+
+        if (Enum.TryParse<VirtualKey>(normalized, ignoreCase: true, out var enumKey))
         {
-            "LEFT" => AssignKey(VirtualKey.Left, out key),
-            "RIGHT" => AssignKey(VirtualKey.Right, out key),
-            "UP" => AssignKey(VirtualKey.Up, out key),
-            "DOWN" => AssignKey(VirtualKey.Down, out key),
-            "ESC" => AssignKey(VirtualKey.Escape, out key),
-            "SPACE" => AssignKey(VirtualKey.Space, out key),
-            "TAB" => AssignKey(VirtualKey.Tab, out key),
-            "PGUP" => AssignKey(VirtualKey.PageUp, out key),
-            "PGDWN" => AssignKey(VirtualKey.PageDown, out key),
-            "HOME" => AssignKey(VirtualKey.Home, out key),
-            "END" => AssignKey(VirtualKey.End, out key),
-            "BS" => AssignKey(VirtualKey.Back, out key),
-            _ => false
-        };
+            primary = InputGesture.NormalizePrimaryToken(enumKey.ToString());
+            return true;
+        }
+
+        return false;
     }
 
-    private static bool AssignKey(VirtualKey value, out VirtualKey target)
+    private static bool TryMapSpecialToken(string token, out string primary)
     {
-        target = value;
-        return true;
+        primary = token switch
+        {
+            "LEFT" => "LEFT",
+            "RIGHT" => "RIGHT",
+            "UP" => "UP",
+            "DOWN" => "DOWN",
+            "ESC" => "ESCAPE",
+            "SPACE" => "SPACE",
+            "TAB" => "TAB",
+            "PGUP" => "PAGEUP",
+            "PGDWN" => "PAGEDOWN",
+            "HOME" => "HOME",
+            "END" => "END",
+            "BS" => "BACK",
+            "DEL" => "DELETE",
+            "INS" => "INSERT",
+            "ENTER" => "ENTER",
+            "RETURN" => "ENTER",
+            "KP_DEC" => "DECIMAL",
+            "KP_SUBTRACT" => "SUBTRACT",
+            "KP_INSERT" => "NUMBER0",
+            "KP_END" => "NUMBER1",
+            "KP_DOWN" => "NUMBER2",
+            "KP_PGDN" => "NUMBER3",
+            "KP_LEFT" => "NUMBER4",
+            "KP_BEGIN" => "NUMBER5",
+            "KP_RIGHT" => "NUMBER6",
+            "KP_HOME" => "NUMBER7",
+            "KP_UP" => "NUMBER8",
+            "KP_PGUP" => "NUMBER9",
+            "KP_DEL" => "DELETE",
+            _ => string.Empty
+        };
+
+        return !string.IsNullOrWhiteSpace(primary);
     }
 }

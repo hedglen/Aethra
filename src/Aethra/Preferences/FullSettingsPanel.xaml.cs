@@ -9,6 +9,7 @@ using Aethra.Profiles;
 using Aethra.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
 
 namespace Aethra.Preferences;
 
@@ -20,8 +21,10 @@ public sealed partial class FullSettingsPanel : UserControl
     private MpvImportedConfig? _importedConfig;
     private bool _isInitialized;
     private bool _syncingAccentText;
+    private bool _inputBindingsDirty;
 
     public event EventHandler? CloseRequested;
+    public event EventHandler<IReadOnlyList<InputBindingSetting>>? InputBindingsChanged;
 
     public FullSettingsPanel()
     {
@@ -111,6 +114,7 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         AccentColorService.AccentColorChanged -= AccentColorService_AccentColorChanged;
         PersistExtensionControls();
+        PersistInputBindings();
     }
 
     private void SyncVideoQualityPresetSelection()
@@ -155,7 +159,24 @@ public sealed partial class FullSettingsPanel : UserControl
     private void InitializeInputBindings()
     {
         _inputBindings.Clear();
-        _inputBindings.AddRange(InputBindingCatalog.CreateDefaults());
+        _inputBindings.AddRange(InputBindingSettingsStore.Load(InputBindingCatalog.CreateDefaults()));
+        _inputBindingsDirty = false;
+        InputBindingStatusText.Text = "Bindings loaded.";
+        RefreshInputBindingCategoriesAndList();
+    }
+
+    public void SetInputBindings(IEnumerable<InputBindingSetting> bindings)
+    {
+        _inputBindings.Clear();
+        _inputBindings.AddRange(bindings.Select(binding => new InputBindingSetting(
+            binding.Category,
+            binding.Gesture,
+            binding.Command,
+            binding.Description,
+            binding.Source)));
+        _inputBindingsDirty = false;
+        if (InputBindingStatusText is not null)
+            InputBindingStatusText.Text = "Bindings synced from runtime.";
         RefreshInputBindingCategoriesAndList();
     }
 
@@ -192,6 +213,7 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         var binding = new InputBindingSetting("Custom", string.Empty, string.Empty, string.Empty, "Custom");
         _inputBindings.Add(binding);
+        MarkBindingsDirty("Added new custom binding.");
 
         if (!InputCategoryFilter.Items.Contains("Custom"))
             InputCategoryFilter.Items.Add("Custom");
@@ -203,6 +225,26 @@ public sealed partial class FullSettingsPanel : UserControl
     private void ResetInputBindingsButton_Click(object sender, RoutedEventArgs e)
     {
         InitializeInputBindings();
+        PersistInputBindings();
+    }
+
+    private void SaveInputBindingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        PersistInputBindings();
+    }
+
+    private void ExportInputConfButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            PersistInputBindings();
+            var exportedPath = InputBindingSettingsStore.ExportToInputConf(_inputBindings);
+            InputBindingStatusText.Text = $"Exported input.conf to {exportedPath}";
+        }
+        catch (Exception ex)
+        {
+            InputBindingStatusText.Text = $"Export failed: {ex.Message}";
+        }
     }
 
     private void ApplyInputBindingFilters()
@@ -245,6 +287,58 @@ public sealed partial class FullSettingsPanel : UserControl
             _visibleInputBindings.Add(binding);
 
         InputBindingCountText.Text = $"{_visibleInputBindings.Count} shown / {_inputBindings.Count} total";
+        UpdateInputConflictStatus();
+    }
+
+    private void UpdateInputConflictStatus()
+    {
+        var duplicateGroups = _inputBindings
+            .Where(binding => !string.IsNullOrWhiteSpace(binding.Gesture))
+            .GroupBy(binding => binding.Gesture.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .ToList();
+        if (duplicateGroups.Count == 0)
+        {
+            InputConflictStatusText.Text = "No gesture conflicts detected.";
+            return;
+        }
+
+        InputConflictStatusText.Text = $"Conflicts: {duplicateGroups.Count} duplicated gesture(s).";
+    }
+
+    private void PersistInputBindings()
+    {
+        if (!_inputBindingsDirty)
+        {
+            InputBindingStatusText.Text = "Bindings already up to date.";
+            InputBindingsChanged?.Invoke(this, CloneBindings(_inputBindings));
+            return;
+        }
+
+        InputBindingSettingsStore.Save(_inputBindings);
+        _inputBindingsDirty = false;
+        InputBindingStatusText.Text = "Bindings saved.";
+        InputBindingsChanged?.Invoke(this, CloneBindings(_inputBindings));
+    }
+
+    private static List<InputBindingSetting> CloneBindings(IEnumerable<InputBindingSetting> bindings)
+    {
+        return bindings
+            .Select(binding => new InputBindingSetting(
+                binding.Category,
+                binding.Gesture,
+                binding.Command,
+                binding.Description,
+                binding.Source))
+            .ToList();
+    }
+
+    private void MarkBindingsDirty(string statusText)
+    {
+        _inputBindingsDirty = true;
+        if (InputBindingStatusText is not null)
+            InputBindingStatusText.Text = statusText;
+        UpdateInputConflictStatus();
     }
 
     private string GetSelectedInputSort()
@@ -259,6 +353,125 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         return !string.IsNullOrEmpty(value)
             && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void InputBindingField_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        MarkBindingsDirty("Binding changes pending save.");
+        ApplyInputBindingFilters();
+    }
+
+    private void ClearBindingButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not InputBindingSetting binding)
+            return;
+
+        binding.Gesture = string.Empty;
+        binding.Command = string.Empty;
+        binding.Description = string.Empty;
+        binding.Source = "Custom";
+        MarkBindingsDirty("Binding cleared. Save to apply.");
+        ApplyInputBindingFilters();
+    }
+
+    private void InputGestureTextBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (sender is not TextBox textBox || textBox.DataContext is not InputBindingSetting binding)
+            return;
+
+        if (e.Key is VirtualKey.Control or VirtualKey.Shift or VirtualKey.Menu)
+            return;
+
+        var gestureText = BuildKeyboardGestureText(e.Key);
+        if (string.IsNullOrWhiteSpace(gestureText))
+            return;
+
+        binding.Gesture = gestureText;
+        textBox.Text = gestureText;
+        MarkBindingsDirty($"Captured {gestureText}. Save to apply.");
+        ApplyInputBindingFilters();
+        e.Handled = true;
+    }
+
+    private void InputGestureTextBox_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is not TextBox textBox || textBox.DataContext is not InputBindingSetting binding)
+            return;
+
+        var point = e.GetCurrentPoint(textBox);
+        var gestureText = point.Properties switch
+        {
+            { IsLeftButtonPressed: true } => "MBTN_LEFT",
+            { IsRightButtonPressed: true } => "MBTN_RIGHT",
+            { IsMiddleButtonPressed: true } => "MBTN_MID",
+            { IsXButton1Pressed: true } => "MBTN_BACK",
+            { IsXButton2Pressed: true } => "MBTN_FORWARD",
+            _ => string.Empty
+        };
+
+        if (string.IsNullOrWhiteSpace(gestureText))
+            return;
+
+        if (IsModifierPressed(VirtualKey.Control))
+            gestureText = $"CTRL+{gestureText}";
+        if (IsModifierPressed(VirtualKey.Shift))
+            gestureText = $"SHIFT+{gestureText}";
+        if (IsModifierPressed(VirtualKey.Menu))
+            gestureText = $"ALT+{gestureText}";
+
+        binding.Gesture = gestureText;
+        textBox.Text = gestureText;
+        MarkBindingsDirty($"Captured {gestureText}. Save to apply.");
+        ApplyInputBindingFilters();
+        e.Handled = true;
+    }
+
+    private void InputGestureTextBox_PointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is not TextBox textBox || textBox.DataContext is not InputBindingSetting binding)
+            return;
+
+        var delta = e.GetCurrentPoint(textBox).Properties.MouseWheelDelta;
+        if (delta == 0)
+            return;
+
+        var gestureText = delta > 0 ? "WHEEL_UP" : "WHEEL_DOWN";
+        binding.Gesture = gestureText;
+        textBox.Text = gestureText;
+        MarkBindingsDirty($"Captured {gestureText}. Save to apply.");
+        ApplyInputBindingFilters();
+        e.Handled = true;
+    }
+
+    private static string BuildKeyboardGestureText(VirtualKey key)
+    {
+        var parts = new List<string>(4);
+        if (IsModifierPressed(VirtualKey.Control))
+            parts.Add("CTRL");
+        if (IsModifierPressed(VirtualKey.Shift))
+            parts.Add("SHIFT");
+        if (IsModifierPressed(VirtualKey.Menu))
+            parts.Add("ALT");
+
+        var primary = key switch
+        {
+            VirtualKey.Escape => "ESC",
+            VirtualKey.PageDown => "PGDWN",
+            VirtualKey.PageUp => "PGUP",
+            VirtualKey.Back => "BS",
+            _ => key.ToString().ToUpperInvariant()
+        };
+        parts.Add(primary);
+        return string.Join('+', parts);
+    }
+
+    private static bool IsModifierPressed(VirtualKey key)
+    {
+        var state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key);
+        return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
     }
 
     private void VideoQualityPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -315,7 +528,9 @@ public sealed partial class FullSettingsPanel : UserControl
 
             _inputBindings.Clear();
             _inputBindings.AddRange(imported.InputBindings);
+            _inputBindingsDirty = true;
             RefreshInputBindingCategoriesAndList();
+            PersistInputBindings();
 
             ImportedShaderCountText.Text = $"{imported.ShaderFiles.Count} shader files detected";
             ImportedScriptCountText.Text = $"{imported.ScriptFiles.Count} script files detected";

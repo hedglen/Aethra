@@ -59,6 +59,7 @@ namespace Aethra
         private readonly PlaybackActivityController _playbackActivity;
         private readonly PlaybackOptionsService _playbackOptions;
         private readonly InputRuntimeService _inputRuntimeService = new();
+        private readonly List<InputBindingSetting> _currentInputBindings = new();
         private readonly PlaybackPersistenceSnapshot _playbackPersistence;
         // True means playback is paused. Visual surfaces route through
         // PlayPauseVisualFor so the transport button and context menu stay aligned.
@@ -67,6 +68,7 @@ namespace Aethra
         private bool _isVideoContextFlyoutOpen;
         private bool _suppressVolumeSliderValueChanged;
         private double _currentVolume = 100;
+        private bool _isMuted;
         // A/B loop point state. null means the point is not set; the value is
         // the timestamp in seconds we wrote to mpv's ab-loop-{a,b} property.
         private double? _loopPointA;
@@ -101,7 +103,6 @@ namespace Aethra
             _playbackPersistence = PlaybackPersistenceStore.Load();
             _currentVolume = _playbackPersistence.LastVolume;
             _lastLoadedMediaPath = _playbackPersistence.LastMediaPath;
-            InitializeInputRuntime();
             _playbackActivity = new PlaybackActivityController(TimeSpan.FromSeconds(1), CanLetPlaybackChromeIdle);
             _playbackActivity.ModeChanged += PlaybackActivity_ModeChanged;
             _playbackOptions = PlaybackOptionsService.Instance;
@@ -122,6 +123,9 @@ namespace Aethra
             _volumeOsdHideTimer.Tick += VolumeOsdHideTimer_Tick;
 
             InitializeComponent();
+            InitializeInputRuntime();
+            FullSettings.SetInputBindings(_currentInputBindings);
+            FullSettings.InputBindingsChanged += FullSettings_InputBindingsChanged;
             ApplyPlayPauseVisualState();
             InitializeVolumeUi();
             CommandRail.Loaded += CommandRail_Loaded;
@@ -136,10 +140,20 @@ namespace Aethra
                 () => SeekRelative(30),
                 () => AddVolume(5),
                 () => AddVolume(-5),
+                ToggleMute,
                 HandleEscapeCommand,
                 ToggleLoopPointA,
                 ToggleLoopPointB,
-                ResetLoopPoints));
+                ResetLoopPoints,
+                OpenFileFromCommand,
+                OpenFolderFromCommand,
+                OpenRecentFromCommand,
+                ShowPlaylistFromCommand,
+                ShowToolsFromCommand,
+                ShowHelpFromCommand,
+                ShowFavoritesFromCommand,
+                ToggleAdjustmentsFromCommand,
+                ToggleCommandRailFromCommand));
             _windowSubclassProc = WindowSubclassProc;
             _childCursorSubclassProc = ChildCursorSubclassProc;
             this.Activated += MainWindow_Activated;
@@ -154,6 +168,7 @@ namespace Aethra
             _videoAdjustmentBatcher.Dispose();
             _cursorHideEnforcementTimer.Stop();
             _volumeOsdHideTimer.Stop();
+            FullSettings.InputBindingsChanged -= FullSettings_InputBindingsChanged;
             PlaybackPersistenceStore.SaveVolume(_currentVolume);
             PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
             PlaybackPersistenceStore.SaveWindow(
@@ -408,6 +423,56 @@ namespace Aethra
         {
             HideRailSubMenus();
             ShowEmbeddedPanel("Help", "Help", "Shortcuts and support actions.");
+        }
+
+        private void OpenFileFromCommand()
+        {
+            RailOpenFileButton_Click(this, new RoutedEventArgs());
+        }
+
+        private void OpenFolderFromCommand()
+        {
+            RailOpenFolderButton_Click(this, new RoutedEventArgs());
+        }
+
+        private void OpenRecentFromCommand()
+        {
+            RailRecentButton_Click(this, new RoutedEventArgs());
+        }
+
+        private void ShowPlaylistFromCommand()
+        {
+            HideRailSubMenus();
+            ShowEmbeddedPanel("Playlist", "Playlist", "Queue, import, and export media lists.");
+        }
+
+        private void ShowToolsFromCommand()
+        {
+            HideRailSubMenus();
+            ShowEmbeddedPanel("Tools", "Tools", "Effects, preferences, and utility actions.");
+        }
+
+        private void ShowHelpFromCommand()
+        {
+            HideRailSubMenus();
+            ShowEmbeddedPanel("Help", "Help", "Shortcuts and support actions.");
+        }
+
+        private void ShowFavoritesFromCommand()
+        {
+            HideRailSubMenus();
+            ShowEmbeddedPanel("Favorites", "Favorites", "Favorite media shortcuts and quick actions.");
+        }
+
+        private void ToggleAdjustmentsFromCommand()
+        {
+            ToggleRightDrawer(VideoAdjustments);
+        }
+
+        private void ToggleCommandRailFromCommand()
+        {
+            SetCommandRailExpanded(!_isCommandRailExpanded);
+            MarkPlaybackActivity();
         }
 
         private async void RailOpenFileButton_Click(object sender, RoutedEventArgs e)
@@ -766,7 +831,15 @@ namespace Aethra
         {
             var point = e.GetCurrentPoint(VideoContainer);
             if (!point.Properties.IsLeftButtonPressed)
+            {
+                if (TryExecuteRuntimePointerPress(point))
+                {
+                    MarkPlaybackActivity();
+                    e.Handled = true;
+                }
+
                 return;
+            }
 
             MarkPlaybackActivity();
             _videoPointerPressedAt = point.Position;
@@ -777,6 +850,22 @@ namespace Aethra
             _isVideoPointerDraggingWindow = false;
             VideoContainer.CapturePointer(e.Pointer);
             e.Handled = true;
+        }
+
+        private bool TryExecuteRuntimePointerPress(Microsoft.UI.Input.PointerPoint point)
+        {
+            var properties = point.Properties;
+
+            if (properties.IsRightButtonPressed)
+                return ExecuteRuntimePointerCommand("MBTN_RIGHT");
+            if (properties.IsMiddleButtonPressed)
+                return ExecuteRuntimePointerCommand("MBTN_MID");
+            if (properties.IsXButton1Pressed)
+                return ExecuteRuntimePointerCommand("MBTN_BACK");
+            if (properties.IsXButton2Pressed)
+                return ExecuteRuntimePointerCommand("MBTN_FORWARD");
+
+            return false;
         }
 
         private void VideoContainer_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
@@ -893,21 +982,21 @@ namespace Aethra
             RefreshPlaybackActivityState();
         }
 
-        private void ContextPlayPauseItem_Click(object sender, RoutedEventArgs e) => TogglePlayback();
+        private void ContextPlayPauseItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause);
 
-        private void ContextSeekBackItem_Click(object sender, RoutedEventArgs e) => SeekRelative(-10);
+        private void ContextSeekBackItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.SeekBack10);
 
-        private void ContextSeekForwardItem_Click(object sender, RoutedEventArgs e) => SeekRelative(30);
+        private void ContextSeekForwardItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.SeekForward30);
 
-        private void ContextFullscreenItem_Click(object sender, RoutedEventArgs e) => ToggleFullscreen();
+        private void ContextFullscreenItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
 
-        private void ContextOpenFileItem_Click(object sender, RoutedEventArgs e) => RailOpenFileButton_Click(sender, e);
+        private void ContextOpenFileItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.OpenFile);
 
-        private void ContextOpenFolderItem_Click(object sender, RoutedEventArgs e) => RailOpenFolderButton_Click(sender, e);
+        private void ContextOpenFolderItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.OpenFolder);
 
-        private void ContextRecentItem_Click(object sender, RoutedEventArgs e) => RailRecentButton_Click(sender, e);
+        private void ContextRecentItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.OpenRecent);
 
-        private void ContextSettingsItem_Click(object sender, RoutedEventArgs e) => ToggleSettingsPanel();
+        private void ContextSettingsItem_Click(object sender, RoutedEventArgs e) => _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);
 
         private void Player_ProgressChanged(object? sender, NativeMpvPlaybackProgress progress)
         {
@@ -977,6 +1066,13 @@ namespace Aethra
             ForEachPlayerBackend(player => player.SetVolume(clamped));
         }
 
+        private void ToggleMute()
+        {
+            _isMuted = !_isMuted;
+            _playbackOptions.ApplyStringProperty("mute", _isMuted ? "yes" : "no");
+            MarkPlaybackActivity();
+        }
+
         private void UpdateVolumeUi()
         {
             if (VolumeValueText is not null)
@@ -1006,6 +1102,13 @@ namespace Aethra
             MarkPlaybackActivity();
         }
 
+        private void FullSettings_InputBindingsChanged(object? sender, IReadOnlyList<InputBindingSetting> bindings)
+        {
+            _currentInputBindings.Clear();
+            _currentInputBindings.AddRange(bindings);
+            _inputRuntimeService.LoadBindings(_currentInputBindings);
+        }
+
         private void VideoContainer_PointerWheelChanged(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             HandleVolumeWheel(e);
@@ -1018,12 +1121,26 @@ namespace Aethra
 
         private void HandleVolumeWheel(Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
+            var delta = e.GetCurrentPoint(null).Properties.MouseWheelDelta;
+            if (delta > 0 && ExecuteRuntimePointerCommand("WHEEL_UP"))
+            {
+                MarkPlaybackActivity();
+                e.Handled = true;
+                return;
+            }
+
+            if (delta < 0 && ExecuteRuntimePointerCommand("WHEEL_DOWN"))
+            {
+                MarkPlaybackActivity();
+                e.Handled = true;
+                return;
+            }
+
             // Standard Windows wheel notch is a delta of 120; treat each notch as a
             // 5-unit volume change so a single scroll feels like one perceptible step.
             const int VolumeStepPerNotch = 5;
             const double WheelNotch = 120.0;
 
-            var delta = e.GetCurrentPoint(null).Properties.MouseWheelDelta;
             if (delta == 0)
                 return;
 
@@ -1035,6 +1152,20 @@ namespace Aethra
             ShowVolumeOsd();
             MarkPlaybackActivity();
             e.Handled = true;
+        }
+
+        private bool ExecuteRuntimePointerCommand(string token)
+        {
+            var gesture = new InputGesture(
+                InputGesture.NormalizePrimaryToken(token),
+                IsModifierPressed(VirtualKey.Control),
+                IsModifierPressed(VirtualKey.Shift),
+                IsModifierPressed(VirtualKey.Menu));
+
+            if (!_inputRuntimeService.TryGetCommand(gesture, out var command))
+                return false;
+
+            return ExecuteInputCommand(command);
         }
 
         private void LoopAButton_Click(object sender, RoutedEventArgs e)
@@ -1985,7 +2116,7 @@ namespace Aethra
 
         private void InitializeInputRuntime()
         {
-            var bindings = InputBindingCatalog.CreateDefaults().ToList();
+            var bindings = InputBindingSettingsStore.Load(InputBindingCatalog.CreateDefaults()).ToList();
             var portablePath = ScriptExtensionSettingsStore.PortableConfigPath;
             if (!string.IsNullOrWhiteSpace(portablePath) && Directory.Exists(portablePath))
             {
@@ -1993,7 +2124,8 @@ namespace Aethra
                 {
                     var imported = MpvPortableConfigImporter.Import(portablePath);
                     MpvRuntimeBootstrapSettings.Instance.ApplyImportedConfig(imported);
-                    bindings = imported.InputBindings.ToList();
+                    if (imported.InputBindings.Count > 0)
+                        bindings = imported.InputBindings.ToList();
                 }
                 catch (Exception ex)
                 {
@@ -2001,12 +2133,14 @@ namespace Aethra
                 }
             }
 
-            _inputRuntimeService.LoadBindings(bindings);
+            _currentInputBindings.Clear();
+            _currentInputBindings.AddRange(bindings);
+            _inputRuntimeService.LoadBindings(_currentInputBindings);
         }
 
         private bool TryExecuteRuntimeInput(VirtualKey key)
         {
-            var gesture = new InputGesture(
+            var gesture = InputGesture.FromVirtualKey(
                 key,
                 IsModifierPressed(VirtualKey.Control),
                 IsModifierPressed(VirtualKey.Shift),
@@ -2035,6 +2169,12 @@ namespace Aethra
             if (string.Equals(normalized, "cycle pause", StringComparison.OrdinalIgnoreCase))
             {
                 _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause);
+                return true;
+            }
+
+            if (string.Equals(normalized, "cycle mute", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandDispatcher.Execute(AethraCommandIds.ToggleMute);
                 return true;
             }
 
@@ -2094,6 +2234,18 @@ namespace Aethra
                     ? string.Empty
                     : ExtractQuotedSegment(normalized);
                 _playbackOptions.ApplyCustomShaderChain(shaderValue);
+                return true;
+            }
+
+            if (string.Equals(normalized, "script-binding playlistmanager/showplaylist", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandDispatcher.Execute(AethraCommandIds.ShowPlaylist);
+                return true;
+            }
+
+            if (string.Equals(normalized, "script-binding uosc/menu", StringComparison.OrdinalIgnoreCase))
+            {
+                _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);
                 return true;
             }
 
