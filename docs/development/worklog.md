@@ -999,6 +999,33 @@ Active steps:
   - Result: public docs, contributor workflow docs, agent guidance docs, and execution docs now share one explicit policy baseline and clearer ownership boundaries.
   - Validation:
     - Docs-only change set; no code/build impact expected.
+- 2026-04-28 completed Phase 3 closure sprint for remaining Preferences parity:
+  - Expanded typed profile coverage in `src/Aethra/Profiles/PreferencesPageProfiles.cs`:
+    - added `NetworkPreferencesProfile`,
+    - added `CustomizationPreferencesProfile`,
+    - extended `NamedPreferencesProfileBundle` and `PreferencesPageProfiles` to include both.
+  - Extended service-layer apply parity in `src/Aethra/Services/PlaybackOptionsService.cs`:
+    - added `ApplyNetworkPreferences(...)`,
+    - added `ApplyCustomizationPreferences(...)`,
+    - kept behavior deterministic and safe for app-owned/runtime-forward settings.
+  - Completed Preferences UI parity in `src/Aethra/Views/FullSettingsPanel.xaml` + `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`:
+    - added a full `Network` page with save/reset/hydration wiring,
+    - renamed user-facing `Appearance` navigation/page terminology to `Customization`,
+    - added typed read/hydrate/apply flows for Network and Customization.
+  - Implemented robust profile bundle import/export in `src/Aethra/Configuration/PreferencesProfileBundleExchange.cs` and wired it into Profiles UI:
+    - JSON schema version guard (`SchemaVersion = 1`),
+    - import validation and safe failure messaging,
+    - duplicate-name normalization and active-profile fallback behavior.
+  - Expanded tests:
+    - `tests/Aethra.Tests/Profiles/PreferencesPageProfilesTests.cs` for new defaults,
+    - `tests/Aethra.Tests/Configuration/PreferencesProfilesStoreTests.cs` for round-trip persistence of Network/Customization,
+    - `tests/Aethra.Tests/Services/PlaybackOptionsServiceTests.cs` for Network/Customization apply behavior,
+    - `tests/Aethra.Tests/Configuration/PreferencesProfileBundleExchangeTests.cs` for import/export and schema validation.
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passes with zero warnings/errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passes (47 tests).
+  - Remaining follow-up:
+    - deeper runtime mapping for all Network/Customization options can be expanded as native backend hooks mature.
 
 ## Roadmap
 

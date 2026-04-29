@@ -62,9 +62,10 @@ public sealed partial class FullSettingsPanel : UserControl
         SubtitlesPanel.Visibility = tag == "Subtitles" ? Visibility.Visible : Visibility.Collapsed;
         InputPanel.Visibility = tag == "Input" ? Visibility.Visible : Visibility.Collapsed;
         LibraryPanel.Visibility = tag == "Library" ? Visibility.Visible : Visibility.Collapsed;
+        NetworkPanel.Visibility = tag == "Network" ? Visibility.Visible : Visibility.Collapsed;
         ShadersPanel.Visibility = tag == "Shaders" ? Visibility.Visible : Visibility.Collapsed;
         ProfilesPanel.Visibility = tag == "Profiles" ? Visibility.Visible : Visibility.Collapsed;
-        AppearancePanel.Visibility = tag == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
+        CustomizationPanel.Visibility = tag == "Customization" ? Visibility.Visible : Visibility.Collapsed;
         AdvancedPanel.Visibility = tag == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -169,6 +170,11 @@ public sealed partial class FullSettingsPanel : UserControl
         PopulateProfilesCombo();
         HydratePageControlsFromProfiles();
         ApplyProfilesToPlaybackRuntime();
+        if (string.IsNullOrWhiteSpace(ProfilesExchangePathBox.Text))
+        {
+            var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            ProfilesExchangePathBox.Text = Path.Combine(docs, "aethra-profiles.json");
+        }
     }
 
     private void HydratePageControlsFromProfiles()
@@ -225,9 +231,28 @@ public sealed partial class FullSettingsPanel : UserControl
             LibraryRememberRecentToggle.IsOn = _pageProfiles.Library.RememberRecentFiles;
             LibraryStatusText.Text = "Library settings loaded.";
 
+            NetworkPreferIpv6Toggle.IsOn = _pageProfiles.Network.PreferIpv6;
+            NetworkAllowMeteredToggle.IsOn = _pageProfiles.Network.AllowMeteredConnections;
+            NetworkTimeoutSecondsBox.Text = Math.Clamp(_pageProfiles.Network.NetworkTimeoutSeconds, 5, 600).ToString();
+            NetworkProxyModeCombo.SelectedIndex = _pageProfiles.Network.ProxyMode switch
+            {
+                NetworkProxyMode.Direct => 1,
+                NetworkProxyMode.Http => 2,
+                _ => 0
+            };
+            NetworkProxyUrlBox.Text = _pageProfiles.Network.ProxyUrl;
+            NetworkStatusText.Text = "Network settings loaded.";
+
             ProfilesActiveProfileTextBox.Text = _pageProfiles.Profiles.ActiveProfileName;
             SelectActiveProfileInCombo();
             ProfilesStatusText.Text = "Profile settings loaded.";
+            ProfilesImportExportStatusText.Text = "Use export/import to share bundle sets.";
+
+            SyncAccentText(_pageProfiles.Customization.AccentHex);
+            CustomizationUseSystemThemeToggle.IsOn = _pageProfiles.Customization.UseSystemTheme;
+            CustomizationDenseLayoutToggle.IsOn = _pageProfiles.Customization.DenseLayout;
+            CustomizationShowHudToggle.IsOn = _pageProfiles.Customization.ShowPlaybackHud;
+            CustomizationStatusText.Text = "Customization settings loaded.";
 
             AdvancedLogLevelCombo.SelectedIndex = _pageProfiles.Advanced.LogLevel switch
             {
@@ -291,6 +316,24 @@ public sealed partial class FullSettingsPanel : UserControl
         _pageProfiles.Library.WatchFoldersEnabled = LibraryWatchFoldersToggle.IsOn;
         _pageProfiles.Library.RememberRecentFiles = LibraryRememberRecentToggle.IsOn;
 
+        if (!int.TryParse(NetworkTimeoutSecondsBox.Text?.Trim(), out var timeoutSeconds))
+            timeoutSeconds = 30;
+        _pageProfiles.Network.PreferIpv6 = NetworkPreferIpv6Toggle.IsOn;
+        _pageProfiles.Network.AllowMeteredConnections = NetworkAllowMeteredToggle.IsOn;
+        _pageProfiles.Network.NetworkTimeoutSeconds = Math.Clamp(timeoutSeconds, 5, 600);
+        _pageProfiles.Network.ProxyMode = NetworkProxyModeCombo.SelectedIndex switch
+        {
+            1 => NetworkProxyMode.Direct,
+            2 => NetworkProxyMode.Http,
+            _ => NetworkProxyMode.System
+        };
+        _pageProfiles.Network.ProxyUrl = (NetworkProxyUrlBox.Text ?? string.Empty).Trim();
+
+        _pageProfiles.Customization.AccentHex = (FullAccentHexBox.Text ?? AccentColorService.DefaultAccentHex).Trim();
+        _pageProfiles.Customization.UseSystemTheme = CustomizationUseSystemThemeToggle.IsOn;
+        _pageProfiles.Customization.DenseLayout = CustomizationDenseLayoutToggle.IsOn;
+        _pageProfiles.Customization.ShowPlaybackHud = CustomizationShowHudToggle.IsOn;
+
         var activeProfileName = (ProfilesActiveProfileTextBox.Text ?? string.Empty).Trim();
         _pageProfiles.Profiles.ActiveProfileName = string.IsNullOrWhiteSpace(activeProfileName) ? "Default" : activeProfileName;
 
@@ -318,6 +361,10 @@ public sealed partial class FullSettingsPanel : UserControl
         _playbackOptions.ApplyAudioPreferences(_pageProfiles.Audio);
         _playbackOptions.ApplySubtitlePreferences(_pageProfiles.Subtitles);
         _playbackOptions.ApplyAdvancedPreferences(_pageProfiles.Advanced);
+        _playbackOptions.ApplyNetworkPreferences(_pageProfiles.Network);
+        _playbackOptions.ApplyCustomizationPreferences(_pageProfiles.Customization);
+        AccentColorService.TryApplyHex(_pageProfiles.Customization.AccentHex, out var normalizedHex);
+        SyncAccentText(normalizedHex);
     }
 
     private void EnsureDefaultProfileBundle()
@@ -355,6 +402,8 @@ public sealed partial class FullSettingsPanel : UserControl
         _pageProfiles.Subtitles = Clone(bundle.Subtitles);
         _pageProfiles.Library = Clone(bundle.Library);
         _pageProfiles.Advanced = Clone(bundle.Advanced);
+        _pageProfiles.Network = Clone(bundle.Network);
+        _pageProfiles.Customization = Clone(bundle.Customization);
         _pageProfiles.Profiles.ActiveProfileName = bundle.Name;
     }
 
@@ -417,6 +466,29 @@ public sealed partial class FullSettingsPanel : UserControl
         {
             LogLevel = source.LogLevel,
             ExtraMpvOptionsText = source.ExtraMpvOptionsText
+        };
+    }
+
+    private static NetworkPreferencesProfile Clone(NetworkPreferencesProfile source)
+    {
+        return new NetworkPreferencesProfile
+        {
+            PreferIpv6 = source.PreferIpv6,
+            AllowMeteredConnections = source.AllowMeteredConnections,
+            NetworkTimeoutSeconds = source.NetworkTimeoutSeconds,
+            ProxyMode = source.ProxyMode,
+            ProxyUrl = source.ProxyUrl
+        };
+    }
+
+    private static CustomizationPreferencesProfile Clone(CustomizationPreferencesProfile source)
+    {
+        return new CustomizationPreferencesProfile
+        {
+            AccentHex = source.AccentHex,
+            UseSystemTheme = source.UseSystemTheme,
+            DenseLayout = source.DenseLayout,
+            ShowPlaybackHud = source.ShowPlaybackHud
         };
     }
 
@@ -823,6 +895,23 @@ public sealed partial class FullSettingsPanel : UserControl
         LibraryStatusText.Text = "Library settings reset to defaults.";
     }
 
+    private void NetworkSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        NetworkStatusText.Text = "Network settings saved.";
+    }
+
+    private void NetworkResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Network = NetworkPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        NetworkStatusText.Text = "Network settings reset to defaults.";
+    }
+
     private void ProfilesSaveButton_Click(object sender, RoutedEventArgs e)
     {
         if (_isHydratingPageControls)
@@ -841,7 +930,9 @@ public sealed partial class FullSettingsPanel : UserControl
                 Audio = Clone(_pageProfiles.Audio),
                 Subtitles = Clone(_pageProfiles.Subtitles),
                 Library = Clone(_pageProfiles.Library),
-                Advanced = Clone(_pageProfiles.Advanced)
+                Advanced = Clone(_pageProfiles.Advanced),
+                Network = Clone(_pageProfiles.Network),
+                Customization = Clone(_pageProfiles.Customization)
             });
         }
         else
@@ -852,6 +943,8 @@ public sealed partial class FullSettingsPanel : UserControl
             existing.Subtitles = Clone(_pageProfiles.Subtitles);
             existing.Library = Clone(_pageProfiles.Library);
             existing.Advanced = Clone(_pageProfiles.Advanced);
+            existing.Network = Clone(_pageProfiles.Network);
+            existing.Customization = Clone(_pageProfiles.Customization);
         }
 
         PopulateProfilesCombo();
@@ -890,7 +983,9 @@ public sealed partial class FullSettingsPanel : UserControl
             Audio = Clone(_pageProfiles.Audio),
             Subtitles = Clone(_pageProfiles.Subtitles),
             Library = Clone(_pageProfiles.Library),
-            Advanced = Clone(_pageProfiles.Advanced)
+            Advanced = Clone(_pageProfiles.Advanced),
+            Network = Clone(_pageProfiles.Network),
+            Customization = Clone(_pageProfiles.Customization)
         });
         _pageProfiles.Profiles.ActiveProfileName = name;
         PopulateProfilesCombo();
@@ -953,6 +1048,54 @@ public sealed partial class FullSettingsPanel : UserControl
         ProfilesStatusText.Text = $"Deleted profile '{selectedName}'.";
     }
 
+    private void ProfilesExportButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            ReadPageProfilesFromControls();
+            var path = (ProfilesExchangePathBox.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                ProfilesImportExportStatusText.Text = "Enter a valid export path first.";
+                return;
+            }
+
+            PreferencesProfileBundleExchange.ExportToPath(path, _pageProfiles.Profiles);
+            ProfilesImportExportStatusText.Text = $"Exported {_pageProfiles.Profiles.Bundles.Count} bundles to {path}.";
+        }
+        catch (Exception ex)
+        {
+            ProfilesImportExportStatusText.Text = $"Export failed: {ex.Message}";
+        }
+    }
+
+    private void ProfilesImportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = (ProfilesExchangePathBox.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            ProfilesImportExportStatusText.Text = "Enter a valid import path first.";
+            return;
+        }
+
+        if (!PreferencesProfileBundleExchange.TryImportFromPath(path, out var importedProfiles, out var error))
+        {
+            ProfilesImportExportStatusText.Text = $"Import failed: {error}";
+            return;
+        }
+
+        _pageProfiles.Profiles = importedProfiles;
+        EnsureDefaultProfileBundle();
+        var bundle = _pageProfiles.Profiles.Bundles.FirstOrDefault(item =>
+            string.Equals(item.Name, _pageProfiles.Profiles.ActiveProfileName, StringComparison.OrdinalIgnoreCase))
+            ?? _pageProfiles.Profiles.Bundles[0];
+        ApplyBundle(bundle);
+        PopulateProfilesCombo();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        ProfilesImportExportStatusText.Text = $"Imported {_pageProfiles.Profiles.Bundles.Count} bundles from {path}.";
+    }
+
     private void ProfilesActiveProfileCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_isHydratingPageControls)
@@ -960,6 +1103,23 @@ public sealed partial class FullSettingsPanel : UserControl
 
         if (ProfilesActiveProfileCombo.SelectedItem is string name)
             ProfilesActiveProfileTextBox.Text = name;
+    }
+
+    private void CustomizationSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        CustomizationStatusText.Text = "Customization settings saved.";
+    }
+
+    private void CustomizationResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Customization = CustomizationPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        CustomizationStatusText.Text = "Customization settings reset to defaults.";
     }
 
     private void AdvancedSaveButton_Click(object sender, RoutedEventArgs e)

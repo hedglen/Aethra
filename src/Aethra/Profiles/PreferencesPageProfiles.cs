@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Aethra.Services;
 
 namespace Aethra.Profiles;
 
@@ -22,6 +23,13 @@ public enum AdvancedLogLevel
     Warnings = 1,
     Verbose = 2,
     Debug = 3
+}
+
+public enum NetworkProxyMode
+{
+    System = 0,
+    Direct = 1,
+    Http = 2
 }
 
 public sealed class PlaybackPreferencesProfile
@@ -91,6 +99,27 @@ public sealed class AdvancedPreferencesProfile
     public static AdvancedPreferencesProfile CreateDefault() => new();
 }
 
+public sealed class NetworkPreferencesProfile
+{
+    public bool PreferIpv6 { get; set; }
+    public bool AllowMeteredConnections { get; set; } = true;
+    public int NetworkTimeoutSeconds { get; set; } = 30;
+    public NetworkProxyMode ProxyMode { get; set; } = NetworkProxyMode.System;
+    public string ProxyUrl { get; set; } = string.Empty;
+
+    public static NetworkPreferencesProfile CreateDefault() => new();
+}
+
+public sealed class CustomizationPreferencesProfile
+{
+    public string AccentHex { get; set; } = AccentColorService.DefaultAccentHex;
+    public bool UseSystemTheme { get; set; } = true;
+    public bool DenseLayout { get; set; }
+    public bool ShowPlaybackHud { get; set; } = true;
+
+    public static CustomizationPreferencesProfile CreateDefault() => new();
+}
+
 public sealed class NamedPreferencesProfileBundle
 {
     public string Name { get; set; } = "Default";
@@ -100,6 +129,8 @@ public sealed class NamedPreferencesProfileBundle
     public SubtitlePreferencesProfile Subtitles { get; set; } = SubtitlePreferencesProfile.CreateDefault();
     public LibraryPreferencesProfile Library { get; set; } = LibraryPreferencesProfile.CreateDefault();
     public AdvancedPreferencesProfile Advanced { get; set; } = AdvancedPreferencesProfile.CreateDefault();
+    public NetworkPreferencesProfile Network { get; set; } = NetworkPreferencesProfile.CreateDefault();
+    public CustomizationPreferencesProfile Customization { get; set; } = CustomizationPreferencesProfile.CreateDefault();
 
     public static NamedPreferencesProfileBundle CreateDefault() => new();
 }
@@ -112,6 +143,8 @@ public sealed class PreferencesPageProfiles
     public SubtitlePreferencesProfile Subtitles { get; set; } = SubtitlePreferencesProfile.CreateDefault();
     public LibraryPreferencesProfile Library { get; set; } = LibraryPreferencesProfile.CreateDefault();
     public AdvancedPreferencesProfile Advanced { get; set; } = AdvancedPreferencesProfile.CreateDefault();
+    public NetworkPreferencesProfile Network { get; set; } = NetworkPreferencesProfile.CreateDefault();
+    public CustomizationPreferencesProfile Customization { get; set; } = CustomizationPreferencesProfile.CreateDefault();
     public ProfilesPreferencesProfile Profiles { get; set; } = ProfilesPreferencesProfile.CreateDefault();
 
     public static PreferencesPageProfiles CreateDefault() => new();

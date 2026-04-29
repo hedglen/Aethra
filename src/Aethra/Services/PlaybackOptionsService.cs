@@ -233,4 +233,29 @@ public sealed class PlaybackOptionsService
             ApplyStringProperty(key, value);
         }
     }
+
+    public void ApplyNetworkPreferences(NetworkPreferencesProfile profile)
+    {
+        ApplyStringProperty("network-timeout", Math.Clamp(profile.NetworkTimeoutSeconds, 5, 600).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        ApplyStringProperty("ipv6", profile.PreferIpv6 ? "yes" : "no");
+        ApplyStringProperty("cache-pause-wait", profile.AllowMeteredConnections ? "5" : "2");
+
+        var proxy = profile.ProxyMode switch
+        {
+            NetworkProxyMode.Direct => "no",
+            NetworkProxyMode.Http when !string.IsNullOrWhiteSpace(profile.ProxyUrl) => profile.ProxyUrl.Trim(),
+            _ => string.Empty
+        };
+        if (proxy.Length > 0)
+            ApplyStringProperty("http-proxy", proxy);
+    }
+
+    public void ApplyCustomizationPreferences(CustomizationPreferencesProfile profile)
+    {
+        // These are app-owned UX toggles and may later map to explicit runtime properties.
+        ApplyStringProperty("aethra-accent-hex", profile.AccentHex);
+        ApplyStringProperty("aethra-use-system-theme", profile.UseSystemTheme ? "yes" : "no");
+        ApplyStringProperty("aethra-dense-layout", profile.DenseLayout ? "yes" : "no");
+        ApplyStringProperty("aethra-show-playback-hud", profile.ShowPlaybackHud ? "yes" : "no");
+    }
 }

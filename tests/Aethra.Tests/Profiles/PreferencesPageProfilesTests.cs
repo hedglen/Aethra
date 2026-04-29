@@ -1,4 +1,5 @@
 using Aethra.Profiles;
+using Aethra.Services;
 using Xunit;
 
 namespace Aethra.Tests.Profiles;
@@ -38,5 +39,16 @@ public sealed class PreferencesPageProfilesTests
 
         Assert.Equal(AdvancedLogLevel.Warnings, defaults.Advanced.LogLevel);
         Assert.Equal(string.Empty, defaults.Advanced.ExtraMpvOptionsText);
+
+        Assert.False(defaults.Network.PreferIpv6);
+        Assert.True(defaults.Network.AllowMeteredConnections);
+        Assert.Equal(30, defaults.Network.NetworkTimeoutSeconds);
+        Assert.Equal(NetworkProxyMode.System, defaults.Network.ProxyMode);
+        Assert.Equal(string.Empty, defaults.Network.ProxyUrl);
+
+        Assert.Equal(AccentColorService.DefaultAccentHex, defaults.Customization.AccentHex);
+        Assert.True(defaults.Customization.UseSystemTheme);
+        Assert.False(defaults.Customization.DenseLayout);
+        Assert.True(defaults.Customization.ShowPlaybackHud);
     }
 }

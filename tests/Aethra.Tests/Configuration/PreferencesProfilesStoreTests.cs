@@ -44,10 +44,20 @@ public sealed class PreferencesProfilesStoreTests
                 Audio = AudioPreferencesProfile.CreateDefault(),
                 Subtitles = SubtitlePreferencesProfile.CreateDefault(),
                 Library = LibraryPreferencesProfile.CreateDefault(),
-                Advanced = AdvancedPreferencesProfile.CreateDefault()
+                Advanced = AdvancedPreferencesProfile.CreateDefault(),
+                Network = NetworkPreferencesProfile.CreateDefault(),
+                Customization = CustomizationPreferencesProfile.CreateDefault()
             });
             expected.Advanced.LogLevel = AdvancedLogLevel.Debug;
             expected.Advanced.ExtraMpvOptionsText = "demuxer-max-bytes=128MiB";
+            expected.Network.PreferIpv6 = true;
+            expected.Network.AllowMeteredConnections = false;
+            expected.Network.NetworkTimeoutSeconds = 45;
+            expected.Network.ProxyMode = NetworkProxyMode.Http;
+            expected.Network.ProxyUrl = "http://127.0.0.1:8080";
+            expected.Customization.AccentHex = "#123456";
+            expected.Customization.DenseLayout = true;
+            expected.Customization.ShowPlaybackHud = false;
 
             PreferencesProfilesStore.SaveToPath(path, expected);
             var loaded = PreferencesProfilesStore.LoadFromPath(path);
@@ -65,6 +75,14 @@ public sealed class PreferencesProfilesStoreTests
             Assert.Contains(loaded.Profiles.Bundles, bundle => bundle.Name == "Cinema");
             Assert.Equal(AdvancedLogLevel.Debug, loaded.Advanced.LogLevel);
             Assert.Equal("demuxer-max-bytes=128MiB", loaded.Advanced.ExtraMpvOptionsText);
+            Assert.True(loaded.Network.PreferIpv6);
+            Assert.False(loaded.Network.AllowMeteredConnections);
+            Assert.Equal(45, loaded.Network.NetworkTimeoutSeconds);
+            Assert.Equal(NetworkProxyMode.Http, loaded.Network.ProxyMode);
+            Assert.Equal("http://127.0.0.1:8080", loaded.Network.ProxyUrl);
+            Assert.Equal("#123456", loaded.Customization.AccentHex);
+            Assert.True(loaded.Customization.DenseLayout);
+            Assert.False(loaded.Customization.ShowPlaybackHud);
         }
         finally
         {
