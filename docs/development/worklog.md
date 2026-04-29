@@ -1026,6 +1026,26 @@ Active steps:
     - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passes (47 tests).
   - Remaining follow-up:
     - deeper runtime mapping for all Network/Customization options can be expanded as native backend hooks mature.
+- 2026-04-28 completed reliability-first two-step increment (shell hardening + phase 4 starter):
+  - Step 1 reliability/shell hardening:
+    - Made runtime apply deterministic for Network proxy mode transitions in `src/Aethra/Services/PlaybackOptionsService.cs` by always emitting `http-proxy` (including explicit clear values) so proxy state does not linger after mode switches.
+    - Hardened customization apply behavior in `src/Aethra/Services/PlaybackOptionsService.cs` by normalizing/validating accent hex before runtime emission (invalid values now fall back to the default accent instead of propagating partial state).
+    - Improved shell command responsiveness and overlay consistency in `src/Aethra/Views/MainWindow.xaml.cs`:
+      - WM_KEYDOWN handling for fullscreen/settings/escape now returns handled (`new IntPtr(1)`) to avoid duplicate command processing ambiguity.
+      - Unified settings open/close flow via dedicated helpers so command/button paths share one deterministic preferences-open behavior, including exiting fullscreen before opening preferences.
+    - Added reliability regression coverage in `tests/Aethra.Tests/Services/PlaybackOptionsServiceTests.cs`:
+      - `ApplyNetworkPreferences_ClearsHttpProxyWhenNotUsingHttpProxyMode`,
+      - `ApplyCustomizationPreferences_NormalizesInvalidAccentHex`.
+  - Step 2 phase 4 starter (discoverability + consistency):
+    - Added section-level Preferences search/filter in `src/Aethra/Views/FullSettingsPanel.xaml` + `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`.
+    - Filter now narrows left-nav sections by section names and intent keywords (for example proxy/network, shortcuts/input, accent/theme), auto-selects a visible section when the current one is filtered out, and reports visible section counts.
+    - Per-section status feedback wording was tightened for consistency (`Subtitles settings ...`).
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with zero warnings and zero errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (49 tests).
+    - Manual shell smoke checklist status:
+      - command paths for fullscreen/settings/escape and deterministic apply behavior are now test-backed and compile-validated,
+      - full interactive desktop loop (open/play/pause/seek/volume/fullscreen/preferences repeat cycle) remains an explicit final local run step prior to release-oriented milestones.
 
 ## Roadmap
 

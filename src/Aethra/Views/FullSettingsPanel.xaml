@@ -59,6 +59,21 @@
                 </StackPanel>
             </StackPanel>
 
+            <StackPanel Grid.Column="1"
+                        MaxWidth="420"
+                        Spacing="4"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="24,0,24,0">
+                <TextBox x:Name="PreferencesSearchBox"
+                         PlaceholderText="Filter sections (video, network, shortcuts...)"
+                         TextChanged="PreferencesSearchBox_TextChanged"
+                         Foreground="White"/>
+                <TextBlock x:Name="PreferencesFilterStatusText"
+                           Foreground="#9FA0A4"
+                           FontSize="12"/>
+            </StackPanel>
+
             <Button Grid.Column="2"
                     x:Name="CloseButton"
                     Click="CloseButton_Click"

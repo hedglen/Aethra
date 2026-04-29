@@ -16,6 +16,22 @@ namespace Aethra.Preferences;
 
 public sealed partial class FullSettingsPanel : UserControl
 {
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> SectionFilterKeywords =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Playback"] = new[] { "playback", "startup", "speed", "autoplay", "resume", "loop" },
+            ["Video"] = new[] { "video", "decode", "interpolation", "deinterlace", "quality", "renderer" },
+            ["Audio"] = new[] { "audio", "volume", "device", "drc", "replaygain", "channels" },
+            ["Subtitles"] = new[] { "subtitles", "captions", "font", "languages", "timing" },
+            ["Input"] = new[] { "input", "shortcuts", "bindings", "keys", "mouse", "wheel" },
+            ["Library"] = new[] { "library", "recent", "history", "folders" },
+            ["Network"] = new[] { "network", "stream", "proxy", "timeout", "ipv6" },
+            ["Shaders"] = new[] { "shaders", "upscaling", "post-processing", "fsrcnnx", "anime4k" },
+            ["Profiles"] = new[] { "profiles", "bundles", "import", "export", "presets" },
+            ["Customization"] = new[] { "customization", "theme", "accent", "layout", "hud" },
+            ["Advanced"] = new[] { "advanced", "expert", "raw", "logging", "mpv options", "scripts" }
+        };
+
     private readonly List<InputBindingSetting> _inputBindings = new();
     private readonly ObservableCollection<InputBindingSetting> _visibleInputBindings = new();
     private readonly PlaybackOptionsService _playbackOptions = PlaybackOptionsService.Instance;
@@ -32,6 +48,7 @@ public sealed partial class FullSettingsPanel : UserControl
     public FullSettingsPanel()
     {
         InitializeComponent();
+        InitializePreferencesSectionFilter();
         InitializeAccentControls();
         AccentColorService.AccentColorChanged += AccentColorService_AccentColorChanged;
         Unloaded += FullSettingsPanel_Unloaded;
@@ -55,7 +72,23 @@ public sealed partial class FullSettingsPanel : UserControl
             return;
 
         var tag = selectedItem.Tag?.ToString() ?? string.Empty;
+        SetActiveSection(tag);
+    }
 
+    private void PreferencesSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ApplyPreferencesSectionFilter();
+    }
+
+    private void InitializePreferencesSectionFilter()
+    {
+        if (PreferencesFilterStatusText is not null)
+            PreferencesFilterStatusText.Text = $"Showing {NavView.MenuItems.Count} sections.";
+        ApplyPreferencesSectionFilter();
+    }
+
+    private void SetActiveSection(string tag)
+    {
         PlaybackPanel.Visibility = tag == "Playback" ? Visibility.Visible : Visibility.Collapsed;
         VideoPanel.Visibility = tag == "Video" ? Visibility.Visible : Visibility.Collapsed;
         AudioPanel.Visibility = tag == "Audio" ? Visibility.Visible : Visibility.Collapsed;
@@ -67,6 +100,63 @@ public sealed partial class FullSettingsPanel : UserControl
         ProfilesPanel.Visibility = tag == "Profiles" ? Visibility.Visible : Visibility.Collapsed;
         CustomizationPanel.Visibility = tag == "Customization" ? Visibility.Visible : Visibility.Collapsed;
         AdvancedPanel.Visibility = tag == "Advanced" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ApplyPreferencesSectionFilter()
+    {
+        if (NavView is null || PreferencesSearchBox is null || PreferencesFilterStatusText is null)
+            return;
+
+        var query = (PreferencesSearchBox.Text ?? string.Empty).Trim();
+        var totalSections = 0;
+        var visibleSections = new List<NavigationViewItem>();
+
+        foreach (var item in NavView.MenuItems.OfType<NavigationViewItem>())
+        {
+            totalSections++;
+            var isVisible = MatchesPreferencesFilter(item, query);
+            item.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+            if (isVisible)
+                visibleSections.Add(item);
+        }
+
+        if (visibleSections.Count == 0)
+        {
+            SetActiveSection(string.Empty);
+            PreferencesFilterStatusText.Text = string.IsNullOrWhiteSpace(query)
+                ? "No sections available."
+                : $"No sections match \"{query}\".";
+            return;
+        }
+
+        if (NavView.SelectedItem is not NavigationViewItem selectedItem
+            || selectedItem.Visibility != Visibility.Visible)
+        {
+            NavView.SelectedItem = visibleSections[0];
+            SetActiveSection(visibleSections[0].Tag?.ToString() ?? string.Empty);
+        }
+
+        PreferencesFilterStatusText.Text = string.IsNullOrWhiteSpace(query)
+            ? $"Showing {visibleSections.Count} sections."
+            : $"Showing {visibleSections.Count} of {totalSections} sections.";
+    }
+
+    private static bool MatchesPreferencesFilter(NavigationViewItem item, string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return true;
+
+        var normalizedQuery = query.Trim();
+        var tag = item.Tag?.ToString() ?? string.Empty;
+        var content = item.Content?.ToString() ?? string.Empty;
+
+        if (Contains(tag, normalizedQuery) || Contains(content, normalizedQuery))
+            return true;
+
+        if (!SectionFilterKeywords.TryGetValue(tag, out var keywords))
+            return false;
+
+        return keywords.Any(keyword => keyword.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase));
     }
 
     private void InitializeAccentControls()
@@ -225,7 +315,7 @@ public sealed partial class FullSettingsPanel : UserControl
             SubtitlesLanguagesTextBox.Text = _pageProfiles.Subtitles.PreferredLanguagesCsv;
             SubtitlesFontSizeSlider.Value = _pageProfiles.Subtitles.FontSize;
             SubtitlesBorderShadowToggle.IsOn = _pageProfiles.Subtitles.BorderAndShadow;
-            SubtitlesStatusText.Text = "Subtitle settings loaded.";
+            SubtitlesStatusText.Text = "Subtitles settings loaded.";
 
             LibraryWatchFoldersToggle.IsOn = _pageProfiles.Library.WatchFoldersEnabled;
             LibraryRememberRecentToggle.IsOn = _pageProfiles.Library.RememberRecentFiles;
@@ -867,7 +957,7 @@ public sealed partial class FullSettingsPanel : UserControl
             return;
 
         SavePageProfiles();
-        SubtitlesStatusText.Text = "Subtitle settings saved.";
+        SubtitlesStatusText.Text = "Subtitles settings saved.";
     }
 
     private void SubtitlesResetButton_Click(object sender, RoutedEventArgs e)
@@ -875,7 +965,7 @@ public sealed partial class FullSettingsPanel : UserControl
         _pageProfiles.Subtitles = SubtitlePreferencesProfile.CreateDefault();
         HydratePageControlsFromProfiles();
         SavePageProfiles();
-        SubtitlesStatusText.Text = "Subtitle settings reset to defaults.";
+        SubtitlesStatusText.Text = "Subtitles settings reset to defaults.";
     }
 
     private void LibrarySaveButton_Click(object sender, RoutedEventArgs e)

@@ -339,15 +339,27 @@ namespace Aethra
         private void ToggleSettingsPanel()
         {
             var shouldShow = FullSettingsHost.Visibility != Visibility.Visible;
-            FullSettingsHost.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
-
             if (shouldShow)
-            {
-                EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-                CloseRightDrawer(updateCursor: false);
-            }
+                OpenFullSettingsPanel();
+            else
+                CloseFullSettingsPanel();
 
             RefreshPlaybackActivityState();
+        }
+
+        private void OpenFullSettingsPanel()
+        {
+            if (_isFullscreen)
+                ExitFullscreen();
+
+            EmbeddedPanelHost.Visibility = Visibility.Collapsed;
+            CloseRightDrawer(updateCursor: false);
+            FullSettingsHost.Visibility = Visibility.Visible;
+        }
+
+        private void CloseFullSettingsPanel()
+        {
+            FullSettingsHost.Visibility = Visibility.Collapsed;
         }
 
         private void CommandRail_Loaded(object sender, RoutedEventArgs e)
@@ -540,9 +552,7 @@ namespace Aethra
 
         private void RailPreferencesButton_Click(object sender, RoutedEventArgs e)
         {
-            EmbeddedPanelHost.Visibility = Visibility.Collapsed;
-            CloseRightDrawer(updateCursor: false);
-            FullSettingsHost.Visibility = Visibility.Visible;
+            OpenFullSettingsPanel();
             RefreshPlaybackActivityState();
         }
 
@@ -638,20 +648,20 @@ namespace Aethra
                 if (vk == 0x46) // F
                 {
                     DispatcherQueue.TryEnqueue(() => _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen));
-                    return IntPtr.Zero;
+                    return new IntPtr(1);
                 }
             }
 
             if (msg == WM_KEYDOWN && wParam == (IntPtr)VK_S)
             {
                 DispatcherQueue.TryEnqueue(() => _commandDispatcher.Execute(AethraCommandIds.ToggleSettings));
-                return IntPtr.Zero;
+                return new IntPtr(1);
             }
 
             if (msg == WM_KEYDOWN && wParam == (IntPtr)VK_ESCAPE)
             {
                 DispatcherQueue.TryEnqueue(() => _commandDispatcher.Execute(AethraCommandIds.ExitOverlayOrFullscreen));
-                return IntPtr.Zero;
+                return new IntPtr(1);
             }
 
             return DefSubclassProc(hWnd, msg, wParam, lParam);
@@ -659,7 +669,7 @@ namespace Aethra
 
         private void FullSettings_CloseRequested(object? sender, EventArgs e)
         {
-            FullSettingsHost.Visibility = Visibility.Collapsed;
+            CloseFullSettingsPanel();
             RefreshPlaybackActivityState();
         }
 
@@ -2269,7 +2279,7 @@ namespace Aethra
         {
             if (FullSettingsHost.Visibility == Visibility.Visible)
             {
-                FullSettingsHost.Visibility = Visibility.Collapsed;
+                CloseFullSettingsPanel();
                 RefreshPlaybackActivityState();
                 return;
             }

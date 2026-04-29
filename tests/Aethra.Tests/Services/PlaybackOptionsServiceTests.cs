@@ -89,6 +89,35 @@ public sealed class PlaybackOptionsServiceTests
     }
 
     [Fact]
+    public void ApplyNetworkPreferences_ClearsHttpProxyWhenNotUsingHttpProxyMode()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplyNetworkPreferences(new NetworkPreferencesProfile
+            {
+                ProxyMode = NetworkProxyMode.Http,
+                ProxyUrl = "http://127.0.0.1:8080"
+            });
+            service.ApplyNetworkPreferences(new NetworkPreferencesProfile
+            {
+                ProxyMode = NetworkProxyMode.System,
+                ProxyUrl = "http://should-not-stick"
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.Contains(("http-proxy", "http://127.0.0.1:8080"), emitted);
+        Assert.Contains(("http-proxy", string.Empty), emitted);
+    }
+
+    [Fact]
     public void ApplyCustomizationPreferences_EmitsExpectedProperties()
     {
         var service = PlaybackOptionsService.Instance;
@@ -114,5 +143,27 @@ public sealed class PlaybackOptionsServiceTests
         Assert.Contains(("aethra-use-system-theme", "no"), emitted);
         Assert.Contains(("aethra-dense-layout", "yes"), emitted);
         Assert.Contains(("aethra-show-playback-hud", "no"), emitted);
+    }
+
+    [Fact]
+    public void ApplyCustomizationPreferences_NormalizesInvalidAccentHex()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplyCustomizationPreferences(new CustomizationPreferencesProfile
+            {
+                AccentHex = "bad-value"
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.Contains(("aethra-accent-hex", "#7B2FFF"), emitted);
     }
 }

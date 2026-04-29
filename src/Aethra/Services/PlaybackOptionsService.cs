@@ -246,14 +246,17 @@ public sealed class PlaybackOptionsService
             NetworkProxyMode.Http when !string.IsNullOrWhiteSpace(profile.ProxyUrl) => profile.ProxyUrl.Trim(),
             _ => string.Empty
         };
-        if (proxy.Length > 0)
-            ApplyStringProperty("http-proxy", proxy);
+        // Always emit `http-proxy` so switching proxy mode does not leave stale runtime state.
+        ApplyStringProperty("http-proxy", proxy);
     }
 
     public void ApplyCustomizationPreferences(CustomizationPreferencesProfile profile)
     {
         // These are app-owned UX toggles and may later map to explicit runtime properties.
-        ApplyStringProperty("aethra-accent-hex", profile.AccentHex);
+        var accentHex = AccentColorService.TryParseHexColor(profile.AccentHex, out _, out var normalizedHex)
+            ? normalizedHex
+            : AccentColorService.DefaultAccentHex;
+        ApplyStringProperty("aethra-accent-hex", accentHex);
         ApplyStringProperty("aethra-use-system-theme", profile.UseSystemTheme ? "yes" : "no");
         ApplyStringProperty("aethra-dense-layout", profile.DenseLayout ? "yes" : "no");
         ApplyStringProperty("aethra-show-playback-hud", profile.ShowPlaybackHud ? "yes" : "no");
