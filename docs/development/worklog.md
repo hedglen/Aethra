@@ -1046,6 +1046,28 @@ Active steps:
     - Manual shell smoke checklist status:
       - command paths for fullscreen/settings/escape and deterministic apply behavior are now test-backed and compile-validated,
       - full interactive desktop loop (open/play/pause/seek/volume/fullscreen/preferences repeat cycle) remains an explicit final local run step prior to release-oriented milestones.
+- 2026-04-29 fixed startup auto-load + drag-drop playback reliability regression:
+  - Root-cause hardening in `src/Aethra/Views/MainWindow.xaml.cs`:
+    - Added deterministic startup initialization fallback (`EnsureVisiblePlayerInitialization`) so visible backend initialization no longer depends only on late `Loaded` handler timing.
+    - Added deferred media-load recovery path in `LoadMedia(...)` when no backend is active yet:
+      - queue pending path,
+      - trigger initialization,
+      - flush queued media after backend initialization.
+    - Added startup media candidate resolution with explicit precedence:
+      - prefer `C:\\Users\\rjh\\Videos\\test.mp4`,
+      - fallback to persisted last media path,
+      - only apply persisted resume seek when fallback path is used.
+  - Drag/drop targeting hardening:
+    - Added explicit drag/drop wiring to `VideoContainer` in `src/Aethra/Views/MainWindow.xaml` (`AllowDrop`, `DragEnter`, `Drop`) so file drops over the primary playback surface consistently reach the existing handlers.
+  - Test coverage additions in `tests/Aethra.Tests/Views/MainWindowStartupTests.cs`:
+    - queue/defer media-load guard behavior,
+    - startup media selection precedence,
+    - persisted resume selection behavior on fallback.
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with zero warnings/errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (55 tests).
+  - Manual smoke status:
+    - pending desktop verification: launch -> auto-load `test.mp4`; drag another media file onto video surface -> immediate playback.
 
 ## Roadmap
 

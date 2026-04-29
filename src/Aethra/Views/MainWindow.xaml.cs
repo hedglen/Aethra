@@ -53,6 +53,7 @@ namespace Aethra
         private int _hoveredChapterIndex = -1;
         private const double ChapterMarkerHoverThresholdPx = 6.0;
         private bool _visiblePlayerInitialized;
+        private bool _isVisiblePlayerInitializationQueued;
         private bool _isFullscreen;
         private bool _wasMaximizedBeforeFullscreen;
         private bool _isCommandRailExpanded;
@@ -61,6 +62,7 @@ namespace Aethra
         private readonly InputRuntimeService _inputRuntimeService = new();
         private readonly List<InputBindingSetting> _currentInputBindings = new();
         private readonly PlaybackPersistenceSnapshot _playbackPersistence;
+        private string? _pendingMediaPath;
         // True means playback is paused. Visual surfaces route through
         // PlayPauseVisualFor so the transport button and context menu stay aligned.
         private bool _isPlaybackPaused = true;
@@ -92,6 +94,7 @@ namespace Aethra
         private bool _isVideoPointerDraggingWindow;
         private string? _lastLoadedMediaPath;
         private bool _startupMediaLoaded;
+        private const string PreferredStartupMediaPath = @"C:\Users\rjh\Videos\test.mp4";
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
         private const double TransportBarHeight = 70;
@@ -168,6 +171,7 @@ namespace Aethra
             _videoAdjustmentBatcher.Dispose();
             _cursorHideEnforcementTimer.Stop();
             _volumeOsdHideTimer.Stop();
+            GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
             FullSettings.InputBindingsChanged -= FullSettings_InputBindingsChanged;
             PlaybackPersistenceStore.SaveVolume(_currentVolume);
             PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
@@ -241,6 +245,11 @@ namespace Aethra
             // Wait for the UI element to finish loading before initializing mpv
             VideoContainer.Loaded += VideoContainer_Loaded;
             GpuVideoSurface.Loaded += GpuVideoSurface_Loaded;
+            GpuVideoSurface.SizeChanged += GpuVideoSurface_PreInitSizeChanged;
+
+            // Loaded events can fire before these handlers are attached; always queue
+            // one fallback initialization attempt to keep startup deterministic.
+            EnsureVisiblePlayerInitialization();
 
             // Keep keyboard focus on the main window.
             this.Activate();
@@ -275,7 +284,31 @@ namespace Aethra
             if (!_useGpuVideoSurface)
                 return;
 
-            _ = DispatcherQueue.TryEnqueue(TryInitializeVisiblePlayer);
+            EnsureVisiblePlayerInitialization();
+        }
+
+        private void GpuVideoSurface_PreInitSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (_visiblePlayerInitialized || !_useGpuVideoSurface)
+                return;
+
+            if (e.NewSize.Width <= 0 || e.NewSize.Height <= 0)
+                return;
+
+            EnsureVisiblePlayerInitialization();
+        }
+
+        private void EnsureVisiblePlayerInitialization()
+        {
+            if (_visiblePlayerInitialized || _isVisiblePlayerInitializationQueued)
+                return;
+
+            _isVisiblePlayerInitializationQueued = true;
+            _ = DispatcherQueue.TryEnqueue(() =>
+            {
+                _isVisiblePlayerInitializationQueued = false;
+                TryInitializeVisiblePlayer();
+            });
         }
 
         private void TryInitializeVisiblePlayer()
@@ -292,13 +325,12 @@ namespace Aethra
                 if (_useGpuVideoSurface)
                 {
                     if (GpuVideoSurface.ActualWidth <= 0 || GpuVideoSurface.ActualHeight <= 0)
-                    {
-                        _ = DispatcherQueue.TryEnqueue(TryInitializeVisiblePlayer);
                         return;
-                    }
 
                     InitializeNativeGpuPlayer();
                     _visiblePlayerInitialized = true;
+                    GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
+                    TryLoadPendingMedia();
                     TryLoadStartupMedia();
                     return;
                 }
@@ -315,8 +347,10 @@ namespace Aethra
 
             _useGpuVideoSurface = false;
             ApplyVideoSurfaceMode();
+            GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
             InitializeNativeSoftwarePlayer();
             _visiblePlayerInitialized = true;
+            TryLoadPendingMedia();
             TryLoadStartupMedia();
         }
 
@@ -1416,6 +1450,18 @@ namespace Aethra
 
         private void LoadMedia(string path)
         {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            if (ShouldQueueMediaLoad(_activeBackends.Count))
+            {
+                _pendingMediaPath = path;
+                // A user/requested load takes precedence over startup autoload.
+                _startupMediaLoaded = true;
+                EnsureVisiblePlayerInitialization();
+                return;
+            }
+
             MediaTitleText.Text = GetDisplayMediaName(path);
             _lastLoadedMediaPath = path;
             ForEachPlayerBackend(player => player.LoadFile(path));
@@ -1430,6 +1476,21 @@ namespace Aethra
             ClosePlayerShellCommandSurfacesForActivePlayback();
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
+        }
+
+        internal static bool ShouldQueueMediaLoad(int activeBackendCount)
+        {
+            return activeBackendCount <= 0;
+        }
+
+        private void TryLoadPendingMedia()
+        {
+            if (string.IsNullOrWhiteSpace(_pendingMediaPath))
+                return;
+
+            var path = _pendingMediaPath;
+            _pendingMediaPath = null;
+            LoadMedia(path);
         }
 
         // Play/pause surfaces show the action available to the user.
@@ -2341,15 +2402,32 @@ namespace Aethra
             if (_startupMediaLoaded)
                 return;
 
-            if (string.IsNullOrWhiteSpace(_lastLoadedMediaPath) || !File.Exists(_lastLoadedMediaPath))
+            var startupPath = ResolveStartupMediaCandidate(PreferredStartupMediaPath, _lastLoadedMediaPath, out var shouldResumePersistedPosition);
+            if (string.IsNullOrWhiteSpace(startupPath))
                 return;
 
             _startupMediaLoaded = true;
-            LoadMedia(_lastLoadedMediaPath);
-            if (_playbackPersistence.LastPositionSeconds > 0)
+            LoadMedia(startupPath);
+            if (shouldResumePersistedPosition && _playbackPersistence.LastPositionSeconds > 0)
             {
                 ForEachPlayerBackend(player => player.SeekToTime(_playbackPersistence.LastPositionSeconds));
             }
+        }
+
+        internal static string? ResolveStartupMediaCandidate(string preferredPath, string? persistedPath, out bool shouldResumePersistedPosition)
+        {
+            shouldResumePersistedPosition = false;
+
+            if (!string.IsNullOrWhiteSpace(preferredPath) && File.Exists(preferredPath))
+                return preferredPath;
+
+            if (!string.IsNullOrWhiteSpace(persistedPath) && File.Exists(persistedPath))
+            {
+                shouldResumePersistedPosition = true;
+                return persistedPath;
+            }
+
+            return null;
         }
 
         private bool HandleLegacyKeyDown(VirtualKey key)
