@@ -964,6 +964,20 @@ Active steps:
   - Refreshed `docs/README.md` quick links to include root `README.md` and `CONTRIBUTING.md` for faster newcomer orientation.
   - Validation:
     - Docs-only change set; no code/build impact expected.
+- 2026-04-28 completed third-party notices alignment pass with LGPL-first distribution lock:
+  - Updated `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` to remove contradictory status wording about FFmpeg/ANGLE copy state versus the active `NativeRuntime/x64` bundle inventory.
+  - Added explicit policy language separating:
+    - Aethra source license (`MIT OR Apache-2.0`) from
+    - redistributed native-runtime obligations (LGPL/GPL depending on chosen build posture).
+  - Locked default public-binary native-runtime posture to LGPL-first, with explicit owner-approval required to switch to stronger-copyleft distribution choices.
+  - Added per-DLL public-release checklist fields (source URL/commit, build commands, license-text inclusion, copyleft note coverage, shipped-bit verification).
+  - Aligned docs on renderer and FFmpeg policy:
+    - `README.md` now clarifies runtime GPU path is proven while visible WinUI GPU bridge remains in progress.
+    - `docs/development/copilot-instructions.md` now explicitly states FFmpeg is required for the current libmpv stack and defaults remain LGPL-first (`-Dgpl=false`, no `--enable-nonfree`) unless owner-approved.
+    - `docs/project/roadmap.md` now includes the same LGPL-first public-binary posture in locked direction.
+  - Result: guidance is consistent with owner goals (free/open, broad reuse including commercial derivatives, explicit credit, and clear third-party compliance obligations).
+  - Validation:
+    - Docs-only change set; no code/build impact expected.
 
 ## Roadmap
 

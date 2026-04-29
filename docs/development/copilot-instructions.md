@@ -97,6 +97,7 @@ Out of scope unless explicitly requested: DRM-protected streaming services (Netf
 
 - Aethra is free software, distributed on GitHub under dual-license terms (MIT OR Apache-2.0).
 - Choose native dependencies based on playback quality and maintainability, while keeping redistribution obligations clear and documented.
+- FFmpeg is required for the current libmpv-based architecture; default public binaries should remain LGPL-first (`-Dgpl=false`, no `--enable-nonfree`) unless the owner explicitly approves a different distribution posture.
 - Do not use FFmpeg `--enable-nonfree`, opaque third-party redistributables, or native binaries with unclear provenance without explicit owner approval.
 - Build or source libmpv/mpv, FFmpeg, libplacebo, libass, libdvdnav, libbluray, ANGLE, and related native binaries from official or well-known reproducible sources.
 - Prefer the highest-quality mpv render API path available for WinUI: mpv + libplacebo GPU rendering, currently proven through OpenGL via ANGLE on this machine.

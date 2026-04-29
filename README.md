@@ -20,7 +20,8 @@ Built with WinUI 3 + C#.
 
 Active Windows-first development with x64 focus.
 
-- **Done:** GPU-first playback path through OpenGL via ANGLE (software fallback retained).
+- **Done:** GPU-first playback path through OpenGL via ANGLE is proven at the runtime/engine level, with software fallback retained.
+- **In progress:** finishing the visible WinUI GPU bridge so the on-screen presentation path fully reflects the proven runtime GPU path.
 - **Done:** foundational command dispatch, controls runtime, and preferences/profile depth increments.
 - **In progress:** reliability and shell smoke hardening plus deeper parity across remaining preferences areas.
 - **Next:** continue roadmap-driven Phase 3 completion and then move into broader customization depth.
@@ -59,6 +60,7 @@ Launch from Visual Studio/Visual Studio Code, or run the built executable from:
 - Profiles and domain types: `src/Aethra/Profiles`, `src/Aethra/Models`
 - Core app services: `src/Aethra/Services`
 - Runtime native binaries: `src/Aethra/NativeRuntime/x64`
+- Third-party runtime provenance/notices: `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md`
 
 ## Contributing
 

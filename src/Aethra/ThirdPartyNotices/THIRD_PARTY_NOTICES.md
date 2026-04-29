@@ -12,9 +12,16 @@ This file tracks native dependencies that may ship with Aethra. Keep it current 
 - Preserve license text, notices, source links, exact versions/commits, and build provenance for redistributed native binaries.
 - Do not obscure third-party DLL names.
 
+## License Layers And Public Binary Posture
+
+- Source/repository license for Aethra-owned code is **MIT OR Apache-2.0**.
+- Redistributed native runtime libraries may impose additional obligations (for example LGPL/GPL), depending on how those binaries are built.
+- Default public-binary target is **LGPL-first**: keep FFmpeg/mpv/libplacebo distribution choices compatible with broad reuse and commercial derivatives unless an owner-approved policy change is made.
+- If a release intentionally includes GPL or other stronger-copyleft components, document that shift explicitly in this file and release notes before shipping.
+
 ## Course Correction - Free GitHub Distribution
 
-The earlier LGPL-clean source-build work below is retained as useful provenance and as a working runtime baseline, but it is no longer the only product constraint. Future native-runtime work should choose the best open-source mpv/libplacebo/FFmpeg/ANGLE renderer stack for playback quality, shader support, HDR/tone mapping, and configurability, then document the resulting redistribution obligations.
+The earlier LGPL-clean source-build work below is retained as useful provenance and as a working runtime baseline. Native-runtime work should keep pursuing the best open-source mpv/libplacebo/FFmpeg/ANGLE renderer stack for playback quality, shader support, HDR/tone mapping, and configurability, while keeping the default public distribution posture LGPL-first unless the owner explicitly approves a different license posture.
 
 Current renderer evidence:
 
@@ -53,8 +60,8 @@ These notes include historical LGPL-clean build work plus the current runtime-bu
   - Matching source/build configuration available.
 - Official build-doc reference: `https://github.com/mpv-player/mpv/blob/master/DOCS/compile-windows.md`
 - Official license reference: `https://github.com/mpv-player/mpv/blob/master/Copyright`
-- Current status: the existing source-built runtime works for prototyping and as a fallback baseline, but future builds may use fuller GPL-compatible features to improve playback and rendering quality.
-- Local build status: several source-built `libmpv-2.dll` variants were produced while exploring a tighter LGPL baseline; the active product direction now allows replacing that baseline with a fuller open-source runtime when useful.
+- Current status: the existing source-built runtime works for prototyping and as a fallback baseline, and future builds may expand feature depth while retaining an LGPL-first default public distribution posture.
+- Local build status: several source-built `libmpv-2.dll` variants were produced while exploring a tighter LGPL baseline; the active product direction keeps that baseline as the default shipping posture while allowing explicit owner-reviewed exceptions.
 
 #### Historical Source-Build Route
 
@@ -271,14 +278,24 @@ Important notice/provenance gap before distribution:
 - This bundle is present for local development and integration.
 - Before any public binary distribution, add/verify license text and source/provenance coverage for every non-system DLL in this bundle, especially the MSYS2-provided subtitle/font/text/compression stack and ANGLE.
 
+Per-DLL release record requirements (must be completed before shipping public binaries):
+
+- Runtime file name and architecture (`x64`).
+- Upstream project URL and exact source commit/tag.
+- Local source/build path used to produce or source the DLL.
+- Exact configure/build/install commands or package source metadata.
+- Declared license identifier and local copy location of license text included with distribution.
+- Dependent copyleft obligations (if any), with release-note wording link/check.
+- Verification status that the DLL is included in notices and matches shipped bits (hash/version).
+
 #### Dependency Licensing Checkpoints
 
 - mpv `Copyright` confirms `-Dgpl=false` disables GPL-only mpv source files, but linked libraries can still affect the final license.
-- MSYS2 CLANG64 `mingw-w64-clang-x86_64-ffmpeg 8.1-3` is explicitly `GPL-3.0-or-later`; do not use it for Aethra's commercial distribution build.
+- MSYS2 CLANG64 `mingw-w64-clang-x86_64-ffmpeg 8.1-3` is explicitly `GPL-3.0-or-later`; do not use it for Aethra's default public distribution build.
 - MSYS2 CLANG64 `mingw-w64-clang-x86_64-libplacebo 7.360.1-1` reports `LGPL2.1` and is installed locally as an mpv build dependency.
 - MSYS2 CLANG64 `mingw-w64-clang-x86_64-libass 0.17.4-3` reports `ISC` and is installed locally as an mpv build dependency.
 - MSYS2 CLANG64 `mingw-w64-clang-x86_64-luajit 2.1.1774896198-1` reports `MIT`.
-- Next native dependency decision: use the local LGPL-clean FFmpeg source build below when configuring distribution `libmpv-2.dll`.
+- Next native dependency decision: use the local LGPL-clean FFmpeg source build below when configuring default distribution `libmpv-2.dll`.
 
 ## FFmpeg LGPL Compliance Checklist
 
@@ -334,7 +351,7 @@ For any FFmpeg binaries or FFmpeg-derived libraries distributed with Aethra:
   - `avutil-60.dll`
   - `swresample-6.dll`
   - `swscale-9.dll`
-- Build status: built and installed locally from source; no FFmpeg binaries have been copied into the Aethra project yet.
+- Build status: built and installed locally from source; matching FFmpeg DLLs are currently copied into `src/Aethra/NativeRuntime/x64` as listed in the Native Runtime Bundle section above.
 
 ### ANGLE
 
@@ -342,7 +359,7 @@ For any FFmpeg binaries or FFmpeg-derived libraries distributed with Aethra:
 - Architecture: Windows x64
 - License posture: BSD-style permissive
 - Required notice: include ANGLE license text and source link with distributed binaries.
-- Current status: installed locally through MSYS2 CLANG64, not yet copied into the Aethra project.
+- Current status: installed locally through MSYS2 CLANG64 and currently copied into `src/Aethra/NativeRuntime/x64` as part of the runtime bundle.
 - Local package: `mingw-w64-clang-x86_64-angleproject 2.1.r25748.890b5d8f-1`
 - Local DLLs:
   - `C:\msys64\clang64\bin\libEGL.dll`
