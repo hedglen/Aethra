@@ -45,4 +45,29 @@ public sealed class InputCommandSupportTests
         Assert.True(unsupported);
         Assert.Equal(expectedReason, reason);
     }
+
+    [Fact]
+    public void ClassifyCommand_ReturnsExpectedClassification()
+    {
+        Assert.Equal(InputCommandSupport.CommandClassification.NativeAlias, InputCommandSupport.ClassifyCommand("cycle pause", out _));
+        Assert.Equal(InputCommandSupport.CommandClassification.NativeAlias, InputCommandSupport.ClassifyCommand("aethra:play-pause", out _));
+        Assert.Equal(InputCommandSupport.CommandClassification.PassthroughSafe, InputCommandSupport.ClassifyCommand("show-text \"ok\"", out _));
+        Assert.Equal(InputCommandSupport.CommandClassification.Blocked, InputCommandSupport.ClassifyCommand("run calc.exe", out _));
+        Assert.Equal(InputCommandSupport.CommandClassification.Invalid, InputCommandSupport.ClassifyCommand("set \"bad", out _));
+    }
+
+    [Fact]
+    public void TryGetNativeAlias_ReturnsExpectedAlias()
+    {
+        AssertAlias("script-binding uosc/menu", InputCommandSupport.NativeAlias.ToggleSettings);
+        AssertAlias("set fullscreen no", InputCommandSupport.NativeAlias.ExitFullscreen);
+        AssertAlias("quit-watch-later", InputCommandSupport.NativeAlias.Quit);
+    }
+
+    private static void AssertAlias(string command, InputCommandSupport.NativeAlias expectedAlias)
+    {
+        _ = MpvCommandLineParser.TryParseCommandChain(command, out var commands);
+        Assert.True(InputCommandSupport.TryGetNativeAlias(commands[0], out var alias));
+        Assert.Equal(expectedAlias, alias);
+    }
 }

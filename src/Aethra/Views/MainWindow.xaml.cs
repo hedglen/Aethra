@@ -1406,13 +1406,13 @@ namespace Aethra
             if (LoopAButton is not null)
                 ToolTipService.SetToolTip(LoopAButton,
                     _loopPointA.HasValue
-                        ? $"Clear A (set at {FormatTime(_loopPointA.Value)})"
+                        ? $"Clear A (set at {PlaybackMetadataFormatter.FormatPlaybackTime(_loopPointA.Value)})"
                         : "Set A loop point");
 
             if (LoopBButton is not null)
                 ToolTipService.SetToolTip(LoopBButton,
                     _loopPointB.HasValue
-                        ? $"Clear B (set at {FormatTime(_loopPointB.Value)})"
+                        ? $"Clear B (set at {PlaybackMetadataFormatter.FormatPlaybackTime(_loopPointB.Value)})"
                         : "Set B loop point");
         }
 
@@ -1917,8 +1917,8 @@ namespace Aethra
             try
             {
                 NativeProgressBar.Value = percent;
-                CurrentTimeText.Text = FormatTime(position);
-                DurationText.Text = FormatTime(duration);
+                CurrentTimeText.Text = PlaybackMetadataFormatter.FormatPlaybackTime(position);
+                DurationText.Text = PlaybackMetadataFormatter.FormatPlaybackTime(duration);
             }
             finally
             {
@@ -2115,10 +2115,8 @@ namespace Aethra
             if (_hoveredChapterIndex != chapterIndex)
             {
                 _hoveredChapterIndex = chapterIndex;
-                ChapterTooltipTitle.Text = string.IsNullOrWhiteSpace(chapter.Title)
-                    ? $"Chapter {chapterIndex + 1}"
-                    : chapter.Title!;
-                ChapterTooltipTime.Text = FormatTime(chapter.Time);
+                ChapterTooltipTitle.Text = PlaybackMetadataFormatter.GetChapterTitle(chapter, chapterIndex);
+                ChapterTooltipTime.Text = PlaybackMetadataFormatter.FormatPlaybackTime(chapter.Time);
             }
 
             ChapterTooltip.Visibility = Visibility.Visible;
@@ -2141,17 +2139,6 @@ namespace Aethra
 
             _hoveredChapterIndex = -1;
             ChapterTooltip.Visibility = Visibility.Collapsed;
-        }
-
-        private static string FormatTime(double seconds)
-        {
-            if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0)
-                return "0:00";
-
-            var time = TimeSpan.FromSeconds(seconds);
-            return time.TotalHours >= 1
-                ? time.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture)
-                : time.ToString(@"m\:ss", CultureInfo.InvariantCulture);
         }
 
         private void Grid_DragEnter(object sender, DragEventArgs e)
@@ -2183,10 +2170,9 @@ namespace Aethra
                 pathToLoad = await e.DataView.GetTextAsync();
             }
 
-            if (!string.IsNullOrEmpty(pathToLoad))
-            {
-                LoadMedia(pathToLoad);
-            }
+            var normalizedPath = NormalizeMediaTarget(pathToLoad);
+            if (!string.IsNullOrEmpty(normalizedPath))
+                LoadMedia(normalizedPath);
         }
 
         private void InitializeInputRuntime()
@@ -2271,56 +2257,38 @@ namespace Aethra
 
         private bool TryExecuteNativeInputAlias(IReadOnlyList<string> argv)
         {
-            if (argv.Count == 0)
+            if (!InputCommandSupport.TryGetNativeAlias(argv, out var alias))
                 return false;
 
-            var cmd = argv[0];
-            if (string.Equals(cmd, "quit", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(cmd, "quit-watch-later", StringComparison.OrdinalIgnoreCase))
+            switch (alias)
             {
-                Close();
-                return true;
-            }
-
-            if (string.Equals(cmd, "cycle", StringComparison.OrdinalIgnoreCase) && argv.Count > 1)
-            {
-                if (string.Equals(argv[1], "pause", StringComparison.OrdinalIgnoreCase))
+                case InputCommandSupport.NativeAlias.TogglePlayPause:
                     return _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause);
 
-                if (string.Equals(argv[1], "mute", StringComparison.OrdinalIgnoreCase))
+                case InputCommandSupport.NativeAlias.ToggleMute:
                     return _commandDispatcher.Execute(AethraCommandIds.ToggleMute);
 
-                if (string.Equals(argv[1], "fullscreen", StringComparison.OrdinalIgnoreCase))
+                case InputCommandSupport.NativeAlias.ToggleFullscreen:
                     return _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
-            }
 
-            if (string.Equals(cmd, "set", StringComparison.OrdinalIgnoreCase) && argv.Count > 2)
-            {
-                if (string.Equals(argv[1], "fullscreen", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (string.Equals(argv[2], "no", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (_isFullscreen)
-                            ExitFullscreen();
+                case InputCommandSupport.NativeAlias.ExitFullscreen:
+                    if (_isFullscreen)
+                        ExitFullscreen();
+                    return true;
 
-                        return true;
-                    }
-
-                    if (string.Equals(argv[2], "yes", StringComparison.OrdinalIgnoreCase))
-                        return _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
-                }
-            }
-
-            if (string.Equals(cmd, "script-binding", StringComparison.OrdinalIgnoreCase) && argv.Count > 1)
-            {
-                if (string.Equals(argv[1], "playlistmanager/showplaylist", StringComparison.OrdinalIgnoreCase))
+                case InputCommandSupport.NativeAlias.ShowPlaylist:
                     return _commandDispatcher.Execute(AethraCommandIds.ShowPlaylist);
 
-                if (string.Equals(argv[1], "uosc/menu", StringComparison.OrdinalIgnoreCase))
+                case InputCommandSupport.NativeAlias.ToggleSettings:
                     return _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);
-            }
 
-            return false;
+                case InputCommandSupport.NativeAlias.Quit:
+                    Close();
+                    return true;
+
+                default:
+                    return false;
+            }
         }
 
         private void HandleEscapeCommand()
@@ -2404,17 +2372,44 @@ namespace Aethra
         internal static string? ResolveStartupMediaCandidate(string preferredPath, string? persistedPath, out bool shouldResumePersistedPosition)
         {
             shouldResumePersistedPosition = false;
+            var normalizedPreferredPath = NormalizeMediaTarget(preferredPath);
+            var normalizedPersistedPath = NormalizeMediaTarget(persistedPath);
 
-            if (!string.IsNullOrWhiteSpace(preferredPath) && File.Exists(preferredPath))
-                return preferredPath;
+            if (IsPlayableMediaTarget(normalizedPreferredPath))
+                return normalizedPreferredPath;
 
-            if (!string.IsNullOrWhiteSpace(persistedPath) && File.Exists(persistedPath))
+            if (IsPlayableMediaTarget(normalizedPersistedPath))
             {
                 shouldResumePersistedPosition = true;
-                return persistedPath;
+                return normalizedPersistedPath;
             }
 
             return null;
+        }
+
+        internal static string? NormalizeMediaTarget(string? rawTarget)
+        {
+            if (string.IsNullOrWhiteSpace(rawTarget))
+                return null;
+
+            return rawTarget.Trim();
+        }
+
+        internal static bool IsPlayableMediaTarget(string? pathOrUri)
+        {
+            if (string.IsNullOrWhiteSpace(pathOrUri))
+                return false;
+
+            if (File.Exists(pathOrUri))
+                return true;
+
+            if (!Uri.TryCreate(pathOrUri, UriKind.Absolute, out var uri))
+                return false;
+
+            if (uri.IsFile)
+                return File.Exists(uri.LocalPath);
+
+            return uri.Scheme is "http" or "https" or "rtsp";
         }
 
         private bool HandleLegacyKeyDown(VirtualKey key)

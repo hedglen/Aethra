@@ -60,6 +60,26 @@ public sealed class MainWindowStartupTests
         Assert.False(shouldResumePersistedPosition);
     }
 
+    [Fact]
+    public void ResolveStartupMediaCandidate_AcceptsHttpUri()
+    {
+        var resolved = MainWindow.ResolveStartupMediaCandidate("https://example.com/video.mp4", null, out var shouldResumePersistedPosition);
+
+        Assert.Equal("https://example.com/video.mp4", resolved);
+        Assert.False(shouldResumePersistedPosition);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData("  C:\\media\\file.mp4 ", "C:\\media\\file.mp4")]
+    public void NormalizeMediaTarget_TrimsOrNulls(string? input, string? expected)
+    {
+        var normalized = MainWindow.NormalizeMediaTarget(input);
+        Assert.Equal(expected, normalized);
+    }
+
     private static string CreateTempMediaPath()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.mp4");

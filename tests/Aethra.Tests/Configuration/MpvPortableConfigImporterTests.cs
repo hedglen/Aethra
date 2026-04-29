@@ -19,9 +19,16 @@ public sealed class MpvPortableConfigImporterTests
             [
                 "deband",
                 "vo=gpu-next # comment",
+                "include other.conf",
                 "[cinema]",
                 "profile-desc=\"Cinema\"",
                 "scale=ewa_lanczossharp"
+            ]);
+            File.WriteAllLines(Path.Combine(root, "other.conf"),
+            [
+                "profile=fast",
+                "hr-seek=yes",
+                "bad line value"
             ]);
             File.WriteAllLines(Path.Combine(root, "input.conf"),
             [
@@ -36,8 +43,12 @@ public sealed class MpvPortableConfigImporterTests
             Assert.Equal("gpu-next", imported.MpvOptions["vo"]);
             Assert.Equal("\"Cinema\"", imported.MpvOptions["profile:cinema:profile-desc"]);
             Assert.Equal("ewa_lanczossharp", imported.MpvOptions["profile:cinema:scale"]);
+            Assert.Equal("fast", imported.MpvOptions["profile"]);
+            Assert.Equal("yes", imported.MpvOptions["hr-seek"]);
             Assert.Equal(2, imported.InputBindings.Count);
             Assert.Single(imported.UnsupportedInputRows);
+            Assert.Single(imported.IncludedMpvConfigFiles);
+            Assert.Single(imported.UnsupportedMpvRows);
         }
         finally
         {

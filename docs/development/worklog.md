@@ -1142,6 +1142,27 @@ Active steps:
     - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (82 tests).
   - Manual smoke status:
     - pending desktop verification for input import/command execution and close-path snappiness.
+- 2026-04-29 completed high-value remaining mpv.net intake roadmap kickoff:
+  - Roadmap/top-priority planning alignment:
+    - Added `Next Priority: High-Value Remaining mpv.net Intake (Native-First)` section at the top of `docs/project/roadmap.md` with explicit step-by-step execution order and snappiness guardrails.
+  - Baseline/safety lock + command parity expansion:
+    - `src/Aethra/Input/InputCommandSupport.cs` now exposes explicit command classification (`NativeAlias`, `PassthroughSafe`, `Blocked`, `Invalid`) and shared alias mapping helper used by runtime dispatch.
+    - `src/Aethra/Views/MainWindow.xaml.cs` now consumes shared alias mapping from `InputCommandSupport` to avoid drift between validation and runtime behavior.
+  - Import-parity deepening:
+    - `src/Aethra/Configuration/MpvImportedConfig.cs` now records `UnsupportedMpvRows` and `IncludedMpvConfigFiles`.
+    - `src/Aethra/Configuration/MpvPortableConfigImporter.cs` now supports recursive `include` handling, deterministic duplicate precedence, and unsupported-row capture.
+    - `src/Aethra/Preferences/FullSettingsPanel.xaml.cs` import status now reports unsupported mpv rows and include-file counts alongside blocked command diagnostics.
+  - Backend helper intake + script wiring hardening:
+    - Added `src/Aethra/Services/PlaybackMetadataFormatter.cs` and routed chapter title/time formatting in `MainWindow` through this helper.
+    - Added `ScriptExtensionSettingsStore.ResolveEffectiveScriptsFolder(...)` and used it in both native backends to support portable-config scripts folder fallback while preserving optional script behavior.
+  - Startup/session no-lag hardening:
+    - `MainWindow.ResolveStartupMediaCandidate(...)` now accepts valid HTTP/HTTPS/RTSP/file URI targets in addition to local files.
+    - Added `NormalizeMediaTarget(...)` and reused it in startup/drop paths for deterministic, low-cost target normalization.
+  - Provenance + validation:
+    - Updated `docs/project/MPVNET_REUSE_MAP.md` and `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` with new intake mappings.
+    - Validation passed:
+      - `dotnet build .\\Aethra.slnx -p:Platform=x64`
+      - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` (96 tests).
 
 ## Roadmap
 

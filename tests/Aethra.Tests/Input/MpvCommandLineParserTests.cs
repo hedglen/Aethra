@@ -26,4 +26,15 @@ public sealed class MpvCommandLineParserTests
         var parsed = MpvCommandLineParser.TryParseCommandChain("set title \"abc", out _);
         Assert.False(parsed);
     }
+
+    [Fact]
+    public void TryParseCommandChain_PreservesEscapedQuotes()
+    {
+        var parsed = MpvCommandLineParser.TryParseCommandChain("show-text \"hello \\\"world\\\"\"", out var commands);
+
+        Assert.True(parsed);
+        Assert.Single(commands);
+        Assert.Equal("show-text", commands[0][0]);
+        Assert.Equal("hello \"world\"", commands[0][1]);
+    }
 }

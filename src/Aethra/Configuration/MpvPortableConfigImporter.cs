@@ -19,9 +19,11 @@ public static class MpvPortableConfigImporter
         var shadersDir = Path.Combine(sourceDirectory, "shaders");
         var scriptsDir = Path.Combine(sourceDirectory, "scripts");
 
-        var options = File.Exists(mpvConfPath)
-            ? ParseMpvOptions(mpvConfPath)
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var unsupportedMpvRows = new List<string>();
+        var includedConfigFiles = new List<string>();
+        if (File.Exists(mpvConfPath))
+            ParseMpvOptions(mpvConfPath, options, unsupportedMpvRows, includedConfigFiles);
         var (bindings, unsupportedRows) = File.Exists(inputConfPath)
             ? ParseInputBindings(inputConfPath)
             : (new List<InputBindingSetting>(), new List<string>());
@@ -47,15 +49,40 @@ public static class MpvPortableConfigImporter
             InputBindings = bindings,
             ShaderFiles = shaders,
             ScriptFiles = scripts,
-            UnsupportedInputRows = unsupportedRows
+            UnsupportedInputRows = unsupportedRows,
+            UnsupportedMpvRows = unsupportedMpvRows,
+            IncludedMpvConfigFiles = includedConfigFiles
         };
     }
 
-    private static Dictionary<string, string> ParseMpvOptions(string mpvConfPath)
+    private static void ParseMpvOptions(
+        string mpvConfPath,
+        IDictionary<string, string> map,
+        ICollection<string> unsupportedRows,
+        ICollection<string> includedConfigFiles)
     {
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        string? activeProfile = null;
-        foreach (var rawLine in File.ReadAllLines(mpvConfPath))
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        ParseMpvOptionsFile(Path.GetFullPath(mpvConfPath), map, unsupportedRows, includedConfigFiles, visited, activeProfile: null);
+    }
+
+    private static string? ParseMpvOptionsFile(
+        string filePath,
+        IDictionary<string, string> map,
+        ICollection<string> unsupportedRows,
+        ICollection<string> includedConfigFiles,
+        ISet<string> visited,
+        string? activeProfile)
+    {
+        if (!visited.Add(filePath))
+            return activeProfile;
+
+        if (!File.Exists(filePath))
+        {
+            unsupportedRows.Add($"include-missing:{filePath}");
+            return activeProfile;
+        }
+
+        foreach (var rawLine in File.ReadAllLines(filePath))
         {
             var line = MpvConfigLineSupport.NormalizeLine(rawLine);
             if (line.Length == 0)
@@ -67,8 +94,19 @@ public static class MpvPortableConfigImporter
                 continue;
             }
 
-            if (!MpvConfigLineSupport.TryParseOptionLine(line, out var key, out var value))
+            if (TryParseIncludeLine(line, out var includePath))
+            {
+                var resolvedInclude = ResolveIncludePath(filePath, includePath);
+                includedConfigFiles.Add(resolvedInclude);
+                activeProfile = ParseMpvOptionsFile(resolvedInclude, map, unsupportedRows, includedConfigFiles, visited, activeProfile);
                 continue;
+            }
+
+            if (!MpvConfigLineSupport.TryParseOptionLine(line, out var key, out var value))
+            {
+                unsupportedRows.Add(line);
+                continue;
+            }
 
             if (string.IsNullOrWhiteSpace(activeProfile))
                 map[key] = value;
@@ -78,7 +116,7 @@ public static class MpvPortableConfigImporter
                 map[$"profile:{activeProfile}:{key}"] = value;
         }
 
-        return map;
+        return activeProfile;
     }
 
     private static (List<InputBindingSetting> Bindings, List<string> UnsupportedRows) ParseInputBindings(string inputConfPath)
@@ -117,5 +155,24 @@ public static class MpvPortableConfigImporter
             return "Scimitar";
 
         return "Imported";
+    }
+
+    private static bool TryParseIncludeLine(string line, out string includePath)
+    {
+        includePath = string.Empty;
+        if (!line.StartsWith("include ", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        includePath = line["include ".Length..].Trim().Trim('"');
+        return includePath.Length > 0;
+    }
+
+    private static string ResolveIncludePath(string parentConfigPath, string includePath)
+    {
+        if (Path.IsPathRooted(includePath))
+            return Path.GetFullPath(includePath);
+
+        var parentDir = Path.GetDirectoryName(parentConfigPath) ?? string.Empty;
+        return Path.GetFullPath(Path.Combine(parentDir, includePath));
     }
 }

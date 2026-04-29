@@ -37,11 +37,14 @@ Current imported/adapted areas:
   - Includes inline-comment handling and tolerant row parsing for user-maintained files.
 - `src/Aethra/Configuration/MpvPortableConfigImporter.cs`
   - Uses shared adapted config parsing behavior for `mpv.conf` and `input.conf`.
-  - Includes boolean shorthand option support and profile-scoped option capture.
+  - Includes boolean shorthand option support, recursive include handling, and profile-scoped option capture.
 - `src/Aethra/Input/MpvCommandLineParser.cs`, `src/Aethra/Input/InputCommandSupport.cs`, `src/Aethra/Views/MainWindow.xaml.cs`, `src/Aethra/Native/*Player.cs`
   - Behavioral alignment with mpv.net-style command execution flow (parse -> argv -> backend queue).
   - Aethra-authored implementation; no direct file transplant.
-  - Enforces Aethra safety policy denylist for risky verbs (`run`, `subprocess`, `script-message-to`).
+  - Enforces Aethra safety policy denylist for risky verbs (`run`, `subprocess`, `script-message-to`) and explicit command classification for validation UX.
+- `src/Aethra/Configuration/ScriptExtensionSettingsStore.cs`, `src/Aethra/Native/*Player.cs`
+  - Behavioral alignment with portable-config script folder fallback pattern.
+  - Keeps scripts optional and configured at backend bootstrap only.
 - `src/Aethra/Preferences/FullSettingsPanel.xaml` and `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`
   - Added/extended Input import workflows using the adapted parser above.
   - Adds import status mapping that reports commands blocked by safety policy.

@@ -16,4 +16,8 @@ public sealed class MpvImportedConfig
     public IReadOnlyList<string> ScriptFiles { get; init; } = new List<string>();
 
     public IReadOnlyList<string> UnsupportedInputRows { get; init; } = new List<string>();
+
+    public IReadOnlyList<string> UnsupportedMpvRows { get; init; } = new List<string>();
+
+    public IReadOnlyList<string> IncludedMpvConfigFiles { get; init; } = new List<string>();
 }

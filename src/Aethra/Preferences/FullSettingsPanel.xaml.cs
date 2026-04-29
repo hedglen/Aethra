@@ -1462,9 +1462,11 @@ public sealed partial class FullSettingsPanel : UserControl
 
             ImportedShaderCountText.Text = $"{imported.ShaderFiles.Count} shader files detected";
             ImportedScriptCountText.Text = $"{imported.ScriptFiles.Count} script files detected";
+            var unsupportedMpvRowsCount = imported.UnsupportedMpvRows.Count;
+            var includeCount = imported.IncludedMpvConfigFiles.Count;
             PortableImportStatusText.Text = blockedCount == 0
-                ? $"Imported {imported.InputBindings.Count} bindings and {imported.MpvOptions.Count} mpv options."
-                : $"Imported {imported.InputBindings.Count} bindings ({blockedCount} need review). {blockedSample.binding?.Gesture ?? "Command"}: {blockedSample.reason}";
+                ? $"Imported {imported.InputBindings.Count} bindings, {imported.MpvOptions.Count} mpv options, {includeCount} include file(s), {unsupportedMpvRowsCount} unsupported mpv row(s)."
+                : $"Imported {imported.InputBindings.Count} bindings ({blockedCount} need review). {blockedSample.binding?.Gesture ?? "Command"}: {blockedSample.reason}. {unsupportedMpvRowsCount} unsupported mpv row(s).";
         }
         catch (Exception ex)
         {

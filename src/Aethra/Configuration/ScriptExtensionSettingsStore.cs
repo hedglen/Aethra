@@ -1,3 +1,4 @@
+using System.IO;
 using Windows.Storage;
 
 namespace Aethra.Configuration;
@@ -39,5 +40,17 @@ public static class ScriptExtensionSettingsStore
             return string.IsNullOrWhiteSpace(value) ? string.Empty : value;
         }
         set => ApplicationData.Current.LocalSettings.Values[PortableConfigPathKey] = value ?? string.Empty;
+    }
+
+    public static string ResolveEffectiveScriptsFolder(string? portableConfigDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(ScriptsFolder))
+            return ScriptsFolder;
+
+        if (string.IsNullOrWhiteSpace(portableConfigDirectory))
+            return string.Empty;
+
+        var fallback = Path.Combine(portableConfigDirectory, "scripts");
+        return Directory.Exists(fallback) ? fallback : string.Empty;
     }
 }

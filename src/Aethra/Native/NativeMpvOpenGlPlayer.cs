@@ -361,7 +361,8 @@ internal sealed class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
         var scriptsEnabled = ScriptExtensionSettingsStore.ScriptsEnabled;
         context.TrySetOptionString("load-scripts", scriptsEnabled ? "yes" : "no");
 
-        var scriptsFolder = ScriptExtensionSettingsStore.ScriptsFolder;
+        var scriptsFolder = ScriptExtensionSettingsStore.ResolveEffectiveScriptsFolder(
+            MpvRuntimeBootstrapSettings.Instance.PortableConfigDirectory);
         if (!string.IsNullOrWhiteSpace(scriptsFolder))
             context.TrySetOptionString("scripts", scriptsFolder);
 

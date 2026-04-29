@@ -10,6 +10,38 @@ This roadmap is the execution map for building a fully customizable, native, mod
 - Packaging baseline: unpackaged-first, with optional MSIX-capable packaging.
 - Architecture baseline: one main WinUI window, mpv render API, app-owned command/input/config behavior, no telemetry.
 
+## Next Priority: High-Value Remaining mpv.net Intake (Native-First)
+
+Goal: complete the remaining high-value, non-UI mpv.net reuse work that improves playback quality and command/input robustness while preserving Aethra snappiness.
+
+Step-by-step roadmap:
+
+1. Baseline and safety lock
+   - Capture responsiveness and command coverage baselines.
+   - Freeze denylist + native alias behavior as non-regression tests.
+2. Command catalog parity expansion
+   - Expand safe mpv command family coverage and alias routing.
+   - Keep explicit classification: native alias, passthrough-safe, blocked.
+3. `mpv.conf` / import parity deepening
+   - Improve include handling policy, duplicate precedence, and profile merge behavior.
+   - Keep import diagnostics explicit for unsupported/blocked rows.
+4. Playback metadata/property shaping helpers
+   - Add backend-only metadata/formatting helpers used by playback surfaces.
+   - Prioritize correctness/readability with zero hot-path blocking.
+5. Optional extension/script wiring hardening
+   - Improve script discovery/config wiring while preserving optional script posture.
+   - Do not introduce script dependency for first-party features.
+6. Startup/session robustness helpers
+   - Improve startup/session reliability without introducing close/shutdown delay.
+   - Guard activation/load/close paths from blocking waits.
+7. Provenance and compliance completion
+   - Update reuse map and third-party provenance for each imported/adapted chunk.
+   - Keep upstream commit mapping current.
+8. Verification gate each increment
+   - `dotnet build .\\Aethra.slnx -p:Platform=x64`
+   - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build`
+   - Manual smoke: input import/runtime execution + playback snappiness (including close responsiveness).
+
 ## Current State Snapshot
 
 - Done: GPU-first playback path is working via OpenGL through ANGLE with software fallback retained.
@@ -19,6 +51,7 @@ This roadmap is the execution map for building a fully customizable, native, mod
 - Done: Phase 2 command/input architecture is complete with native command routing, configurable keyboard/mouse Controls UX, and persisted bindings.
 - In progress: Preferences power-user depth is consolidating full typed GUI->persist->runtime parity across sections and sharpening Input editor UX for conflict visibility and command guidance.
 - In progress: GPL reuse intake now tracks mpv.net provenance, includes parser-driven command pipeline execution, and extends Input with direct `input.conf` import tooling.
+- In progress: active execution track is high-value remaining mpv.net intake (command parity, import depth, metadata shaping, script wiring hardening, startup/session robustness) with snappiness-first guardrails.
 - Next: continue Phase 4 customization/discoverability polish after the current Preferences/Input depth pass stabilizes through desktop smoke.
 
 ## Phase 1 - Shell correctness and playback reliability
