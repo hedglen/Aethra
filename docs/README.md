@@ -12,6 +12,8 @@ This folder contains project documentation for contributors and maintainers.
 
 ## Quick Links
 
+- Project entry point: `README.md`
+- Contributing guide: `CONTRIBUTING.md`
 - Roadmap: `docs/project/roadmap.md`
 - Attribution policy: `docs/project/ATTRIBUTION.md`
 - Worklog: `docs/development/worklog.md`

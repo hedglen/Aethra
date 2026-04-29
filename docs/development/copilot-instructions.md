@@ -60,9 +60,9 @@ This organization is the current target shape, not a rigid forever-plan. Keep it
 - `Input/`: binding models, default binding catalog, input gesture parsing/capture, conflict detection, and the runtime input-binding service. This is where behavior that would have lived in `input.conf` should be represented natively first.
 - `Configuration/`: load/save for user settings, portable mode, round-trip import/export, and future `%APPDATA%\Aethra\` state. Disk IO belongs here, not in the live input path.
 - `Profiles/`: user-facing playback, video, audio, subtitle, shader, and advanced profile models. This is where behavior that would have lived in `mpv.conf` should become approachable Aethra preferences first.
-- `Player/` or `Native/`: media backend abstractions and native interop. libmpv remains the engine; Aethra owns the app behavior and UI.
+- `Native/` and `NativeRuntime/`: media backend abstractions, interop, and runtime native binaries. libmpv remains the engine; Aethra owns app behavior and UI.
 - `Preferences/`: WinUI preferences surfaces and view models as they are introduced. Preferences edits should update models/stores; runtime input should use already-loaded in-memory state. Older `Settings` file/type names are legacy and should migrate opportunistically when those files are touched.
-- `MainWindow`: shell only. It may host the video surface, title bar, preferences host, and window-specific operations such as minimize/maximize, but it should not become the long-term home for command lists, script-like behavior, binding persistence, or profile logic.
+- `Views/`: shell and presentation layer only. It may host the video surface, title bar, preferences host, and window-specific operations such as minimize/maximize, but it should not become the long-term home for command lists, script-like behavior, binding persistence, or profile logic.
 
 Hot-path rule: input must stay snappy. Native input should flow through in-memory binding lookup and command dispatch without disk reads, script calls, blocking waits, or preference parsing.
 
@@ -174,7 +174,10 @@ The mental model is: Preferences are persistent app behavior, Adjustments are im
 The "no broad scaffolding" moratorium is lifted now that Aethra targets a public GitHub release. The following may be added in small reviewed steps:
 
 - `README.md` (project overview, screenshots, install, build).
-- `LICENSE` (MIT text).
+- `LICENSE` (MIT).
+- `LICENSE-APACHE` (Apache-2.0).
+- `NOTICE` (Apache attribution notice file).
+- `CITATION.cff` (machine-readable citation metadata).
 - `CONTRIBUTING.md`.
 - `CODE_OF_CONDUCT.md`.
 - `SECURITY.md`.

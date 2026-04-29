@@ -4,7 +4,7 @@ This roadmap is the execution map for building a fully customizable, native, mod
 
 ## Locked Direction
 
-- License baseline: MIT.
+- License baseline: MIT OR Apache-2.0.
 - Platform baseline: Windows x64-first.
 - Packaging baseline: unpackaged-first, with optional MSIX-capable packaging.
 - Architecture baseline: one main WinUI window, mpv render API, app-owned command/input/config behavior, no telemetry.

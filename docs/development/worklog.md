@@ -950,6 +950,20 @@ Active steps:
   - Added attribution quick link in `docs/README.md`.
   - Updated `docs/development/copilot-instructions.md` references from MIT-only wording to dual-license wording for internal consistency.
   - Result: project remains permissive and broad for reuse/forks/commercial derivatives while making acknowledgement expectations explicit and transparent in-repo.
+- 2026-04-28 completed README and instructions alignment-depth pass for GitHub-first onboarding:
+  - Reworked `README.md` into a stronger public entry point with:
+    - `Why Aethra` highlights for native architecture/value proposition,
+    - `Current State` snapshot language aligned to roadmap/worklog reality,
+    - explicit `Build Prerequisites` section and clearer onboarding flow,
+    - expanded contribution + "Build Your Own App" invitation covering forks/derivatives/commercial reuse under permissive terms.
+  - Aligned architecture wording between `README.md` and `docs/development/copilot-instructions.md`:
+    - clarified `Native` + `NativeRuntime` responsibilities,
+    - replaced legacy `MainWindow` wording with `Views/` shell-boundary guidance.
+  - Updated `docs/development/copilot-instructions.md` GitHub-ready repository list to include dual-license attribution artifacts (`LICENSE-APACHE`, `NOTICE`, `CITATION.cff`).
+  - Updated `docs/project/roadmap.md` locked direction license baseline from MIT-only to `MIT OR Apache-2.0` for policy consistency.
+  - Refreshed `docs/README.md` quick links to include root `README.md` and `CONTRIBUTING.md` for faster newcomer orientation.
+  - Validation:
+    - Docs-only change set; no code/build impact expected.
 
 ## Roadmap
 
