@@ -28,7 +28,7 @@ public sealed class PlaybackOptionsServiceTests
             service.PropertyApplyRequested -= handler;
         }
 
-        Assert.Contains(("vo", "gpu"), emitted);
+        Assert.DoesNotContain(emitted, pair => pair.Property == "vo");
         Assert.Contains(("hwdec", "nvdec"), emitted);
         Assert.Contains(("interpolation", "yes"), emitted);
         Assert.Contains(("deinterlace", "yes"), emitted);
@@ -108,7 +108,7 @@ public sealed class PlaybackOptionsServiceTests
         }
 
         Assert.Contains(("network-timeout", "42"), emitted);
-        Assert.Contains(("ipv6", "yes"), emitted);
+        Assert.DoesNotContain(emitted, pair => pair.Property == "ipv6");
         Assert.Contains(("cache-pause-wait", "2"), emitted);
         Assert.Contains(("http-proxy", "http://127.0.0.1:8080"), emitted);
     }
@@ -164,10 +164,7 @@ public sealed class PlaybackOptionsServiceTests
             service.PropertyApplyRequested -= handler;
         }
 
-        Assert.Contains(("aethra-accent-hex", "#334455"), emitted);
-        Assert.Contains(("aethra-use-system-theme", "no"), emitted);
-        Assert.Contains(("aethra-dense-layout", "yes"), emitted);
-        Assert.Contains(("aethra-show-playback-hud", "no"), emitted);
+        Assert.Empty(emitted);
     }
 
     [Fact]
@@ -189,7 +186,7 @@ public sealed class PlaybackOptionsServiceTests
             service.PropertyApplyRequested -= handler;
         }
 
-        Assert.Contains(("aethra-accent-hex", "#7B2FFF"), emitted);
+        Assert.Empty(emitted);
     }
 
     [Fact]
@@ -212,5 +209,54 @@ public sealed class PlaybackOptionsServiceTests
         }
 
         Assert.Contains(("sub-delay", "1.75"), emitted);
+    }
+
+    [Fact]
+    public void ApplyPlaybackPreferences_DoesNotEmitConfigOnlySavePositionOption()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplyPlaybackPreferences(new PlaybackPreferencesProfile
+            {
+                ResumeWhereLeftOff = true,
+                AutoplayOnOpen = true
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.DoesNotContain(("save-position-on-quit", "yes"), emitted);
+        Assert.DoesNotContain(("save-position-on-quit", "no"), emitted);
+        Assert.DoesNotContain(("keep-open", "no"), emitted);
+        Assert.DoesNotContain(("keep-open", "yes"), emitted);
+        Assert.DoesNotContain(("playlist-next", "force"), emitted);
+    }
+
+    [Fact]
+    public void ApplyVideoPreferences_DoesNotEmitVoRuntimeProperty()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplyVideoPreferences(new VideoPreferencesProfile
+            {
+                OutputMode = VideoOutputMode.Gpu
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.DoesNotContain(emitted, pair => pair.Property == "vo");
     }
 }

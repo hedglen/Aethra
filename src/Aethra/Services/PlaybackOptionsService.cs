@@ -150,20 +150,15 @@ public sealed class PlaybackOptionsService
         ApplyNumericProperty("speed", Math.Clamp(profile.DefaultPlaybackSpeedPercent, 25, 400) / 100.0);
         var loopValue = profile.EndOfFileAction == PlaybackEndOfFileAction.LoopCurrentFile ? "inf" : "no";
         ApplyStringProperty("loop-file", loopValue);
-        ApplyStringProperty("keep-open", profile.EndOfFileAction == PlaybackEndOfFileAction.PlayNextInFolder ? "no" : (profile.AutoplayOnOpen ? "no" : "yes"));
-        ApplyStringProperty("playlist-next", profile.EndOfFileAction == PlaybackEndOfFileAction.PlayNextInFolder ? "force" : "no");
-        ApplyStringProperty("save-position-on-quit", profile.ResumeWhereLeftOff ? "yes" : "no");
+        // `save-position-on-quit` is an mpv config-file option, not a runtime property.
+        // Runtime persistence is handled by Aethra-owned PlaybackPersistenceStore.
+        _ = profile.ResumeWhereLeftOff;
+        _ = profile.AutoplayOnOpen;
+        _ = profile.EndOfFileAction;
     }
 
     public void ApplyVideoPreferences(VideoPreferencesProfile profile)
     {
-        var vo = profile.OutputMode switch
-        {
-            VideoOutputMode.Gpu => "gpu",
-            _ => "gpu-next"
-        };
-        ApplyStringProperty("vo", vo);
-
         var hwdec = profile.HardwareDecode switch
         {
             HardwareDecodeMode.Nvdec => "nvdec",
@@ -247,7 +242,10 @@ public sealed class PlaybackOptionsService
     public void ApplyNetworkPreferences(NetworkPreferencesProfile profile)
     {
         ApplyStringProperty("network-timeout", Math.Clamp(profile.NetworkTimeoutSeconds, 5, 600).ToString(System.Globalization.CultureInfo.InvariantCulture));
-        ApplyStringProperty("ipv6", profile.PreferIpv6 ? "yes" : "no");
+        // `ipv6` is treated as an initialization/config option by libmpv and can fail
+        // when emitted as a runtime `set` command. Keep it in typed preferences so it
+        // can still participate in import/export and future pre-init bootstrap handling.
+        _ = profile.PreferIpv6;
         ApplyStringProperty("cache-pause-wait", profile.AllowMeteredConnections ? "5" : "2");
 
         var proxy = profile.ProxyMode switch
@@ -262,13 +260,7 @@ public sealed class PlaybackOptionsService
 
     public void ApplyCustomizationPreferences(CustomizationPreferencesProfile profile)
     {
-        // These are app-owned UX toggles and may later map to explicit runtime properties.
-        var accentHex = AccentColorService.TryParseHexColor(profile.AccentHex, out _, out var normalizedHex)
-            ? normalizedHex
-            : AccentColorService.DefaultAccentHex;
-        ApplyStringProperty("aethra-accent-hex", accentHex);
-        ApplyStringProperty("aethra-use-system-theme", profile.UseSystemTheme ? "yes" : "no");
-        ApplyStringProperty("aethra-dense-layout", profile.DenseLayout ? "yes" : "no");
-        ApplyStringProperty("aethra-show-playback-hud", profile.ShowPlaybackHud ? "yes" : "no");
+        // App-owned UX toggles are consumed by UI/services, not forwarded to mpv as runtime properties.
+        _ = profile;
     }
 }

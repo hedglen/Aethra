@@ -39,6 +39,7 @@ namespace Aethra
         private readonly VideoAdjustmentBatcher _videoAdjustmentBatcher;
         private readonly DispatcherTimer _cursorHideEnforcementTimer;
         private readonly DispatcherTimer _volumeOsdHideTimer;
+        private readonly DispatcherTimer _autoplayReassertTimer;
         private static readonly TimeSpan VolumeOsdLingerDuration = TimeSpan.FromMilliseconds(1500);
         private bool _useGpuVideoSurface = true;
         private static bool RunGpuSurfaceSmoke =>
@@ -125,6 +126,11 @@ namespace Aethra
                 Interval = VolumeOsdLingerDuration
             };
             _volumeOsdHideTimer.Tick += VolumeOsdHideTimer_Tick;
+            _autoplayReassertTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(250)
+            };
+            _autoplayReassertTimer.Tick += AutoplayReassertTimer_Tick;
 
             InitializeComponent();
             InitializeInputRuntime();
@@ -172,6 +178,7 @@ namespace Aethra
             _videoAdjustmentBatcher.Dispose();
             _cursorHideEnforcementTimer.Stop();
             _volumeOsdHideTimer.Stop();
+            _autoplayReassertTimer.Stop();
             GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
             FullSettings.InputBindingsChanged -= FullSettings_InputBindingsChanged;
             PlaybackPersistenceStore.SaveVolume(_currentVolume);
@@ -179,11 +186,18 @@ namespace Aethra
                 PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
             else
                 PlaybackPersistenceStore.ClearLastMedia();
-            PlaybackPersistenceStore.SaveWindow(
-                AppWindow.Position.X,
-                AppWindow.Position.Y,
-                AppWindow.Size.Width,
-                AppWindow.Size.Height);
+            try
+            {
+                PlaybackPersistenceStore.SaveWindow(
+                    AppWindow.Position.X,
+                    AppWindow.Position.Y,
+                    AppWindow.Size.Width,
+                    AppWindow.Size.Height);
+            }
+            catch (COMException ex)
+            {
+                Debug.WriteLine($"Failed to persist window geometry during close. {ex}");
+            }
             _playbackOptions.PropertyApplyRequested -= PlaybackOptions_PropertyApplyRequested;
             if (_loopAccentSubscribed)
             {
@@ -212,39 +226,80 @@ namespace Aethra
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
         {
             this.Activated -= MainWindow_Activated;
-            this.ExtendsContentIntoTitleBar = true;
-            this.SetTitleBar(null);
+            try
+            {
+                this.ExtendsContentIntoTitleBar = true;
+                this.SetTitleBar(null);
+            }
+            catch (COMException ex)
+            {
+                Debug.WriteLine($"Failed to configure title bar extension during activation. {ex}");
+            }
 
             // Make sure the main element can receive focus and keys
-            this.Content.IsTabStop = true;
-            this.Content.Focus(FocusState.Programmatic);
-
-            this.Content.KeyDown += (s, e) =>
+            if (this.Content is not null)
             {
-                if (TryExecuteRuntimeInput(e.Key))
+                try
                 {
-                    MarkPlaybackActivity();
-                    e.Handled = true;
-                    return;
+                    this.Content.IsTabStop = true;
+                    this.Content.Focus(FocusState.Programmatic);
                 }
-
-                if (HandleLegacyKeyDown(e.Key))
+                catch (COMException ex)
                 {
-                    MarkPlaybackActivity();
-                    e.Handled = true;
+                    Debug.WriteLine($"Failed to focus window content during activation. {ex}");
                 }
-            };
+            }
 
-            this.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-            ApplyTitleBarInsets();
-            ApplyPersistedWindowState();
-            EnsureWindowMessageHook();
-
-            this.AppWindow.Changed += (s, e) =>
+            if (this.Content is not null)
             {
+                this.Content.KeyDown += (s, e) =>
+                {
+                    if (TryExecuteRuntimeInput(e.Key))
+                    {
+                        MarkPlaybackActivity();
+                        e.Handled = true;
+                        return;
+                    }
+
+                    if (HandleLegacyKeyDown(e.Key))
+                    {
+                        MarkPlaybackActivity();
+                        e.Handled = true;
+                    }
+                };
+            }
+
+            try
+            {
+                this.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
                 ApplyTitleBarInsets();
+            }
+            catch (COMException ex)
+            {
+                Debug.WriteLine($"Failed to configure AppWindow title bar during activation. {ex}");
+            }
+            ApplyPersistedWindowState();
+            try
+            {
+                EnsureWindowMessageHook();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to install window message hook during activation. {ex}");
+            }
 
-            };
+            try
+            {
+                this.AppWindow.Changed += (s, e) =>
+                {
+                    ApplyTitleBarInsets();
+
+                };
+            }
+            catch (COMException ex)
+            {
+                Debug.WriteLine($"Failed to subscribe AppWindow changed event during activation. {ex}");
+            }
 
             // Wait for the UI element to finish loading before initializing mpv
             VideoContainer.Loaded += VideoContainer_Loaded;
@@ -254,9 +309,6 @@ namespace Aethra
             // Loaded events can fire before these handlers are attached; always queue
             // one fallback initialization attempt to keep startup deterministic.
             EnsureVisiblePlayerInitialization();
-
-            // Keep keyboard focus on the main window.
-            this.Activate();
         }
 
         private void MainWindow_CursorActivationChanged(object sender, WindowActivatedEventArgs args)
@@ -1438,6 +1490,12 @@ namespace Aethra
                 VolumeOsd.Visibility = Visibility.Collapsed;
         }
 
+        private void AutoplayReassertTimer_Tick(object? sender, object e)
+        {
+            _autoplayReassertTimer.Stop();
+            ForEachPlayerBackend(player => player.SetProperty("pause", "no"));
+        }
+
         private void MinimizeWindow()
         {
             if (_isFullscreen)
@@ -1469,7 +1527,20 @@ namespace Aethra
             MediaTitleText.Text = GetDisplayMediaName(path);
             _lastLoadedMediaPath = path;
             ForEachPlayerBackend(player => player.LoadFile(path));
-            _isPlaybackPaused = false;
+            if (ShouldAutoplayOnOpen())
+            {
+                ForEachPlayerBackend(player => player.SetProperty("pause", "no"));
+                // Startup/watch-later can reapply pause post-load; reassert shortly after.
+                _autoplayReassertTimer.Stop();
+                _autoplayReassertTimer.Start();
+                _isPlaybackPaused = false;
+            }
+            else
+            {
+                _autoplayReassertTimer.Stop();
+                ForEachPlayerBackend(player => player.Pause());
+                _isPlaybackPaused = true;
+            }
             // mpv resets ab-loop across files; clear our cached state too so the
             // A/B button colors don't claim a point is set against the new file.
             _loopPointA = null;
@@ -1531,7 +1602,14 @@ namespace Aethra
 
         private void ApplyTitleBarInsets()
         {
-            TopChrome.Padding = new Thickness(0, 0, this.AppWindow.TitleBar.RightInset, 0);
+            try
+            {
+                TopChrome.Padding = new Thickness(0, 0, this.AppWindow.TitleBar.RightInset, 0);
+            }
+            catch (COMException ex)
+            {
+                Debug.WriteLine($"Failed to apply title bar insets. {ex}");
+            }
         }
 
         private void RootGrid_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
@@ -2451,6 +2529,11 @@ namespace Aethra
 
             _activeBackends.Add(player);
             ApplyPersistedPreferencesToRuntime();
+            if (ShouldAutoplayOnOpen() && !string.IsNullOrWhiteSpace(_lastLoadedMediaPath))
+            {
+                _autoplayReassertTimer.Stop();
+                _autoplayReassertTimer.Start();
+            }
         }
 
         private void UnregisterPlayerBackend(INativeMpvPlayerBackend? player)
@@ -2489,6 +2572,18 @@ namespace Aethra
             try
             {
                 return PreferencesProfilesStore.Load().Library.RememberRecentFiles;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static bool ShouldAutoplayOnOpen()
+        {
+            try
+            {
+                return PreferencesProfilesStore.Load().Playback.AutoplayOnOpen;
             }
             catch
             {

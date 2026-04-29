@@ -80,6 +80,16 @@ public sealed class MainWindowStartupTests
         Assert.Equal(expected, normalized);
     }
 
+    [Theory]
+    [InlineData("rtsp://example.com/live", true)]
+    [InlineData("https://example.com/v.mp4", true)]
+    [InlineData("ftp://example.com/file", false)]
+    [InlineData("not-a-uri", false)]
+    public void IsPlayableMediaTarget_HandlesUriSchemes(string target, bool expected)
+    {
+        Assert.Equal(expected, MainWindow.IsPlayableMediaTarget(target));
+    }
+
     private static string CreateTempMediaPath()
     {
         var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.mp4");

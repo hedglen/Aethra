@@ -333,7 +333,16 @@ internal sealed class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
     {
         while (_commands.TryDequeue(out var command))
         {
-            context.Command(command);
+            try
+            {
+                context.Command(command);
+            }
+            catch (MpvNativeException ex)
+            {
+                var commandText = command.Length == 0 ? "<empty>" : string.Join(" ", command);
+                System.Diagnostics.Debug.WriteLine(
+                    $"Ignored mpv command failure in OpenGL backend: {commandText} (error {ex.ErrorCode}).");
+            }
         }
     }
 
