@@ -35,12 +35,15 @@ Suggested README note:
 - Include the applicable license text with your distribution.
 - If using Apache-2.0 path, include `NOTICE`.
 - Include attribution in release notes, installer credits, or about dialog.
+- If you bundle native runtime libraries, also comply with each bundled library's own obligations (for example LGPL/GPL notice/source terms where applicable).
+- Use `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` as the compliance and provenance reference for runtime binaries.
 
 ### 3) Commercial derivative app
 
 - Commercial use is allowed by both MIT and Apache-2.0.
 - You must still keep required license and notice text.
 - Acknowledge upstream source in your docs/about page where practical.
+- Commercial distribution does not remove bundled runtime obligations; if your product ships third-party native binaries, those licenses still apply.
 
 ## Transparency recommendations
 

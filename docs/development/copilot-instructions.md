@@ -4,6 +4,8 @@ Start here before making changes.
 
 ## First Steps
 
+Direction source of truth: `docs/project/DIRECTION.md`.
+
 1. Read `docs/development/worklog.md`.
 2. Confirm the current focus, completed work, and next items from the worklog.
 3. Use `docs/project/roadmap.md` as the current execution order unless the user explicitly redirects.
@@ -117,7 +119,7 @@ Out of scope unless explicitly requested: DRM-protected streaming services (Netf
 - Minimal chrome with custom title bar.
 - Keep UI responsive and never block the dispatcher thread.
 - Native Windows integrations are first-class: System Media Transport Controls (SMTC) for media keys and lock-screen controls, jump list entries, taskbar thumbnail buttons, file association registration, "Open with" support, prevent-sleep during playback, and per-monitor remembered window position/size/state.
-- Mini-player / picture-in-picture mode for keeping playback visible while working.
+- Mini-player / picture-in-picture mode for keeping playback visible while working (planned for later phases after shell reliability baseline milestones in the roadmap).
 - Multi-monitor aware: fullscreen on the active monitor, persist per-monitor preferences when reasonable.
 - Preferences should be comprehensive but approachable, grouped into clear areas: Playback, Video, Audio, Subtitles, Controls, Library, Shaders, Profiles, Network, Customization, Advanced (raw mpv).
 - Progressive disclosure: simple defaults up front, expert controls available without making the app feel like a spreadsheet.

@@ -73,7 +73,9 @@ Contributions are welcome.
 
 ## Build Your Own App
 
-You are explicitly encouraged to fork Aethra, build your own app from this work, and ship derivatives (including commercial ones) under the selected permissive license terms.
+You are explicitly encouraged to fork Aethra, build your own app from this work, and ship derivatives (including commercial ones) under the selected permissive license terms for Aethra-owned source.
+
+If you redistribute binaries, you must also satisfy the license/notice obligations of bundled third-party native libraries (see `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md`).
 
 To keep credit transparent and ecosystem-friendly:
 
@@ -99,6 +101,7 @@ You may choose either license when using this code.
 
 ## Planning and Direction
 
+- Canonical direction/framework policy: `docs/project/DIRECTION.md`
 - Documentation index: `docs/README.md`
 - Active roadmap: `docs/project/roadmap.md`
 - Architectural guidance for agent-driven changes: `docs/development/copilot-instructions.md`

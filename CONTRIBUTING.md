@@ -4,10 +4,11 @@
 
 1. Create a small, focused change.
 2. Keep architecture boundaries clear (UI, commands/input, configuration, native backend).
-3. Build locally before opening a PR:
+3. Follow canonical direction/policy in `docs/project/DIRECTION.md` and execution order in `docs/project/roadmap.md`.
+4. Build locally before opening a PR:
    - `dotnet build .\Aethra.slnx -p:Platform=x64`
-4. Run a manual playback smoke when touching playback/input/persistence (open file, play/pause, seek, volume, fullscreen, Preferences open/close).
-5. Update relevant docs/worklog when behavior or architecture changes (use `docs/development/worklog.md` for implementation history and `docs/project/roadmap.md` for active sequencing).
+5. Run a manual playback smoke when touching playback/input/persistence (open file, play/pause, seek, volume, fullscreen, Preferences open/close).
+6. Update relevant docs/worklog when behavior or architecture changes (use `docs/development/worklog.md` for implementation history and `docs/project/roadmap.md` for active sequencing).
 
 ## Pull requests
 
@@ -47,8 +48,11 @@ Open a draft PR early if you want architecture feedback before completing implem
 ## License and attribution for contributions
 
 - By submitting a contribution, you agree your changes are licensed under the repository's dual-license terms: **MIT OR Apache-2.0**.
+- This contribution license covers Aethra-owned source changes; it does not remove or replace obligations from bundled third-party native binaries.
+- Public-binary default posture is LGPL-first for runtime dependencies unless owner-approved policy explicitly changes it.
 - Keep attribution-related files current when touched by your change:
   - `LICENSE`
   - `LICENSE-APACHE`
   - `NOTICE`
   - `CITATION.cff`
+- If your change adds, replaces, or reconfigures native runtime artifacts/dependency flags, update `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` in the same PR and summarize compliance impact in the PR notes.

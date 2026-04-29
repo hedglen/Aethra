@@ -14,4 +14,4 @@ The format follows Keep a Changelog, and releases are versioned with SemVer.
 ### Changed
 
 - Roadmap moved from worklog history into `docs/project/roadmap.md` as the canonical execution map.
-- Project guidance aligned to MIT licensing, x64-first support, and unpackaged-first with optional MSIX-capable packaging.
+- Project guidance aligned to dual-license policy (`MIT OR Apache-2.0`), LGPL-first default public native-runtime posture, x64-first support, and unpackaged-first with optional MSIX-capable packaging.

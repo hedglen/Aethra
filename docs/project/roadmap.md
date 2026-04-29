@@ -1,6 +1,6 @@
 # Aethra Roadmap (Full V1)
 
-This roadmap is the execution map for building a fully customizable, native, modern Aethra. It aligns to `docs/development/copilot-instructions.md` and current implementation history in `docs/development/worklog.md`.
+This roadmap is the execution map for building a fully customizable, native, modern Aethra. It aligns to `docs/project/DIRECTION.md`, `docs/development/copilot-instructions.md`, and current implementation history in `docs/development/worklog.md`.
 
 ## Locked Direction
 
@@ -31,7 +31,7 @@ In scope:
 - Keep BOSS KEY and Preferences toggle paths instant and reliable.
 
 Out of scope:
-- Mini-player/PiP.
+- Mini-player/PiP (deferred until post-Phase 1 shell stability work; prioritize in later UX/integration phases).
 - New extension ecosystems.
 
 Dependencies:
@@ -212,5 +212,5 @@ Exit criteria:
 ## Operating Rules During Execution
 
 - Keep one reviewed step at a time with `dotnet build .\\Aethra.slnx -p:Platform=x64`.
-- Update `COPILOT_WORKLOG.md` after each completed step.
+- Update `docs/development/worklog.md` after each completed step.
 - Keep command/input hot path in-memory, native, and non-blocking.

@@ -4,6 +4,8 @@ Purpose: keep short handoff context for future Copilot/Codex sessions so work ca
 
 Historical entries below capture decisions at the time they were made; when they differ from current policy, follow `docs/development/copilot-instructions.md` and the latest "guidance alignment" entry.
 
+Superseded historical policy guardrail: older entries may mention now-retired licensing/direction experiments (including prior GPL-oriented exploration). Treat those as historical context only. Current canonical direction/framework policy lives in `docs/project/DIRECTION.md`.
+
 ## Project Ground Rules
 
 - Native Windows 11 media player.
@@ -976,6 +978,25 @@ Active steps:
     - `docs/development/copilot-instructions.md` now explicitly states FFmpeg is required for the current libmpv stack and defaults remain LGPL-first (`-Dgpl=false`, no `--enable-nonfree`) unless owner-approved.
     - `docs/project/roadmap.md` now includes the same LGPL-first public-binary posture in locked direction.
   - Result: guidance is consistent with owner goals (free/open, broad reuse including commercial derivatives, explicit credit, and clear third-party compliance obligations).
+  - Validation:
+    - Docs-only change set; no code/build impact expected.
+- 2026-04-28 completed whole-picture guidance alignment with canonical source-of-truth ownership:
+  - Added `docs/project/DIRECTION.md` as the canonical direction/framework/policy document and linked ownership boundaries for roadmap/worklog/copilot instructions/third-party notices.
+  - Resolved active process and sequencing ambiguity:
+    - updated `docs/project/roadmap.md` to reference `docs/development/worklog.md` (not `COPILOT_WORKLOG.md`),
+    - clarified mini-player/PiP as deferred sequencing in roadmap/canonical guidance context,
+    - updated `docs/development/copilot-instructions.md` to reference `docs/project/DIRECTION.md` as policy source of truth.
+  - Aligned public-facing policy docs:
+    - `README.md` now references canonical direction policy and clarifies source-license vs bundled-native obligations for binary redistribution,
+    - `docs/project/ATTRIBUTION.md` now explicitly points binary redistributors to `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md`,
+    - `CHANGELOG.md` wording updated from MIT-only phrasing to dual-license + LGPL-first posture.
+  - Tightened contributor/PR compliance guardrails:
+    - `CONTRIBUTING.md` now clarifies contribution licensing scope vs bundled-native obligations and requires same-PR notices updates for native/runtime changes,
+    - `.github/PULL_REQUEST_TEMPLATE.md` now includes Preferences in manual smoke wording and explicit native-runtime notices checkbox.
+  - Cleaned legacy doc noise:
+    - removed duplicated content blocks in `Aethra/COPILOT_INSTRUCTIONS.md`, `Aethra/COPILOT_WORKLOG.md`, and `Aethra/ROADMAP.md` stubs,
+    - updated `docs/README.md` quick links to feature `docs/project/DIRECTION.md` as first-stop alignment reference.
+  - Result: public docs, contributor workflow docs, agent guidance docs, and execution docs now share one explicit policy baseline and clearer ownership boundaries.
   - Validation:
     - Docs-only change set; no code/build impact expected.
 

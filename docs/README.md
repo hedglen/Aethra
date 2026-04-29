@@ -12,6 +12,7 @@ This folder contains project documentation for contributors and maintainers.
 
 ## Quick Links
 
+- Canonical direction and framework policy: `docs/project/DIRECTION.md`
 - Project entry point: `README.md`
 - Contributing guide: `CONTRIBUTING.md`
 - Roadmap: `docs/project/roadmap.md`
