@@ -37,4 +37,16 @@ public sealed class MpvCommandLineParserTests
         Assert.Equal("show-text", commands[0][0]);
         Assert.Equal("hello \"world\"", commands[0][1]);
     }
+
+    [Fact]
+    public void TryParseCommandChain_SkipsEmptySegments()
+    {
+        var parsed = MpvCommandLineParser.TryParseCommandChain("seek 5 ; ; show-text \"ok\" ;", out var commands);
+
+        Assert.True(parsed);
+        Assert.Equal(2, commands.Count);
+        Assert.Equal("seek", commands[0][0]);
+        Assert.Equal("show-text", commands[1][0]);
+        Assert.Equal("ok", commands[1][1]);
+    }
 }

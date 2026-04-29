@@ -18,6 +18,7 @@ public sealed class InputCommandSupportTests
     [InlineData("loadfile C:/video.mp4 replace")]
     [InlineData("change-list glsl-shaders set \"~~/shaders/test.glsl\"")]
     [InlineData("script-binding playlistmanager/showplaylist")]
+    [InlineData("script-message-to favorites favorites-open")]
     public void IsSupportedCommand_ReturnsTrue_ForSupportedPatterns(string command)
     {
         Assert.True(InputCommandSupport.IsSupportedCommand(command));
@@ -29,7 +30,7 @@ public sealed class InputCommandSupportTests
     [InlineData("set \"bad")]
     [InlineData("run calc.exe")]
     [InlineData("subprocess ffmpeg -version")]
-    [InlineData("script-message-to favorites favorites-open")]
+    [InlineData("script-message-to stats display-page-4")]
     public void IsSupportedCommand_ReturnsFalse_ForUnsupportedPatterns(string command)
     {
         Assert.False(InputCommandSupport.IsSupportedCommand(command));
@@ -51,6 +52,7 @@ public sealed class InputCommandSupportTests
     {
         Assert.Equal(InputCommandSupport.CommandClassification.NativeAlias, InputCommandSupport.ClassifyCommand("cycle pause", out _));
         Assert.Equal(InputCommandSupport.CommandClassification.NativeAlias, InputCommandSupport.ClassifyCommand("aethra:play-pause", out _));
+        Assert.Equal(InputCommandSupport.CommandClassification.NativeAlias, InputCommandSupport.ClassifyCommand("script-message-to favorites favorites-open", out _));
         Assert.Equal(InputCommandSupport.CommandClassification.PassthroughSafe, InputCommandSupport.ClassifyCommand("show-text \"ok\"", out _));
         Assert.Equal(InputCommandSupport.CommandClassification.Blocked, InputCommandSupport.ClassifyCommand("run calc.exe", out _));
         Assert.Equal(InputCommandSupport.CommandClassification.Invalid, InputCommandSupport.ClassifyCommand("set \"bad", out _));
@@ -62,6 +64,7 @@ public sealed class InputCommandSupportTests
         AssertAlias("script-binding uosc/menu", InputCommandSupport.NativeAlias.ToggleSettings);
         AssertAlias("set fullscreen no", InputCommandSupport.NativeAlias.ExitFullscreen);
         AssertAlias("quit-watch-later", InputCommandSupport.NativeAlias.Quit);
+        AssertAlias("script-message-to favorites favorites-open", InputCommandSupport.NativeAlias.ShowFavorites);
     }
 
     private static void AssertAlias(string command, InputCommandSupport.NativeAlias expectedAlias)

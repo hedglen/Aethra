@@ -22,6 +22,7 @@ internal static class InputCommandSupport
         ToggleFullscreen,
         ExitFullscreen,
         ShowPlaylist,
+        ShowFavorites,
         ToggleSettings,
         Quit
     }
@@ -68,29 +69,14 @@ internal static class InputCommandSupport
         var sawNativeAlias = false;
         foreach (var argv in chain)
         {
-            if (argv.Length == 0)
-                continue;
+            var commandClassification = ClassifyParsedCommand(argv, out reason);
+            if (commandClassification is CommandClassification.Invalid or CommandClassification.Blocked)
+                return commandClassification;
 
-            var verb = argv[0];
-            if (AethraCommandIds.IsAethraCommand(verb))
-            {
+            if (commandClassification == CommandClassification.NativeAlias)
                 sawNativeAlias = true;
-                continue;
-            }
-
-            if (TryGetNativeAlias(argv, out _))
-            {
-                sawNativeAlias = true;
-                continue;
-            }
-
-            if (DeniedCommandVerbs.Contains(verb))
-            {
-                reason = $"Blocked command verb: {verb}";
-                return CommandClassification.Blocked;
-            }
-
-            sawPassthrough = true;
+            else
+                sawPassthrough = true;
         }
 
         reason = string.Empty;
@@ -98,6 +84,31 @@ internal static class InputCommandSupport
             return CommandClassification.PassthroughSafe;
 
         return sawNativeAlias ? CommandClassification.NativeAlias : CommandClassification.Invalid;
+    }
+
+    internal static CommandClassification ClassifyParsedCommand(IReadOnlyList<string> argv, out string reason)
+    {
+        if (argv.Count == 0)
+        {
+            reason = "Empty command.";
+            return CommandClassification.Invalid;
+        }
+
+        var verb = argv[0];
+        if (AethraCommandIds.IsAethraCommand(verb) || TryGetNativeAlias(argv, out _))
+        {
+            reason = string.Empty;
+            return CommandClassification.NativeAlias;
+        }
+
+        if (DeniedCommandVerbs.Contains(verb))
+        {
+            reason = $"Blocked command verb: {verb}";
+            return CommandClassification.Blocked;
+        }
+
+        reason = string.Empty;
+        return CommandClassification.PassthroughSafe;
     }
 
     internal static bool IsDeniedCommandVerb(string? commandVerb)
@@ -171,6 +182,23 @@ internal static class InputCommandSupport
             if (string.Equals(argv[1], "uosc/menu", StringComparison.OrdinalIgnoreCase))
             {
                 alias = NativeAlias.ToggleSettings;
+                return true;
+            }
+        }
+
+        if (string.Equals(argv[0], "script-message-to", StringComparison.OrdinalIgnoreCase) && argv.Count > 2)
+        {
+            if (string.Equals(argv[1], "favorites", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(argv[2], "favorites-open", StringComparison.OrdinalIgnoreCase))
+            {
+                alias = NativeAlias.ShowFavorites;
+                return true;
+            }
+
+            if (string.Equals(argv[1], "playlistmanager", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(argv[2], "showplaylist", StringComparison.OrdinalIgnoreCase))
+            {
+                alias = NativeAlias.ShowPlaylist;
                 return true;
             }
         }

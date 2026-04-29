@@ -2307,20 +2307,30 @@ namespace Aethra
                 if (argv.Length == 0)
                     continue;
 
-                if (TryExecuteNativeInputAlias(argv))
+                var verb = argv[0];
+                var classification = InputCommandSupport.ClassifyParsedCommand(argv, out _);
+                if (classification is InputCommandSupport.CommandClassification.Blocked
+                    or InputCommandSupport.CommandClassification.Invalid)
                 {
-                    handledAny = true;
-                    continue;
+                    return false;
                 }
 
-                var verb = argv[0];
                 if (AethraCommandIds.IsAethraCommand(verb))
                 {
                     handledAny = _commandDispatcher.Execute(verb) || handledAny;
                     continue;
                 }
 
-                if (InputCommandSupport.IsDeniedCommandVerb(verb))
+                if (classification == InputCommandSupport.CommandClassification.NativeAlias)
+                {
+                    if (!TryExecuteNativeInputAlias(argv))
+                        return false;
+
+                    handledAny = true;
+                    continue;
+                }
+
+                if (classification != InputCommandSupport.CommandClassification.PassthroughSafe)
                     return false;
 
                 if (_activeBackends.Count == 0)
@@ -2356,6 +2366,9 @@ namespace Aethra
 
                 case InputCommandSupport.NativeAlias.ShowPlaylist:
                     return _commandDispatcher.Execute(AethraCommandIds.ShowPlaylist);
+
+                case InputCommandSupport.NativeAlias.ShowFavorites:
+                    return _commandDispatcher.Execute(AethraCommandIds.ShowFavorites);
 
                 case InputCommandSupport.NativeAlias.ToggleSettings:
                     return _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);

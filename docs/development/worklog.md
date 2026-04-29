@@ -1163,6 +1163,20 @@ Active steps:
     - Validation passed:
       - `dotnet build .\\Aethra.slnx -p:Platform=x64`
       - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` (96 tests).
+- 2026-04-29 completed command parity + verification gate increment:
+  - Command catalog parity expansion:
+    - `src/Aethra/Input/InputCommandSupport.cs` now exposes `ClassifyParsedCommand(...)` so runtime dispatch and validation share one classification policy.
+    - Expanded native alias coverage for script-driven favorites/playlist entry points:
+      - `script-message-to favorites favorites-open` => native favorites command path.
+      - `script-message-to playlistmanager showplaylist` => native playlist command path.
+  - Runtime dispatch alignment:
+    - `src/Aethra/Views/MainWindow.xaml.cs` `ExecuteInputCommand(...)` now uses `InputCommandSupport.ClassifyParsedCommand(...)` instead of local denylist checks, keeping blocked/native/passthrough behavior table-driven and synchronized.
+  - Regression coverage:
+    - Updated `tests/Aethra.Tests/Input/InputCommandSupportTests.cs` for new alias handling and blocked-script-message cases.
+    - Added parser edge-case coverage in `tests/Aethra.Tests/Input/MpvCommandLineParserTests.cs` for empty command-segment skipping.
+  - Verification gate:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (104 tests).
 
 ## Roadmap
 
