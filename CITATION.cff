@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use Aethra in research or derivative software, please cite this project."
+title: "Aethra"
+version: "0.1.0"
+type: software
+authors:
+  - family-names: "Hedglen"
+    given-names: "Rob"
+repository-code: "https://github.com/hedglen/Aethra"
+url: "https://github.com/hedglen/Aethra"
+license: "MIT OR Apache-2.0"
+keywords:
+  - windows
+  - video-player
+  - winui
+  - mpv
+preferred-citation:
+  type: software
+  title: "Aethra"
+  authors:
+    - family-names: "Hedglen"
+      given-names: "Rob"
+  repository-code: "https://github.com/hedglen/Aethra"
+  url: "https://github.com/hedglen/Aethra"
+  license: "MIT OR Apache-2.0"

@@ -5,7 +5,7 @@ This file tracks native dependencies that may ship with Aethra. Keep it current 
 ## Open Source Distribution Rules
 
 - Aethra is intended to be free and published on GitHub.
-- Aethra is MIT-licensed at the repository level; keep all redistribution obligations explicit in release notes and notices.
+- Aethra is dual-licensed at the repository level (**MIT OR Apache-2.0**); keep all redistribution obligations explicit in release notes, license files, and notices.
 - Prioritize best playback and GPU renderer quality over proprietary/commercial constraints, while maintaining clean provenance and compliance.
 - Do not ship FFmpeg `--enable-nonfree`, opaque binaries, or binaries with unclear provenance without an explicit owner decision.
 - Keep native media/rendering libraries as separate DLLs.

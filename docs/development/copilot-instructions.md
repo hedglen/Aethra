@@ -16,7 +16,7 @@ Start here before making changes.
 
 ## Product Direction
 
-Aethra is a ground-up native Windows 11 media player: bright media, pure playback, and clarity in every frame. It should feel clean, modern, comprehensive, and intuitive without carrying over architecture from existing players. It is published as free, open-source software on GitHub under the MIT License, and aims for the highest practical quality on local files, network streams, and online video - comparable to or better than other mpv-based players on Windows, with the polish of a first-party Windows app.
+Aethra is a ground-up native Windows 11 media player: bright media, pure playback, and clarity in every frame. It should feel clean, modern, comprehensive, and intuitive without carrying over architecture from existing players. It is published as free, open-source software on GitHub under a dual-license model (MIT OR Apache-2.0), and aims for the highest practical quality on local files, network streams, and online video - comparable to or better than other mpv-based players on Windows, with the polish of a first-party Windows app.
 
 Core principles: free, easy, and the best of everything. C# runs only the UI and orchestration; all heavy media work happens in native libraries, so feature breadth does not trade off against UI snappiness.
 
@@ -27,7 +27,7 @@ Core principles: free, easy, and the best of everything. C# runs only the UI and
 - UI: WinUI 3 with the latest stable Windows App SDK.
 - App model: unpackaged-first, with optional MSIX-capable packaging when needed.
 - Target: Windows-only, x64 first. Treat x86/ARM64 as future roadmap work until the native runtime and loader explicitly support them.
-- Repo license: MIT.
+- Repo license: dual-license MIT OR Apache-2.0.
 - Do not use WPF, WinForms, UWP, MAUI, Electron, or web views for the player UI.
 - Do not add NuGet packages or native dependencies without explicit approval; the open-source distribution rules below describe what's allowed.
 - Do not refactor unrelated code in the same step.
@@ -95,7 +95,7 @@ Out of scope unless explicitly requested: DRM-protected streaming services (Netf
 
 ## Open Source Distribution
 
-- Aethra is free software, distributed on GitHub under the MIT License.
+- Aethra is free software, distributed on GitHub under dual-license terms (MIT OR Apache-2.0).
 - Choose native dependencies based on playback quality and maintainability, while keeping redistribution obligations clear and documented.
 - Do not use FFmpeg `--enable-nonfree`, opaque third-party redistributables, or native binaries with unclear provenance without explicit owner approval.
 - Build or source libmpv/mpv, FFmpeg, libplacebo, libass, libdvdnav, libbluray, ANGLE, and related native binaries from official or well-known reproducible sources.

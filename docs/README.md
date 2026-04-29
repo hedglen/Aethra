@@ -13,5 +13,6 @@ This folder contains project documentation for contributors and maintainers.
 ## Quick Links
 
 - Roadmap: `docs/project/roadmap.md`
+- Attribution policy: `docs/project/ATTRIBUTION.md`
 - Worklog: `docs/development/worklog.md`
 - Copilot instructions: `docs/development/copilot-instructions.md`

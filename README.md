@@ -40,7 +40,19 @@ Launch from Visual Studio/Visual Studio Code, or run the built executable from:
 
 ## License
 
-This repository is licensed under the [MIT License](LICENSE).
+This repository is dual-licensed under:
+
+- [MIT License](LICENSE), or
+- [Apache License 2.0](LICENSE-APACHE)
+
+You may choose either license when using this code.
+
+### Attribution Expectations
+
+- Keep license text and copyright notices in redistributed source.
+- For Apache-2.0 redistributions, keep the project [NOTICE](NOTICE) file.
+- When practical, acknowledge upstream source as: Aethra by Rob Hedglen ([github.com/hedglen/Aethra](https://github.com/hedglen/Aethra)).
+- Citation metadata is provided in `CITATION.cff`.
 
 ## Planning and Direction
 

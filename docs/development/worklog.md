@@ -14,7 +14,7 @@ Historical entries below capture decisions at the time they were made; when they
 - MVVM with CommunityToolkit.Mvvm when view models are introduced.
 - Plan before edits, take one small step at a time, run `dotnet build` after each step, and stop for review.
 - Do not add dependencies or broad refactors without a concrete request. Repo-readiness scaffolding (README, LICENSE, CONTRIBUTING, CI, CHANGELOG, etc.) is now in scope per `docs/development/copilot-instructions.md` and may be added in small reviewed steps.
-- Repo license: MIT.
+- Repo license: MIT OR Apache-2.0.
 - Open-source distribution rule: Aethra is free and published on GitHub; prioritize the best native playback/GPU renderer while keeping third-party notices, source links, and build provenance current. No telemetry, analytics, or remote logging.
 - Product vocabulary: use Preferences for persistent app behavior, Adjustments for immediate playback tweaks, Controls for input bindings, Customization for appearance, Advanced for expert/raw options, and avoid Control Panel.
 
@@ -939,6 +939,17 @@ Active steps:
   - Remaining follow-up after this increment:
     - full Network page parity and deeper profile import/export workflows remain deferred,
     - final desktop manual shell/preferences smoke loop remains recommended before release-focused milestones.
+- 2026-04-28 completed dual-license attribution rollout for GitHub transparency and credit:
+  - Added `LICENSE-APACHE` and root `NOTICE` while preserving the MIT `LICENSE`.
+  - Updated root `LICENSE` copyright holder to `Rob Hedglen`.
+  - Updated repo-facing messaging in `README.md` to clearly state dual-license terms (`MIT OR Apache-2.0`) and practical attribution expectations.
+  - Added `CITATION.cff` with project metadata and preferred credit details.
+  - Updated `CONTRIBUTING.md` to set contribution licensing expectations under the same dual-license model.
+  - Updated `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` to align top-level repo licensing language with dual-license policy.
+  - Added `docs/project/ATTRIBUTION.md` with practical attribution examples for forks, redistributed binaries, and commercial derivatives.
+  - Added attribution quick link in `docs/README.md`.
+  - Updated `docs/development/copilot-instructions.md` references from MIT-only wording to dual-license wording for internal consistency.
+  - Result: project remains permissive and broad for reuse/forks/commercial derivatives while making acknowledgement expectations explicit and transparent in-repo.
 
 ## Roadmap
 

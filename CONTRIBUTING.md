@@ -43,3 +43,12 @@
 ## Questions
 
 Open a draft PR early if you want architecture feedback before completing implementation.
+
+## License and attribution for contributions
+
+- By submitting a contribution, you agree your changes are licensed under the repository's dual-license terms: **MIT OR Apache-2.0**.
+- Keep attribution-related files current when touched by your change:
+  - `LICENSE`
+  - `LICENSE-APACHE`
+  - `NOTICE`
+  - `CITATION.cff`
