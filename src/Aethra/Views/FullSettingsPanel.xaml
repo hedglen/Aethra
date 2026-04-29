@@ -144,18 +144,58 @@
                         <TextBlock Text="How files load, queue, and play." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Startup" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch Header="Resume where you left off" OffContent="Off" OnContent="On" Foreground="White"/>
-                        <ToggleSwitch Header="Autoplay when a file is opened" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+                        <ToggleSwitch x:Name="PlaybackResumeToggle"
+                                      Header="Resume where you left off"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
+                        <ToggleSwitch x:Name="PlaybackAutoplayToggle"
+                                      Header="Autoplay when a file is opened"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      IsOn="True"
+                                      Foreground="White"/>
 
                         <TextBlock Text="After a file finishes" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox Header="On end-of-file" SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="PlaybackEndOfFileCombo"
+                                  Header="On end-of-file"
+                                  SelectedIndex="0"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="Stop"/>
                             <ComboBoxItem Content="Play next in folder"/>
                             <ComboBoxItem Content="Loop current file"/>
                         </ComboBox>
 
                         <TextBlock Text="Speed" Style="{StaticResource GroupHeaderStyle}"/>
-                        <Slider Header="Default playback speed" Minimum="50" Maximum="200" Value="100" TickFrequency="25" TickPlacement="Outside" Foreground="White"/>
+                        <Slider x:Name="PlaybackDefaultSpeedSlider"
+                                Header="Default playback speed"
+                                Minimum="50"
+                                Maximum="200"
+                                Value="100"
+                                TickFrequency="25"
+                                TickPlacement="Outside"
+                                Foreground="White"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="PlaybackSaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save playback"/>
+                            </Button>
+                            <Button Click="PlaybackResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset playback"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="PlaybackStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="VideoPanel" Spacing="12" Visibility="Collapsed">
@@ -199,21 +239,57 @@
                         <TextBlock Text="Output device, loudness, and channels." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Output" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox Header="Audio device" SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="AudioDeviceCombo"
+                                  Header="Audio device"
+                                  SelectedIndex="0"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="System default"/>
                         </ComboBox>
 
                         <TextBlock Text="Loudness" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch Header="Dynamic Range Compression" OffContent="Off" OnContent="On" Foreground="White"/>
-                        <ToggleSwitch Header="ReplayGain normalization" OffContent="Off" OnContent="On" Foreground="White"/>
+                        <ToggleSwitch x:Name="AudioDrcToggle"
+                                      Header="Dynamic Range Compression"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
+                        <ToggleSwitch x:Name="AudioReplayGainToggle"
+                                      Header="ReplayGain normalization"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
 
                         <TextBlock Text="Channels" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox Header="Preferred channel layout" SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="AudioChannelLayoutCombo"
+                                  Header="Preferred channel layout"
+                                  SelectedIndex="0"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="Auto (match source)"/>
                             <ComboBoxItem Content="Stereo"/>
                             <ComboBoxItem Content="5.1 surround"/>
                             <ComboBoxItem Content="7.1 surround"/>
                         </ComboBox>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="AudioSaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save audio"/>
+                            </Button>
+                            <Button Click="AudioResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset audio"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="AudioStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="SubtitlesPanel" Spacing="12" Visibility="Collapsed">
@@ -221,14 +297,52 @@
                         <TextBlock Text="Track selection, font, and timing." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Auto-load" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch Header="Load matching subtitles from the same folder" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+                        <ToggleSwitch x:Name="SubtitlesAutoLoadToggle"
+                                      Header="Load matching subtitles from the same folder"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      IsOn="True"
+                                      Foreground="White"/>
 
                         <TextBlock Text="Language preference" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBox Header="Preferred languages (comma-separated ISO codes)" PlaceholderText="eng,jpn" Foreground="White"/>
+                        <TextBox x:Name="SubtitlesLanguagesTextBox"
+                                 Header="Preferred languages (comma-separated ISO codes)"
+                                 PlaceholderText="eng,jpn"
+                                 Foreground="White"/>
 
                         <TextBlock Text="Appearance" Style="{StaticResource GroupHeaderStyle}"/>
-                        <Slider Header="Font size" Minimum="20" Maximum="80" Value="40" Foreground="White"/>
-                        <ToggleSwitch Header="Border and shadow" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+                        <Slider x:Name="SubtitlesFontSizeSlider"
+                                Header="Font size"
+                                Minimum="20"
+                                Maximum="80"
+                                Value="40"
+                                Foreground="White"/>
+                        <ToggleSwitch x:Name="SubtitlesBorderShadowToggle"
+                                      Header="Border and shadow"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      IsOn="True"
+                                      Foreground="White"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="SubtitlesSaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save subtitles"/>
+                            </Button>
+                            <Button Click="SubtitlesResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset subtitles"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="SubtitlesStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="InputPanel" Spacing="12" Visibility="Collapsed">
@@ -481,10 +595,39 @@
                         <TextBlock Text="Recent files, watched folders, and history." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Watched folders" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBlock Text="Folder watching coming soon." Style="{StaticResource ComingSoonStyle}"/>
+                        <ToggleSwitch x:Name="LibraryWatchFoldersToggle"
+                                      Header="Enable watched folders"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
 
                         <TextBlock Text="History" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch Header="Remember recently opened files" OffContent="Off" OnContent="On" IsOn="True" Foreground="White"/>
+                        <ToggleSwitch x:Name="LibraryRememberRecentToggle"
+                                      Header="Remember recently opened files"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      IsOn="True"
+                                      Foreground="White"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="LibrarySaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save library"/>
+                            </Button>
+                            <Button Click="LibraryResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset library"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="LibraryStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="ShadersPanel" Spacing="12" Visibility="Collapsed">
@@ -524,12 +667,38 @@
                         <TextBlock Text="Named bundles of settings you can switch between." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Active profile" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="ProfilesActiveProfileCombo"
+                                  SelectedIndex="0"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="Default"/>
                         </ComboBox>
 
                         <TextBlock Text="Manage" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBlock Text="Profile creation, import, and export coming soon." Style="{StaticResource ComingSoonStyle}"/>
+                        <TextBox x:Name="ProfilesActiveProfileTextBox"
+                                 Header="Active profile name"
+                                 PlaceholderText="Default"
+                                 Foreground="White"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="ProfilesSaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save profile state"/>
+                            </Button>
+                            <Button Click="ProfilesResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset profile state"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="ProfilesStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="AppearancePanel" Spacing="12" Visibility="Collapsed">

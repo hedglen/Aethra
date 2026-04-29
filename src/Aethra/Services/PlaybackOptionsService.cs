@@ -144,4 +144,40 @@ public sealed class PlaybackOptionsService
         ApplyStringProperty("glsl-shaders", CurrentCustomShaderChain);
         ShaderPresetChanged?.Invoke(this, new ShaderPresetChangedEventArgs(CurrentShaderPreset, CurrentCustomShaderChain));
     }
+
+    public void ApplyPlaybackPreferences(PlaybackPreferencesProfile profile)
+    {
+        ApplyNumericProperty("speed", Math.Clamp(profile.DefaultPlaybackSpeedPercent, 25, 400) / 100.0);
+        var loopValue = profile.EndOfFileAction == PlaybackEndOfFileAction.LoopCurrentFile ? "inf" : "no";
+        ApplyStringProperty("loop-file", loopValue);
+        ApplyStringProperty("keep-open", profile.AutoplayOnOpen ? "no" : "yes");
+        ApplyStringProperty("save-position-on-quit", profile.ResumeWhereLeftOff ? "yes" : "no");
+    }
+
+    public void ApplyAudioPreferences(AudioPreferencesProfile profile)
+    {
+        var audioDevice = string.IsNullOrWhiteSpace(profile.OutputDevice) || profile.OutputDevice == "System default"
+            ? "auto"
+            : profile.OutputDevice;
+        ApplyStringProperty("audio-device", audioDevice);
+        ApplyStringProperty("ad-lavc-ac3drc", profile.DynamicRangeCompression ? "1.0" : "0.0");
+        ApplyStringProperty("replaygain", profile.ReplayGainNormalization ? "track" : "no");
+        var channels = profile.ChannelLayout switch
+        {
+            AudioChannelLayout.Stereo => "stereo",
+            AudioChannelLayout.Surround51 => "5.1",
+            AudioChannelLayout.Surround71 => "7.1",
+            _ => "auto"
+        };
+        ApplyStringProperty("audio-channels", channels);
+    }
+
+    public void ApplySubtitlePreferences(SubtitlePreferencesProfile profile)
+    {
+        ApplyStringProperty("sub-auto", profile.AutoLoadMatchingSubtitles ? "fuzzy" : "no");
+        if (!string.IsNullOrWhiteSpace(profile.PreferredLanguagesCsv))
+            ApplyStringProperty("slang", profile.PreferredLanguagesCsv);
+        ApplyStringProperty("sub-border-style", profile.BorderAndShadow ? "outline-and-shadow" : "none");
+        ApplyNumericProperty("sub-font-size", Math.Clamp(profile.FontSize, 12, 100));
+    }
 }

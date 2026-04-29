@@ -18,10 +18,12 @@ public sealed partial class FullSettingsPanel : UserControl
     private readonly List<InputBindingSetting> _inputBindings = new();
     private readonly ObservableCollection<InputBindingSetting> _visibleInputBindings = new();
     private readonly PlaybackOptionsService _playbackOptions = PlaybackOptionsService.Instance;
+    private PreferencesPageProfiles _pageProfiles = PreferencesPageProfiles.CreateDefault();
     private MpvImportedConfig? _importedConfig;
     private bool _isInitialized;
     private bool _syncingAccentText;
     private bool _inputBindingsDirty;
+    private bool _isHydratingPageControls;
 
     public event EventHandler? CloseRequested;
     public event EventHandler<IReadOnlyList<InputBindingSetting>>? InputBindingsChanged;
@@ -32,11 +34,13 @@ public sealed partial class FullSettingsPanel : UserControl
         InitializeAccentControls();
         AccentColorService.AccentColorChanged += AccentColorService_AccentColorChanged;
         Unloaded += FullSettingsPanel_Unloaded;
-        _isInitialized = true;
+        _isInitialized = false;
+        InitializePageProfiles();
         InitializeInputBindings();
         SyncVideoQualityPresetSelection();
         SyncShaderPresetSelection();
         InitializeExtensionControls();
+        _isInitialized = true;
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -113,6 +117,7 @@ public sealed partial class FullSettingsPanel : UserControl
     private void FullSettingsPanel_Unloaded(object sender, RoutedEventArgs e)
     {
         AccentColorService.AccentColorChanged -= AccentColorService_AccentColorChanged;
+        SavePageProfiles();
         PersistExtensionControls();
         PersistInputBindings();
     }
@@ -154,6 +159,110 @@ public sealed partial class FullSettingsPanel : UserControl
         {
             _syncingAccentText = false;
         }
+    }
+
+    private void InitializePageProfiles()
+    {
+        _pageProfiles = PreferencesProfilesStore.Load();
+        HydratePageControlsFromProfiles();
+        ApplyProfilesToPlaybackRuntime();
+    }
+
+    private void HydratePageControlsFromProfiles()
+    {
+        _isHydratingPageControls = true;
+        try
+        {
+            PlaybackResumeToggle.IsOn = _pageProfiles.Playback.ResumeWhereLeftOff;
+            PlaybackAutoplayToggle.IsOn = _pageProfiles.Playback.AutoplayOnOpen;
+            PlaybackEndOfFileCombo.SelectedIndex = _pageProfiles.Playback.EndOfFileAction switch
+            {
+                PlaybackEndOfFileAction.PlayNextInFolder => 1,
+                PlaybackEndOfFileAction.LoopCurrentFile => 2,
+                _ => 0
+            };
+            PlaybackDefaultSpeedSlider.Value = _pageProfiles.Playback.DefaultPlaybackSpeedPercent;
+            PlaybackStatusText.Text = "Playback settings loaded.";
+
+            AudioDeviceCombo.SelectedIndex = 0;
+            AudioDrcToggle.IsOn = _pageProfiles.Audio.DynamicRangeCompression;
+            AudioReplayGainToggle.IsOn = _pageProfiles.Audio.ReplayGainNormalization;
+            AudioChannelLayoutCombo.SelectedIndex = _pageProfiles.Audio.ChannelLayout switch
+            {
+                AudioChannelLayout.Stereo => 1,
+                AudioChannelLayout.Surround51 => 2,
+                AudioChannelLayout.Surround71 => 3,
+                _ => 0
+            };
+            AudioStatusText.Text = "Audio settings loaded.";
+
+            SubtitlesAutoLoadToggle.IsOn = _pageProfiles.Subtitles.AutoLoadMatchingSubtitles;
+            SubtitlesLanguagesTextBox.Text = _pageProfiles.Subtitles.PreferredLanguagesCsv;
+            SubtitlesFontSizeSlider.Value = _pageProfiles.Subtitles.FontSize;
+            SubtitlesBorderShadowToggle.IsOn = _pageProfiles.Subtitles.BorderAndShadow;
+            SubtitlesStatusText.Text = "Subtitle settings loaded.";
+
+            LibraryWatchFoldersToggle.IsOn = _pageProfiles.Library.WatchFoldersEnabled;
+            LibraryRememberRecentToggle.IsOn = _pageProfiles.Library.RememberRecentFiles;
+            LibraryStatusText.Text = "Library settings loaded.";
+
+            ProfilesActiveProfileTextBox.Text = _pageProfiles.Profiles.ActiveProfileName;
+            ProfilesActiveProfileCombo.SelectedIndex = 0;
+            ProfilesStatusText.Text = "Profile settings loaded.";
+        }
+        finally
+        {
+            _isHydratingPageControls = false;
+        }
+    }
+
+    private void ReadPageProfilesFromControls()
+    {
+        _pageProfiles.Playback.ResumeWhereLeftOff = PlaybackResumeToggle.IsOn;
+        _pageProfiles.Playback.AutoplayOnOpen = PlaybackAutoplayToggle.IsOn;
+        _pageProfiles.Playback.EndOfFileAction = PlaybackEndOfFileCombo.SelectedIndex switch
+        {
+            1 => PlaybackEndOfFileAction.PlayNextInFolder,
+            2 => PlaybackEndOfFileAction.LoopCurrentFile,
+            _ => PlaybackEndOfFileAction.Stop
+        };
+        _pageProfiles.Playback.DefaultPlaybackSpeedPercent = Math.Clamp(PlaybackDefaultSpeedSlider.Value, 50, 200);
+
+        _pageProfiles.Audio.OutputDevice = "System default";
+        _pageProfiles.Audio.DynamicRangeCompression = AudioDrcToggle.IsOn;
+        _pageProfiles.Audio.ReplayGainNormalization = AudioReplayGainToggle.IsOn;
+        _pageProfiles.Audio.ChannelLayout = AudioChannelLayoutCombo.SelectedIndex switch
+        {
+            1 => AudioChannelLayout.Stereo,
+            2 => AudioChannelLayout.Surround51,
+            3 => AudioChannelLayout.Surround71,
+            _ => AudioChannelLayout.Auto
+        };
+
+        _pageProfiles.Subtitles.AutoLoadMatchingSubtitles = SubtitlesAutoLoadToggle.IsOn;
+        _pageProfiles.Subtitles.PreferredLanguagesCsv = (SubtitlesLanguagesTextBox.Text ?? string.Empty).Trim();
+        _pageProfiles.Subtitles.FontSize = Math.Clamp(SubtitlesFontSizeSlider.Value, 20, 80);
+        _pageProfiles.Subtitles.BorderAndShadow = SubtitlesBorderShadowToggle.IsOn;
+
+        _pageProfiles.Library.WatchFoldersEnabled = LibraryWatchFoldersToggle.IsOn;
+        _pageProfiles.Library.RememberRecentFiles = LibraryRememberRecentToggle.IsOn;
+
+        var activeProfileName = (ProfilesActiveProfileTextBox.Text ?? string.Empty).Trim();
+        _pageProfiles.Profiles.ActiveProfileName = string.IsNullOrWhiteSpace(activeProfileName) ? "Default" : activeProfileName;
+    }
+
+    private void SavePageProfiles()
+    {
+        ReadPageProfilesFromControls();
+        PreferencesProfilesStore.Save(_pageProfiles);
+        ApplyProfilesToPlaybackRuntime();
+    }
+
+    private void ApplyProfilesToPlaybackRuntime()
+    {
+        _playbackOptions.ApplyPlaybackPreferences(_pageProfiles.Playback);
+        _playbackOptions.ApplyAudioPreferences(_pageProfiles.Audio);
+        _playbackOptions.ApplySubtitlePreferences(_pageProfiles.Subtitles);
     }
 
     private void InitializeInputBindings()
@@ -472,6 +581,91 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         var state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key);
         return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+    }
+
+    private void PlaybackSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        PlaybackStatusText.Text = "Playback settings saved.";
+    }
+
+    private void PlaybackResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Playback = PlaybackPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        PlaybackStatusText.Text = "Playback settings reset to defaults.";
+    }
+
+    private void AudioSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        AudioStatusText.Text = "Audio settings saved.";
+    }
+
+    private void AudioResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Audio = AudioPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        AudioStatusText.Text = "Audio settings reset to defaults.";
+    }
+
+    private void SubtitlesSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        SubtitlesStatusText.Text = "Subtitle settings saved.";
+    }
+
+    private void SubtitlesResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Subtitles = SubtitlePreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        SubtitlesStatusText.Text = "Subtitle settings reset to defaults.";
+    }
+
+    private void LibrarySaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        LibraryStatusText.Text = "Library settings saved.";
+    }
+
+    private void LibraryResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Library = LibraryPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        LibraryStatusText.Text = "Library settings reset to defaults.";
+    }
+
+    private void ProfilesSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        ProfilesStatusText.Text = $"Active profile '{_pageProfiles.Profiles.ActiveProfileName}' saved.";
+    }
+
+    private void ProfilesResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Profiles = ProfilesPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        ProfilesStatusText.Text = "Profile settings reset to defaults.";
     }
 
     private void VideoQualityPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -886,6 +886,34 @@ Active steps:
     - `dotnet test Aethra.slnx -p:Platform=x64` passes locally with 38 passing tests.
   - Remaining gap:
     - manual in-app shell smoke loop (open/play/pause/seek/volume/fullscreen/Preferences) should still be run on desktop sessions before release-oriented changes.
+- 2026-04-28 completed Phase 3 page coverage baseline for Preferences:
+  - Added typed Phase 3 profile models under `src/Aethra/Profiles` for selected pages:
+    - playback (`PlaybackPreferencesProfile`, `PlaybackEndOfFileAction`),
+    - audio (`AudioPreferencesProfile`, `AudioChannelLayout`),
+    - subtitles (`SubtitlePreferencesProfile`),
+    - library (`LibraryPreferencesProfile`),
+    - profiles (`ProfilesPreferencesProfile`),
+    - aggregate (`PreferencesPageProfiles`).
+  - Added durable typed storage via `src/Aethra/Configuration/PreferencesProfilesStore.cs` (JSON in local app data) with default-safe load and explicit save paths.
+  - Expanded `PlaybackOptionsService` to provide profile-oriented apply entry points:
+    - `ApplyPlaybackPreferences(...)`,
+    - `ApplyAudioPreferences(...)`,
+    - `ApplySubtitlePreferences(...)`.
+  - Reworked selected Preferences pages in `Views/FullSettingsPanel.xaml` + `Preferences/FullSettingsPanel.xaml.cs` from placeholder-only controls to baseline functional pages:
+    - Playback now supports save/reset with persisted startup/end-of-file/default-speed values.
+    - Audio now supports save/reset with persisted DRC/replaygain/channel choices and runtime apply.
+    - Subtitles now supports save/reset with persisted autoload/language/font/border values and runtime apply.
+    - Library now supports save/reset for watched-folder enablement and recent-history behavior flags.
+    - Profiles now supports baseline active-profile-name save/reset state.
+  - Kept runtime boundary clean: `FullSettingsPanel` now reads/writes typed page models and routes runtime application through `PlaybackOptionsService`; `MainWindow` remains the playback apply bridge.
+  - Added tests:
+    - `tests/Aethra.Tests/Profiles/PreferencesPageProfilesTests.cs` for defaults.
+    - `tests/Aethra.Tests/Configuration/PreferencesProfilesStoreTests.cs` for store round-trip behavior.
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passes with zero warnings/errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passes (41 tests).
+  - Remaining Phase 3 gap:
+    - page coverage is baseline-first; deeper profile engine capabilities (named profile composition/import/export workflows and broader Network/Customization/Advanced parity) remain follow-up work.
 
 ## Roadmap
 
