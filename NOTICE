@@ -1,10 +1,14 @@
 Aethra
 Copyright (c) 2025 Rob Hedglen
 
-This product includes software derived from Aethra
-(https://github.com/hedglen/Aethra). Original work by Rob Hedglen.
+This project includes Aethra-owned source and may include adapted source
+from other open-source projects where explicitly documented.
 
-When redistributing this project or substantial derivative works, retain:
-- applicable license files, and
-- this NOTICE file (for Apache-2.0 redistributions), and
-- attribution references to the upstream project where practical.
+For GPL-2.0-or-later redistribution:
+- keep the repository `LICENSE` file with redistributed source,
+- keep provenance notices documented in
+  `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md`, and
+- keep source attribution headers/comments on imported third-party code.
+
+When practical, acknowledge upstream source as:
+"Aethra by Rob Hedglen (https://github.com/hedglen/Aethra)".

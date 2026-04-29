@@ -299,7 +299,13 @@
                                   HorizontalAlignment="Stretch"
                                   Foreground="White">
                             <ComboBoxItem Content="System default"/>
+                            <ComboBoxItem Content="WASAPI Shared (auto)"/>
+                            <ComboBoxItem Content="WASAPI Exclusive (example: wasapi/{GUID})"/>
                         </ComboBox>
+                        <TextBox x:Name="AudioDeviceTextBox"
+                                 Header="Audio device id (optional override)"
+                                 PlaceholderText="auto or wasapi/{device-id}"
+                                 Foreground="White"/>
 
                         <TextBlock Text="Loudness" Style="{StaticResource GroupHeaderStyle}"/>
                         <ToggleSwitch x:Name="AudioDrcToggle"
@@ -377,6 +383,15 @@
                                       OnContent="On"
                                       IsOn="True"
                                       Foreground="White"/>
+                        <Slider x:Name="SubtitlesDelaySlider"
+                                Header="Subtitle delay (seconds)"
+                                Minimum="-10"
+                                Maximum="10"
+                                StepFrequency="0.1"
+                                TickFrequency="1"
+                                TickPlacement="Outside"
+                                Value="0"
+                                Foreground="White"/>
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <Button Click="SubtitlesSaveButton_Click"
                                     Padding="12,8"
@@ -502,6 +517,13 @@
                         </Grid>
                         <TextBlock x:Name="InputBindingStatusText" Foreground="#9FA0A4" FontSize="12"/>
                         <TextBlock x:Name="InputConflictStatusText" Foreground="#D69E2E" FontSize="12"/>
+                        <TextBlock x:Name="InputCommandValidationText" Foreground="#F5C16C" FontSize="12"/>
+                        <ToggleSwitch x:Name="InputConflictsOnlyToggle"
+                                      Header="Show conflicts only"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Toggled="InputConflictsOnlyToggle_Toggled"
+                                      Foreground="White"/>
 
                         <TextBlock Text="Import from portable_config" Style="{StaticResource GroupHeaderStyle}"/>
                         <Grid ColumnSpacing="12">
@@ -521,6 +543,27 @@
                                     CornerRadius="6"
                                     Foreground="White">
                                 <TextBlock Text="Import"/>
+                            </Button>
+                        </Grid>
+                        <TextBlock Text="Import existing input.conf" Style="{StaticResource GroupHeaderStyle}"/>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="InputConfPathBox"
+                                     Grid.Column="0"
+                                     PlaceholderText="C:\Users\...\mpv\portable_config\input.conf"
+                                     Foreground="White"/>
+                            <Button Grid.Column="1"
+                                    Click="ImportInputConfButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Import input.conf"/>
                             </Button>
                         </Grid>
                         <TextBlock x:Name="PortableImportStatusText" Foreground="#9FA0A4" FontSize="12"/>
@@ -544,7 +587,7 @@
                                         <ColumnDefinition Width="2*"/>
                                         <ColumnDefinition Width="2*"/>
                                         <ColumnDefinition Width="90"/>
-                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="160"/>
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Text="Category" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
@@ -570,7 +613,7 @@
                                                     <ColumnDefinition Width="2*"/>
                                                     <ColumnDefinition Width="2*"/>
                                                     <ColumnDefinition Width="90"/>
-                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="160"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <ComboBox SelectedValue="{Binding Category, Mode=TwoWay}"
@@ -625,17 +668,47 @@
                                                            Foreground="#9FA0A4"
                                                            FontSize="12"/>
 
-                                                <Button Grid.Column="5"
-                                                        Click="ClearBindingButton_Click"
-                                                        Padding="8,4"
-                                                        HorizontalAlignment="Right"
-                                                        Background="#1F1F1F"
-                                                        BorderBrush="#3A3A3A"
-                                                        BorderThickness="1"
-                                                        CornerRadius="6"
-                                                        Foreground="White">
-                                                    <TextBlock Text="Clear"/>
-                                                </Button>
+                                                <StackPanel Grid.Column="5"
+                                                            Orientation="Horizontal"
+                                                            Spacing="6"
+                                                            HorizontalAlignment="Right">
+                                                    <Button Click="MoveBindingUpButton_Click"
+                                                            Padding="6,4"
+                                                            Background="#1F1F1F"
+                                                            BorderBrush="#3A3A3A"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Foreground="White">
+                                                        <TextBlock Text="Up"/>
+                                                    </Button>
+                                                    <Button Click="MoveBindingDownButton_Click"
+                                                            Padding="6,4"
+                                                            Background="#1F1F1F"
+                                                            BorderBrush="#3A3A3A"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Foreground="White">
+                                                        <TextBlock Text="Down"/>
+                                                    </Button>
+                                                    <Button Click="DuplicateBindingButton_Click"
+                                                            Padding="6,4"
+                                                            Background="#1F1F1F"
+                                                            BorderBrush="#3A3A3A"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Foreground="White">
+                                                        <TextBlock Text="Copy"/>
+                                                    </Button>
+                                                    <Button Click="ClearBindingButton_Click"
+                                                            Padding="6,4"
+                                                            Background="#1F1F1F"
+                                                            BorderBrush="#3A3A3A"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Foreground="White">
+                                                        <TextBlock Text="Clear"/>
+                                                    </Button>
+                                                </StackPanel>
                                             </Grid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>

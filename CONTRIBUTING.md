@@ -47,12 +47,12 @@ Open a draft PR early if you want architecture feedback before completing implem
 
 ## License and attribution for contributions
 
-- By submitting a contribution, you agree your changes are licensed under the repository's dual-license terms: **MIT OR Apache-2.0**.
+- By submitting a contribution, you agree your changes are licensed under the repository's **GPL-2.0-or-later** terms.
 - This contribution license covers Aethra-owned source changes; it does not remove or replace obligations from bundled third-party native binaries.
 - Public-binary default posture is LGPL-first for runtime dependencies unless owner-approved policy explicitly changes it.
 - Keep attribution-related files current when touched by your change:
   - `LICENSE`
-  - `LICENSE-APACHE`
   - `NOTICE`
   - `CITATION.cff`
+- If you import or adapt third-party source code, include provenance comments in the source file and update the intake map/provenance docs in the same PR.
 - If your change adds, replaces, or reconfigures native runtime artifacts/dependency flags, update `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` in the same PR and summarize compliance impact in the PR notes.

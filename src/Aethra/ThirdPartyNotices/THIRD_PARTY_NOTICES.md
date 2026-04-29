@@ -5,7 +5,7 @@ This file tracks native dependencies that may ship with Aethra. Keep it current 
 ## Open Source Distribution Rules
 
 - Aethra is intended to be free and published on GitHub.
-- Aethra is dual-licensed at the repository level (**MIT OR Apache-2.0**); keep all redistribution obligations explicit in release notes, license files, and notices.
+- Aethra repository source is licensed under **GPL-2.0-or-later**; keep all redistribution obligations explicit in release notes, license files, and notices.
 - Prioritize best playback and GPU renderer quality over proprietary/commercial constraints, while maintaining clean provenance and compliance.
 - Do not ship FFmpeg `--enable-nonfree`, opaque binaries, or binaries with unclear provenance without an explicit owner decision.
 - Keep native media/rendering libraries as separate DLLs.
@@ -14,10 +14,43 @@ This file tracks native dependencies that may ship with Aethra. Keep it current 
 
 ## License Layers And Public Binary Posture
 
-- Source/repository license for Aethra-owned code is **MIT OR Apache-2.0**.
+- Source/repository license for Aethra-owned code is **GPL-2.0-or-later**.
 - Redistributed native runtime libraries may impose additional obligations (for example LGPL/GPL), depending on how those binaries are built.
 - Default public-binary target is **LGPL-first**: keep FFmpeg/mpv/libplacebo distribution choices compatible with broad reuse and commercial derivatives unless an owner-approved policy change is made.
 - If a release intentionally includes GPL or other stronger-copyleft components, document that shift explicitly in this file and release notes before shipping.
+
+## Third-Party Reused Code Provenance (Managed C#)
+
+This section tracks direct source-level reuse/adaptation from third-party C# projects.
+
+- Upstream project: `mpvnet-player/mpv.net` ([GitHub](https://github.com/mpvnet-player/mpv.net))
+- Upstream license: GPL-2.0
+- Intake baseline commit: `ef45baecbdd8e0a249eca9a621fe608143f75c4b` (`main` head at intake time)
+
+Current imported/adapted areas:
+
+- `src/Aethra/Configuration/MpvConfigLineSupport.cs`
+  - Centralized config-line normalization and option parsing behavior adapted from `src/MpvNet/Player.cs` (mpv.net).
+  - Shared by both input and mpv options import flows.
+- `src/Aethra/Configuration/InputBindingSettingsStore.cs`
+  - Uses shared adapted parsing behavior to import `input.conf` gesture-command rows.
+  - Includes inline-comment handling and tolerant row parsing for user-maintained files.
+- `src/Aethra/Configuration/MpvPortableConfigImporter.cs`
+  - Uses shared adapted config parsing behavior for `mpv.conf` and `input.conf`.
+  - Includes boolean shorthand option support and profile-scoped option capture.
+- `src/Aethra/Input/MpvCommandLineParser.cs`, `src/Aethra/Input/InputCommandSupport.cs`, `src/Aethra/Views/MainWindow.xaml.cs`, `src/Aethra/Native/*Player.cs`
+  - Behavioral alignment with mpv.net-style command execution flow (parse -> argv -> backend queue).
+  - Aethra-authored implementation; no direct file transplant.
+  - Enforces Aethra safety policy denylist for risky verbs (`run`, `subprocess`, `script-message-to`).
+- `src/Aethra/Preferences/FullSettingsPanel.xaml` and `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`
+  - Added/extended Input import workflows using the adapted parser above.
+  - Adds import status mapping that reports commands blocked by safety policy.
+
+When adding more reused code, extend this section with:
+- upstream repository path,
+- upstream commit hash,
+- Aethra target file(s),
+- adaptation summary.
 
 ## Course Correction - Free GitHub Distribution
 

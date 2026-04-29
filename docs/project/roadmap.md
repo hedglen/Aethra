@@ -4,7 +4,7 @@ This roadmap is the execution map for building a fully customizable, native, mod
 
 ## Locked Direction
 
-- License baseline: MIT OR Apache-2.0.
+- License baseline: GPL-2.0-or-later.
 - Default public-binary native runtime posture: LGPL-first unless an explicit owner-approved distribution-policy change is recorded.
 - Platform baseline: Windows x64-first.
 - Packaging baseline: unpackaged-first, with optional MSIX-capable packaging.
@@ -17,8 +17,9 @@ This roadmap is the execution map for building a fully customizable, native, mod
 - Done: initial Preferences expansion exists (video presets, shader/script bootstrap surfaces, portable-config import).
 - Done: foundational persistence exists (last media, position, volume, window geometry).
 - Done: Phase 2 command/input architecture is complete with native command routing, configurable keyboard/mouse Controls UX, and persisted bindings.
-- In progress: reliability hardening is adding automated command/input regression coverage in CI and closing remaining manual shell smoke gaps.
-- Next: Phase 3 typed profile parity and deeper Preferences consistency across major categories.
+- In progress: Preferences power-user depth is consolidating full typed GUI->persist->runtime parity across sections and sharpening Input editor UX for conflict visibility and command guidance.
+- In progress: GPL reuse intake now tracks mpv.net provenance, includes parser-driven command pipeline execution, and extends Input with direct `input.conf` import tooling.
+- Next: continue Phase 4 customization/discoverability polish after the current Preferences/Input depth pass stabilizes through desktop smoke.
 
 ## Phase 1 - Shell correctness and playback reliability
 

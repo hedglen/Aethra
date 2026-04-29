@@ -31,9 +31,14 @@ public sealed class PreferencesProfilesStoreTests
             expected.Video.OutputMode = VideoOutputMode.Gpu;
             expected.Video.HardwareDecode = HardwareDecodeMode.Nvdec;
             expected.Video.InterpolationEnabled = true;
+            expected.Video.QualityPreset = VideoQualityPreset.Cinema;
+            expected.Video.ShaderPreset = ShaderChainPreset.None;
+            expected.Video.CustomShaderChain = "~~/shaders/custom.glsl";
             expected.Audio.DynamicRangeCompression = true;
+            expected.Audio.OutputDevice = "wasapi/{test-device}";
             expected.Audio.ChannelLayout = AudioChannelLayout.Surround51;
             expected.Subtitles.PreferredLanguagesCsv = "eng,spa";
+            expected.Subtitles.SubtitleDelaySeconds = -1.5;
             expected.Library.WatchFoldersEnabled = true;
             expected.Profiles.ActiveProfileName = "Cinema";
             expected.Profiles.Bundles.Add(new NamedPreferencesProfileBundle
@@ -67,9 +72,14 @@ public sealed class PreferencesProfilesStoreTests
             Assert.Equal(VideoOutputMode.Gpu, loaded.Video.OutputMode);
             Assert.Equal(HardwareDecodeMode.Nvdec, loaded.Video.HardwareDecode);
             Assert.True(loaded.Video.InterpolationEnabled);
+            Assert.Equal(VideoQualityPreset.Cinema, loaded.Video.QualityPreset);
+            Assert.Equal(ShaderChainPreset.None, loaded.Video.ShaderPreset);
+            Assert.Equal("~~/shaders/custom.glsl", loaded.Video.CustomShaderChain);
             Assert.True(loaded.Audio.DynamicRangeCompression);
+            Assert.Equal("wasapi/{test-device}", loaded.Audio.OutputDevice);
             Assert.Equal(AudioChannelLayout.Surround51, loaded.Audio.ChannelLayout);
             Assert.Equal("eng,spa", loaded.Subtitles.PreferredLanguagesCsv);
+            Assert.Equal(-1.5, loaded.Subtitles.SubtitleDelaySeconds);
             Assert.True(loaded.Library.WatchFoldersEnabled);
             Assert.Equal("Cinema", loaded.Profiles.ActiveProfileName);
             Assert.Contains(loaded.Profiles.Bundles, bundle => bundle.Name == "Cinema");

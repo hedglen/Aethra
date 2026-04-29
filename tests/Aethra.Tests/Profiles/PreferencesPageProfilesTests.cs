@@ -20,6 +20,9 @@ public sealed class PreferencesPageProfilesTests
         Assert.Equal(HardwareDecodeMode.Auto, defaults.Video.HardwareDecode);
         Assert.False(defaults.Video.InterpolationEnabled);
         Assert.False(defaults.Video.DeinterlaceEnabled);
+        Assert.Equal(VideoQualityPreset.Reference, defaults.Video.QualityPreset);
+        Assert.Equal(ShaderChainPreset.None, defaults.Video.ShaderPreset);
+        Assert.Equal(string.Empty, defaults.Video.CustomShaderChain);
 
         Assert.Equal("System default", defaults.Audio.OutputDevice);
         Assert.Equal(AudioChannelLayout.Auto, defaults.Audio.ChannelLayout);
@@ -30,6 +33,7 @@ public sealed class PreferencesPageProfilesTests
         Assert.Equal("eng,jpn", defaults.Subtitles.PreferredLanguagesCsv);
         Assert.Equal(40, defaults.Subtitles.FontSize);
         Assert.True(defaults.Subtitles.BorderAndShadow);
+        Assert.Equal(0, defaults.Subtitles.SubtitleDelaySeconds);
 
         Assert.False(defaults.Library.WatchFoldersEnabled);
         Assert.True(defaults.Library.RememberRecentFiles);

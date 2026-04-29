@@ -56,6 +56,13 @@ public static class PlaybackPersistenceStore
         settings[LastPositionKey] = Math.Max(0, positionSeconds);
     }
 
+    public static void ClearLastMedia()
+    {
+        var settings = ApplicationData.Current.LocalSettings.Values;
+        settings.Remove(LastMediaPathKey);
+        settings.Remove(LastPositionKey);
+    }
+
     public static void SaveVolume(double volume)
     {
         ApplicationData.Current.LocalSettings.Values[LastVolumeKey] = Math.Clamp(volume, 0, 100);

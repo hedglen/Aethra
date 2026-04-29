@@ -41,6 +41,7 @@ public sealed partial class FullSettingsPanel : UserControl
     private bool _syncingAccentText;
     private bool _inputBindingsDirty;
     private bool _isHydratingPageControls;
+    private readonly HashSet<string> _conflictingGestures = new(StringComparer.OrdinalIgnoreCase);
 
     public event EventHandler? CloseRequested;
     public event EventHandler<IReadOnlyList<InputBindingSetting>>? InputBindingsChanged;
@@ -216,7 +217,7 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private void SyncVideoQualityPresetSelection()
     {
-        VideoQualityPresetCombo.SelectedIndex = _playbackOptions.CurrentVideoQualityPreset switch
+        VideoQualityPresetCombo.SelectedIndex = _pageProfiles.Video.QualityPreset switch
         {
             VideoQualityPreset.Reference => 0,
             VideoQualityPreset.Cinema => 1,
@@ -229,7 +230,7 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private void SyncShaderPresetSelection()
     {
-        ShaderPresetCombo.SelectedIndex = _playbackOptions.CurrentShaderPreset switch
+        ShaderPresetCombo.SelectedIndex = _pageProfiles.Video.ShaderPreset switch
         {
             ShaderChainPreset.None => 0,
             ShaderChainPreset.Fsrcnnx => 1,
@@ -237,7 +238,7 @@ public sealed partial class FullSettingsPanel : UserControl
             ShaderChainPreset.SsimFsrcnnx => 3,
             _ => 0
         };
-        CustomShaderChainBox.Text = _playbackOptions.CurrentCustomShaderChain;
+        CustomShaderChainBox.Text = _pageProfiles.Video.CustomShaderChain;
     }
 
     private void SyncAccentText(string hex)
@@ -297,9 +298,31 @@ public sealed partial class FullSettingsPanel : UserControl
             };
             VideoInterpolationToggle.IsOn = _pageProfiles.Video.InterpolationEnabled;
             VideoDeinterlaceToggle.IsOn = _pageProfiles.Video.DeinterlaceEnabled;
+            VideoQualityPresetCombo.SelectedIndex = _pageProfiles.Video.QualityPreset switch
+            {
+                VideoQualityPreset.Cinema => 1,
+                VideoQualityPreset.Anime => 2,
+                VideoQualityPreset.LowResBoost => 3,
+                VideoQualityPreset.NativeClean => 4,
+                _ => 0
+            };
+            ShaderPresetCombo.SelectedIndex = _pageProfiles.Video.ShaderPreset switch
+            {
+                ShaderChainPreset.Fsrcnnx => 1,
+                ShaderChainPreset.Anime4k => 2,
+                ShaderChainPreset.SsimFsrcnnx => 3,
+                _ => 0
+            };
+            CustomShaderChainBox.Text = _pageProfiles.Video.CustomShaderChain;
             VideoStatusText.Text = "Video settings loaded.";
 
-            AudioDeviceCombo.SelectedIndex = 0;
+            AudioDeviceCombo.SelectedIndex = _pageProfiles.Audio.OutputDevice switch
+            {
+                "WASAPI Shared (auto)" => 1,
+                "WASAPI Exclusive (example: wasapi/{GUID})" => 2,
+                _ => 0
+            };
+            AudioDeviceTextBox.Text = _pageProfiles.Audio.OutputDevice;
             AudioDrcToggle.IsOn = _pageProfiles.Audio.DynamicRangeCompression;
             AudioReplayGainToggle.IsOn = _pageProfiles.Audio.ReplayGainNormalization;
             AudioChannelLayoutCombo.SelectedIndex = _pageProfiles.Audio.ChannelLayout switch
@@ -315,6 +338,7 @@ public sealed partial class FullSettingsPanel : UserControl
             SubtitlesLanguagesTextBox.Text = _pageProfiles.Subtitles.PreferredLanguagesCsv;
             SubtitlesFontSizeSlider.Value = _pageProfiles.Subtitles.FontSize;
             SubtitlesBorderShadowToggle.IsOn = _pageProfiles.Subtitles.BorderAndShadow;
+            SubtitlesDelaySlider.Value = Math.Clamp(_pageProfiles.Subtitles.SubtitleDelaySeconds, -10, 10);
             SubtitlesStatusText.Text = "Subtitles settings loaded.";
 
             LibraryWatchFoldersToggle.IsOn = _pageProfiles.Library.WatchFoldersEnabled;
@@ -386,8 +410,28 @@ public sealed partial class FullSettingsPanel : UserControl
         };
         _pageProfiles.Video.InterpolationEnabled = VideoInterpolationToggle.IsOn;
         _pageProfiles.Video.DeinterlaceEnabled = VideoDeinterlaceToggle.IsOn;
+        _pageProfiles.Video.QualityPreset = VideoQualityPresetCombo.SelectedIndex switch
+        {
+            1 => VideoQualityPreset.Cinema,
+            2 => VideoQualityPreset.Anime,
+            3 => VideoQualityPreset.LowResBoost,
+            4 => VideoQualityPreset.NativeClean,
+            _ => VideoQualityPreset.Reference
+        };
+        _pageProfiles.Video.ShaderPreset = ShaderPresetCombo.SelectedIndex switch
+        {
+            1 => ShaderChainPreset.Fsrcnnx,
+            2 => ShaderChainPreset.Anime4k,
+            3 => ShaderChainPreset.SsimFsrcnnx,
+            _ => ShaderChainPreset.None
+        };
+        _pageProfiles.Video.CustomShaderChain = (CustomShaderChainBox.Text ?? string.Empty).Trim();
 
-        _pageProfiles.Audio.OutputDevice = "System default";
+        var selectedAudioDevice = AudioDeviceCombo.SelectedItem is ComboBoxItem audioItem
+            ? (audioItem.Content?.ToString() ?? "System default")
+            : "System default";
+        var audioDeviceOverride = (AudioDeviceTextBox.Text ?? string.Empty).Trim();
+        _pageProfiles.Audio.OutputDevice = string.IsNullOrWhiteSpace(audioDeviceOverride) ? selectedAudioDevice : audioDeviceOverride;
         _pageProfiles.Audio.DynamicRangeCompression = AudioDrcToggle.IsOn;
         _pageProfiles.Audio.ReplayGainNormalization = AudioReplayGainToggle.IsOn;
         _pageProfiles.Audio.ChannelLayout = AudioChannelLayoutCombo.SelectedIndex switch
@@ -402,6 +446,7 @@ public sealed partial class FullSettingsPanel : UserControl
         _pageProfiles.Subtitles.PreferredLanguagesCsv = (SubtitlesLanguagesTextBox.Text ?? string.Empty).Trim();
         _pageProfiles.Subtitles.FontSize = Math.Clamp(SubtitlesFontSizeSlider.Value, 20, 80);
         _pageProfiles.Subtitles.BorderAndShadow = SubtitlesBorderShadowToggle.IsOn;
+        _pageProfiles.Subtitles.SubtitleDelaySeconds = Math.Clamp(SubtitlesDelaySlider.Value, -10, 10);
 
         _pageProfiles.Library.WatchFoldersEnabled = LibraryWatchFoldersToggle.IsOn;
         _pageProfiles.Library.RememberRecentFiles = LibraryRememberRecentToggle.IsOn;
@@ -448,6 +493,7 @@ public sealed partial class FullSettingsPanel : UserControl
     {
         _playbackOptions.ApplyPlaybackPreferences(_pageProfiles.Playback);
         _playbackOptions.ApplyVideoPreferences(_pageProfiles.Video);
+        _playbackOptions.ApplyVideoEnhancementPreferences(_pageProfiles.Video);
         _playbackOptions.ApplyAudioPreferences(_pageProfiles.Audio);
         _playbackOptions.ApplySubtitlePreferences(_pageProfiles.Subtitles);
         _playbackOptions.ApplyAdvancedPreferences(_pageProfiles.Advanced);
@@ -515,7 +561,10 @@ public sealed partial class FullSettingsPanel : UserControl
             OutputMode = source.OutputMode,
             HardwareDecode = source.HardwareDecode,
             InterpolationEnabled = source.InterpolationEnabled,
-            DeinterlaceEnabled = source.DeinterlaceEnabled
+            DeinterlaceEnabled = source.DeinterlaceEnabled,
+            QualityPreset = source.QualityPreset,
+            ShaderPreset = source.ShaderPreset,
+            CustomShaderChain = source.CustomShaderChain
         };
     }
 
@@ -537,7 +586,8 @@ public sealed partial class FullSettingsPanel : UserControl
             AutoLoadMatchingSubtitles = source.AutoLoadMatchingSubtitles,
             PreferredLanguagesCsv = source.PreferredLanguagesCsv,
             FontSize = source.FontSize,
-            BorderAndShadow = source.BorderAndShadow
+            BorderAndShadow = source.BorderAndShadow,
+            SubtitleDelaySeconds = source.SubtitleDelaySeconds
         };
     }
 
@@ -635,6 +685,14 @@ public sealed partial class FullSettingsPanel : UserControl
         ApplyInputBindingFilters();
     }
 
+    private void InputConflictsOnlyToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_isInitialized)
+            return;
+
+        ApplyInputBindingFilters();
+    }
+
     private void AddInputBindingButton_Click(object sender, RoutedEventArgs e)
     {
         var binding = new InputBindingSetting("Custom", string.Empty, string.Empty, string.Empty, "Custom");
@@ -700,6 +758,9 @@ public sealed partial class FullSettingsPanel : UserControl
                 || Contains(binding.Source, query));
         }
 
+        if (InputConflictsOnlyToggle?.IsOn == true)
+            bindings = bindings.Where(binding => IsConflictingGesture(binding.Gesture));
+
         bindings = GetSelectedInputSort() switch
         {
             "Gesture" => bindings.OrderBy(binding => binding.Gesture).ThenBy(binding => binding.Category),
@@ -714,36 +775,80 @@ public sealed partial class FullSettingsPanel : UserControl
 
         InputBindingCountText.Text = $"{_visibleInputBindings.Count} shown / {_inputBindings.Count} total";
         UpdateInputConflictStatus();
+        UpdateInputCommandValidationStatus();
     }
 
     private void UpdateInputConflictStatus()
     {
+        _conflictingGestures.Clear();
         var duplicateGroups = _inputBindings
             .Where(binding => !string.IsNullOrWhiteSpace(binding.Gesture))
             .GroupBy(binding => binding.Gesture.Trim(), StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Count() > 1)
             .ToList();
+        foreach (var group in duplicateGroups)
+            _conflictingGestures.Add(group.Key);
+
         if (duplicateGroups.Count == 0)
         {
             InputConflictStatusText.Text = "No gesture conflicts detected.";
             return;
         }
 
-        InputConflictStatusText.Text = $"Conflicts: {duplicateGroups.Count} duplicated gesture(s).";
+        var sample = string.Join(", ", duplicateGroups.Take(3).Select(group => group.Key));
+        InputConflictStatusText.Text = $"Conflicts: {duplicateGroups.Count} duplicated gesture(s). Runtime keeps the last row. {sample}";
+    }
+
+    private bool IsConflictingGesture(string? gesture)
+    {
+        if (string.IsNullOrWhiteSpace(gesture))
+            return false;
+
+        return _conflictingGestures.Contains(gesture.Trim());
+    }
+
+    private void UpdateInputCommandValidationStatus()
+    {
+        var unsupported = _inputBindings
+            .Where(binding => !string.IsNullOrWhiteSpace(binding.Command))
+            .Select(binding =>
+            {
+                var isUnsupported = InputCommandSupport.TryGetUnsupportedReason(binding.Command, out var reason);
+                return (isUnsupported, reason);
+            })
+            .Where(item => item.isUnsupported)
+            .ToList();
+        var blockedCount = unsupported.Count(item => item.reason.StartsWith("Blocked", StringComparison.OrdinalIgnoreCase));
+        var incompleteCount = _inputBindings.Count(binding =>
+            string.IsNullOrWhiteSpace(binding.Gesture) || string.IsNullOrWhiteSpace(binding.Command));
+
+        if (unsupported.Count == 0 && incompleteCount == 0)
+        {
+            InputCommandValidationText.Text = "All commands look valid for current runtime support.";
+            return;
+        }
+
+        InputCommandValidationText.Text = $"Review needed: {unsupported.Count} unsupported command(s) ({blockedCount} blocked by safety policy), {incompleteCount} incomplete row(s).";
     }
 
     private void PersistInputBindings()
     {
+        var incompleteCount = _inputBindings.Count(binding =>
+            string.IsNullOrWhiteSpace(binding.Gesture) || string.IsNullOrWhiteSpace(binding.Command));
         if (!_inputBindingsDirty)
         {
-            InputBindingStatusText.Text = "Bindings already up to date.";
+            InputBindingStatusText.Text = incompleteCount > 0
+                ? $"Bindings already up to date. {incompleteCount} incomplete row(s) are not persisted."
+                : "Bindings already up to date.";
             InputBindingsChanged?.Invoke(this, CloneBindings(_inputBindings));
             return;
         }
 
         InputBindingSettingsStore.Save(_inputBindings);
         _inputBindingsDirty = false;
-        InputBindingStatusText.Text = "Bindings saved.";
+        InputBindingStatusText.Text = incompleteCount > 0
+            ? $"Bindings saved. {incompleteCount} incomplete row(s) were skipped."
+            : "Bindings saved.";
         InputBindingsChanged?.Invoke(this, CloneBindings(_inputBindings));
     }
 
@@ -800,6 +905,54 @@ public sealed partial class FullSettingsPanel : UserControl
         binding.Description = string.Empty;
         binding.Source = "Custom";
         MarkBindingsDirty("Binding cleared. Save to apply.");
+        ApplyInputBindingFilters();
+    }
+
+    private void DuplicateBindingButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.DataContext is not InputBindingSetting binding)
+            return;
+
+        var index = _inputBindings.IndexOf(binding);
+        if (index < 0)
+            return;
+
+        _inputBindings.Insert(index + 1, new InputBindingSetting(
+            binding.Category,
+            binding.Gesture,
+            binding.Command,
+            binding.Description,
+            "Custom"));
+        MarkBindingsDirty("Binding duplicated. Save to apply.");
+        ApplyInputBindingFilters();
+    }
+
+    private void MoveBindingUpButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoveBinding(sender, -1);
+    }
+
+    private void MoveBindingDownButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoveBinding(sender, 1);
+    }
+
+    private void MoveBinding(object sender, int direction)
+    {
+        if (sender is not Button button || button.DataContext is not InputBindingSetting binding)
+            return;
+
+        var index = _inputBindings.IndexOf(binding);
+        if (index < 0)
+            return;
+
+        var target = index + direction;
+        if (target < 0 || target >= _inputBindings.Count)
+            return;
+
+        _inputBindings.RemoveAt(index);
+        _inputBindings.Insert(target, binding);
+        MarkBindingsDirty("Binding order updated. Save to apply.");
         ApplyInputBindingFilters();
     }
 
@@ -1240,7 +1393,10 @@ public sealed partial class FullSettingsPanel : UserControl
             _ => VideoQualityPreset.Reference
         };
 
+        _pageProfiles.Video.QualityPreset = preset;
         _playbackOptions.ApplyVideoQualityPreset(preset);
+        if (_isInitialized && !_isHydratingPageControls)
+            VideoStatusText.Text = "Quality preset updated. Save video to persist.";
     }
 
     private void ShaderPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1255,14 +1411,20 @@ public sealed partial class FullSettingsPanel : UserControl
             3 => ShaderChainPreset.SsimFsrcnnx,
             _ => ShaderChainPreset.None
         };
+        _pageProfiles.Video.ShaderPreset = preset;
+        if (preset != ShaderChainPreset.None)
+            _pageProfiles.Video.CustomShaderChain = string.Empty;
         _playbackOptions.ApplyShaderPreset(preset);
-        ShaderStatusText.Text = $"Applied shader preset: {preset}.";
+        ShaderStatusText.Text = $"Applied shader preset: {preset}. Save video to persist.";
     }
 
     private void ApplyCustomShaderChainButton_Click(object sender, RoutedEventArgs e)
     {
-        _playbackOptions.ApplyCustomShaderChain(CustomShaderChainBox.Text ?? string.Empty);
-        ShaderStatusText.Text = "Applied custom shader chain.";
+        var chain = (CustomShaderChainBox.Text ?? string.Empty).Trim();
+        _pageProfiles.Video.ShaderPreset = ShaderChainPreset.None;
+        _pageProfiles.Video.CustomShaderChain = chain;
+        _playbackOptions.ApplyCustomShaderChain(chain);
+        ShaderStatusText.Text = "Applied custom shader chain. Save video to persist.";
     }
 
     private void ImportPortableConfigButton_Click(object sender, RoutedEventArgs e)
@@ -1286,10 +1448,23 @@ public sealed partial class FullSettingsPanel : UserControl
             _inputBindingsDirty = true;
             RefreshInputBindingCategoriesAndList();
             PersistInputBindings();
+            InputConfPathBox.Text = Path.Combine(path, "input.conf");
+
+            var blockedCount = imported.InputBindings.Count(binding =>
+                InputCommandSupport.TryGetUnsupportedReason(binding.Command, out _));
+            var blockedSample = imported.InputBindings
+                .Select(binding =>
+                {
+                    _ = InputCommandSupport.TryGetUnsupportedReason(binding.Command, out var reason);
+                    return (binding, reason);
+                })
+                .FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.reason));
 
             ImportedShaderCountText.Text = $"{imported.ShaderFiles.Count} shader files detected";
             ImportedScriptCountText.Text = $"{imported.ScriptFiles.Count} script files detected";
-            PortableImportStatusText.Text = $"Imported {imported.InputBindings.Count} bindings and {imported.MpvOptions.Count} mpv options.";
+            PortableImportStatusText.Text = blockedCount == 0
+                ? $"Imported {imported.InputBindings.Count} bindings and {imported.MpvOptions.Count} mpv options."
+                : $"Imported {imported.InputBindings.Count} bindings ({blockedCount} need review). {blockedSample.binding?.Gesture ?? "Command"}: {blockedSample.reason}";
         }
         catch (Exception ex)
         {
@@ -1297,9 +1472,48 @@ public sealed partial class FullSettingsPanel : UserControl
         }
     }
 
+    private void ImportInputConfButton_Click(object sender, RoutedEventArgs e)
+    {
+        var inputConfPath = (InputConfPathBox.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(inputConfPath) || !File.Exists(inputConfPath))
+        {
+            PortableImportStatusText.Text = "Enter a valid input.conf file path.";
+            return;
+        }
+
+        try
+        {
+            var imported = InputBindingSettingsStore.ImportFromInputConf(inputConfPath);
+            if (imported.Count == 0)
+            {
+                PortableImportStatusText.Text = "No valid bindings found in input.conf.";
+                return;
+            }
+
+            _inputBindings.Clear();
+            _inputBindings.AddRange(imported);
+            _inputBindingsDirty = true;
+            RefreshInputBindingCategoriesAndList();
+            PersistInputBindings();
+
+            var blockedCount = imported.Count(binding =>
+                InputCommandSupport.TryGetUnsupportedReason(binding.Command, out _));
+            PortableImportStatusText.Text = blockedCount == 0
+                ? $"Imported {imported.Count} binding(s) from input.conf."
+                : $"Imported {imported.Count} binding(s) from input.conf. {blockedCount} command(s) need review.";
+        }
+        catch (Exception ex)
+        {
+            PortableImportStatusText.Text = $"input.conf import failed: {ex.Message}";
+        }
+    }
+
     private void InitializeExtensionControls()
     {
         PortableConfigPathBox.Text = ScriptExtensionSettingsStore.PortableConfigPath;
+        InputConfPathBox.Text = string.IsNullOrWhiteSpace(ScriptExtensionSettingsStore.PortableConfigPath)
+            ? string.Empty
+            : Path.Combine(ScriptExtensionSettingsStore.PortableConfigPath, "input.conf");
         ScriptsEnabledToggle.IsOn = ScriptExtensionSettingsStore.ScriptsEnabled;
         ScriptsFolderBox.Text = ScriptExtensionSettingsStore.ScriptsFolder;
         ImportedShaderCountText.Text = "0 shader files detected";

@@ -138,7 +138,10 @@ public static class PreferencesProfileBundleExchange
                 OutputMode = source.Video.OutputMode,
                 HardwareDecode = source.Video.HardwareDecode,
                 InterpolationEnabled = source.Video.InterpolationEnabled,
-                DeinterlaceEnabled = source.Video.DeinterlaceEnabled
+                DeinterlaceEnabled = source.Video.DeinterlaceEnabled,
+                QualityPreset = source.Video.QualityPreset,
+                ShaderPreset = source.Video.ShaderPreset,
+                CustomShaderChain = source.Video.CustomShaderChain
             },
             Audio = new AudioPreferencesProfile
             {
@@ -152,7 +155,8 @@ public static class PreferencesProfileBundleExchange
                 AutoLoadMatchingSubtitles = source.Subtitles.AutoLoadMatchingSubtitles,
                 PreferredLanguagesCsv = source.Subtitles.PreferredLanguagesCsv,
                 FontSize = source.Subtitles.FontSize,
-                BorderAndShadow = source.Subtitles.BorderAndShadow
+                BorderAndShadow = source.Subtitles.BorderAndShadow,
+                SubtitleDelaySeconds = source.Subtitles.SubtitleDelaySeconds
             },
             Library = new LibraryPreferencesProfile
             {

@@ -54,22 +54,28 @@ public static class MpvPortableConfigImporter
     private static Dictionary<string, string> ParseMpvOptions(string mpvConfPath)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string? activeProfile = null;
         foreach (var rawLine in File.ReadAllLines(mpvConfPath))
         {
-            var line = rawLine.Trim();
-            if (line.Length == 0 || line.StartsWith('#') || line.StartsWith('['))
+            var line = MpvConfigLineSupport.NormalizeLine(rawLine);
+            if (line.Length == 0)
                 continue;
 
-            var separatorIndex = line.IndexOf('=');
-            if (separatorIndex <= 0)
+            if (line.StartsWith('[') && line.EndsWith(']') && line.Length > 2)
+            {
+                activeProfile = line[1..^1].Trim();
+                continue;
+            }
+
+            if (!MpvConfigLineSupport.TryParseOptionLine(line, out var key, out var value))
                 continue;
 
-            var key = line[..separatorIndex].Trim();
-            var value = line[(separatorIndex + 1)..].Trim();
-            if (key.Length == 0)
-                continue;
+            if (string.IsNullOrWhiteSpace(activeProfile))
+                map[key] = value;
 
-            map[key] = value;
+            // Keep profile options too, under an explicit namespaced key.
+            if (!string.IsNullOrWhiteSpace(activeProfile))
+                map[$"profile:{activeProfile}:{key}"] = value;
         }
 
         return map;
@@ -82,19 +88,16 @@ public static class MpvPortableConfigImporter
 
         foreach (var rawLine in File.ReadAllLines(inputConfPath))
         {
-            var line = rawLine.Trim();
-            if (line.Length == 0 || line.StartsWith('#'))
+            var line = MpvConfigLineSupport.NormalizeLine(rawLine);
+            if (line.Length == 0)
                 continue;
 
-            var parts = line.Split([' ', '\t'], 2, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2)
+            if (!MpvConfigLineSupport.TryParseInputBindingLine(line, out var gesture, out var command))
             {
                 unsupportedRows.Add(line);
                 continue;
             }
 
-            var gesture = parts[0].Trim();
-            var command = parts[1].Trim();
             var category = CategorizeGesture(gesture);
             bindings.Add(new InputBindingSetting(category, gesture, command, $"Imported from {Path.GetFileName(inputConfPath)}", "Imported"));
         }

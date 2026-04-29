@@ -61,6 +61,32 @@ public static class InputBindingSettingsStore
         return path;
     }
 
+    public static IReadOnlyList<InputBindingSetting> ImportFromInputConf(string inputConfPath)
+    {
+        if (string.IsNullOrWhiteSpace(inputConfPath) || !File.Exists(inputConfPath))
+            return Array.Empty<InputBindingSetting>();
+
+        var imported = new List<InputBindingSetting>();
+        foreach (var rawLine in File.ReadAllLines(inputConfPath))
+        {
+            var line = MpvConfigLineSupport.NormalizeLine(rawLine);
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            if (!MpvConfigLineSupport.TryParseInputBindingLine(line, out var gesture, out var command))
+                continue;
+
+            imported.Add(new InputBindingSetting(
+                "Imported",
+                gesture,
+                command,
+                "Imported from input.conf",
+                "input.conf"));
+        }
+
+        return imported;
+    }
+
     private static string GetBindingsFilePath()
     {
         return Path.Combine(ApplicationData.Current.LocalFolder.Path, BindingsFileName);

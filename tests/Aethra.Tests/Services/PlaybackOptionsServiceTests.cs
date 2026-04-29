@@ -60,6 +60,31 @@ public sealed class PlaybackOptionsServiceTests
     }
 
     [Fact]
+    public void ApplyVideoEnhancementPreferences_EmitsPresetAndCustomShader()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplyVideoEnhancementPreferences(new VideoPreferencesProfile
+            {
+                QualityPreset = VideoQualityPreset.Cinema,
+                ShaderPreset = ShaderChainPreset.None,
+                CustomShaderChain = "~~/shaders/custom.glsl"
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.Contains(("scale", "ewa_lanczos"), emitted);
+        Assert.Contains(("glsl-shaders", "~~/shaders/custom.glsl"), emitted);
+    }
+
+    [Fact]
     public void ApplyNetworkPreferences_EmitsExpectedProperties()
     {
         var service = PlaybackOptionsService.Instance;
@@ -165,5 +190,27 @@ public sealed class PlaybackOptionsServiceTests
         }
 
         Assert.Contains(("aethra-accent-hex", "#7B2FFF"), emitted);
+    }
+
+    [Fact]
+    public void ApplySubtitlePreferences_EmitsSubtitleDelay()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplySubtitlePreferences(new SubtitlePreferencesProfile
+            {
+                SubtitleDelaySeconds = 1.75
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.Contains(("sub-delay", "1.75"), emitted);
     }
 }

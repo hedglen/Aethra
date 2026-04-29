@@ -62,6 +62,7 @@ namespace Aethra
         private readonly InputRuntimeService _inputRuntimeService = new();
         private readonly List<InputBindingSetting> _currentInputBindings = new();
         private readonly PlaybackPersistenceSnapshot _playbackPersistence;
+        private bool _persistedPreferencesAppliedToRuntime;
         private string? _pendingMediaPath;
         // True means playback is paused. Visual surfaces route through
         // PlayPauseVisualFor so the transport button and context menu stay aligned.
@@ -174,7 +175,10 @@ namespace Aethra
             GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
             FullSettings.InputBindingsChanged -= FullSettings_InputBindingsChanged;
             PlaybackPersistenceStore.SaveVolume(_currentVolume);
-            PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
+            if (ShouldRememberRecentFiles())
+                PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
+            else
+                PlaybackPersistenceStore.ClearLastMedia();
             PlaybackPersistenceStore.SaveWindow(
                 AppWindow.Position.X,
                 AppWindow.Position.Y,
@@ -2230,110 +2234,93 @@ namespace Aethra
 
         private bool ExecuteInputCommand(string command)
         {
-            if (string.IsNullOrWhiteSpace(command))
+            if (!MpvCommandLineParser.TryParseCommandChain(command, out var commandChain))
                 return false;
 
-            if (AethraCommandIds.IsAethraCommand(command))
-                return _commandDispatcher.Execute(command);
-
-            var normalized = command.Trim();
-            if (string.Equals(normalized, "cycle pause", StringComparison.OrdinalIgnoreCase))
+            var handledAny = false;
+            foreach (var argv in commandChain)
             {
-                _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause);
-                return true;
-            }
+                if (argv.Length == 0)
+                    continue;
 
-            if (string.Equals(normalized, "cycle mute", StringComparison.OrdinalIgnoreCase))
-            {
-                _commandDispatcher.Execute(AethraCommandIds.ToggleMute);
-                return true;
-            }
-
-            if (string.Equals(normalized, "cycle fullscreen", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalized, "set fullscreen yes", StringComparison.OrdinalIgnoreCase))
-            {
-                _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
-                return true;
-            }
-
-            if (string.Equals(normalized, "set fullscreen no", StringComparison.OrdinalIgnoreCase))
-            {
-                if (_isFullscreen)
-                    ExitFullscreen();
-
-                return true;
-            }
-
-            if (normalized.StartsWith("seek ", StringComparison.OrdinalIgnoreCase))
-            {
-                var seekArg = normalized[5..].Trim();
-                var seekParts = seekArg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (seekParts.Length > 0 && double.TryParse(seekParts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
+                if (TryExecuteNativeInputAlias(argv))
                 {
-                    if (seekParts.Length > 1 && seekParts[1].Equals("absolute-percent", StringComparison.OrdinalIgnoreCase))
-                        SeekToPercent(seconds);
-                    else
-                        SeekRelative(seconds);
+                    handledAny = true;
+                    continue;
+                }
 
-                    return true;
+                var verb = argv[0];
+                if (AethraCommandIds.IsAethraCommand(verb))
+                {
+                    handledAny = _commandDispatcher.Execute(verb) || handledAny;
+                    continue;
+                }
+
+                if (InputCommandSupport.IsDeniedCommandVerb(verb))
+                    return false;
+
+                if (_activeBackends.Count == 0)
+                    continue;
+
+                ForEachPlayerBackend(player => player.ExecuteCommand(argv));
+                handledAny = true;
+            }
+
+            return handledAny;
+        }
+
+        private bool TryExecuteNativeInputAlias(IReadOnlyList<string> argv)
+        {
+            if (argv.Count == 0)
+                return false;
+
+            var cmd = argv[0];
+            if (string.Equals(cmd, "quit", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(cmd, "quit-watch-later", StringComparison.OrdinalIgnoreCase))
+            {
+                Close();
+                return true;
+            }
+
+            if (string.Equals(cmd, "cycle", StringComparison.OrdinalIgnoreCase) && argv.Count > 1)
+            {
+                if (string.Equals(argv[1], "pause", StringComparison.OrdinalIgnoreCase))
+                    return _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause);
+
+                if (string.Equals(argv[1], "mute", StringComparison.OrdinalIgnoreCase))
+                    return _commandDispatcher.Execute(AethraCommandIds.ToggleMute);
+
+                if (string.Equals(argv[1], "fullscreen", StringComparison.OrdinalIgnoreCase))
+                    return _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
+            }
+
+            if (string.Equals(cmd, "set", StringComparison.OrdinalIgnoreCase) && argv.Count > 2)
+            {
+                if (string.Equals(argv[1], "fullscreen", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.Equals(argv[2], "no", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (_isFullscreen)
+                            ExitFullscreen();
+
+                        return true;
+                    }
+
+                    if (string.Equals(argv[2], "yes", StringComparison.OrdinalIgnoreCase))
+                        return _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen);
                 }
             }
 
-            if (normalized.StartsWith("add volume ", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(cmd, "script-binding", StringComparison.OrdinalIgnoreCase) && argv.Count > 1)
             {
-                var valueText = normalized["add volume ".Length..].Trim();
-                if (int.TryParse(valueText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount))
-                {
-                    AddVolume(amount);
-                    return true;
-                }
-            }
+                if (string.Equals(argv[1], "playlistmanager/showplaylist", StringComparison.OrdinalIgnoreCase))
+                    return _commandDispatcher.Execute(AethraCommandIds.ShowPlaylist);
 
-            if (normalized.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
-            {
-                var setParts = normalized.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
-                if (setParts.Length == 3)
-                {
-                    _playbackOptions.ApplyStringProperty(setParts[1], setParts[2]);
-                    return true;
-                }
-            }
-
-            if (normalized.StartsWith("change-list glsl-shaders", StringComparison.OrdinalIgnoreCase))
-            {
-                var shaderValue = normalized.Contains(" clr", StringComparison.OrdinalIgnoreCase)
-                    ? string.Empty
-                    : ExtractQuotedSegment(normalized);
-                _playbackOptions.ApplyCustomShaderChain(shaderValue);
-                return true;
-            }
-
-            if (string.Equals(normalized, "script-binding playlistmanager/showplaylist", StringComparison.OrdinalIgnoreCase))
-            {
-                _commandDispatcher.Execute(AethraCommandIds.ShowPlaylist);
-                return true;
-            }
-
-            if (string.Equals(normalized, "script-binding uosc/menu", StringComparison.OrdinalIgnoreCase))
-            {
-                _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);
-                return true;
+                if (string.Equals(argv[1], "uosc/menu", StringComparison.OrdinalIgnoreCase))
+                    return _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);
             }
 
             return false;
-        }
-
-        private static string ExtractQuotedSegment(string command)
-        {
-            var first = command.IndexOf('"');
-            if (first < 0)
-                return string.Empty;
-
-            var second = command.IndexOf('"', first + 1);
-            if (second <= first)
-                return string.Empty;
-
-            return command[(first + 1)..second];
         }
 
         private void HandleEscapeCommand()
@@ -2468,6 +2455,7 @@ namespace Aethra
                 return;
 
             _activeBackends.Add(player);
+            ApplyPersistedPreferencesToRuntime();
         }
 
         private void UnregisterPlayerBackend(INativeMpvPlayerBackend? player)
@@ -2482,6 +2470,35 @@ namespace Aethra
         {
             foreach (var player in _activeBackends)
                 action(player);
+        }
+
+        private void ApplyPersistedPreferencesToRuntime()
+        {
+            if (_persistedPreferencesAppliedToRuntime || _activeBackends.Count == 0)
+                return;
+
+            var profiles = PreferencesProfilesStore.Load();
+            _playbackOptions.ApplyPlaybackPreferences(profiles.Playback);
+            _playbackOptions.ApplyVideoPreferences(profiles.Video);
+            _playbackOptions.ApplyVideoEnhancementPreferences(profiles.Video);
+            _playbackOptions.ApplyAudioPreferences(profiles.Audio);
+            _playbackOptions.ApplySubtitlePreferences(profiles.Subtitles);
+            _playbackOptions.ApplyAdvancedPreferences(profiles.Advanced);
+            _playbackOptions.ApplyNetworkPreferences(profiles.Network);
+            _playbackOptions.ApplyCustomizationPreferences(profiles.Customization);
+            _persistedPreferencesAppliedToRuntime = true;
+        }
+
+        private static bool ShouldRememberRecentFiles()
+        {
+            try
+            {
+                return PreferencesProfilesStore.Load().Library.RememberRecentFiles;
+            }
+            catch
+            {
+                return true;
+            }
         }
     }
 }

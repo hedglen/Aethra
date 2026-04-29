@@ -58,6 +58,9 @@ public sealed class VideoPreferencesProfile
     public HardwareDecodeMode HardwareDecode { get; set; } = HardwareDecodeMode.Auto;
     public bool InterpolationEnabled { get; set; }
     public bool DeinterlaceEnabled { get; set; }
+    public VideoQualityPreset QualityPreset { get; set; } = VideoQualityPreset.Reference;
+    public ShaderChainPreset ShaderPreset { get; set; } = ShaderChainPreset.None;
+    public string CustomShaderChain { get; set; } = string.Empty;
 
     public static VideoPreferencesProfile CreateDefault() => new();
 }
@@ -68,6 +71,7 @@ public sealed class SubtitlePreferencesProfile
     public string PreferredLanguagesCsv { get; set; } = "eng,jpn";
     public double FontSize { get; set; } = 40;
     public bool BorderAndShadow { get; set; } = true;
+    public double SubtitleDelaySeconds { get; set; }
 
     public static SubtitlePreferencesProfile CreateDefault() => new();
 }

@@ -8,7 +8,7 @@ authors:
     given-names: "Rob"
 repository-code: "https://github.com/hedglen/Aethra"
 url: "https://github.com/hedglen/Aethra"
-license: "MIT OR Apache-2.0"
+license: "GPL-2.0-or-later"
 keywords:
   - windows
   - video-player
@@ -22,4 +22,4 @@ preferred-citation:
       given-names: "Rob"
   repository-code: "https://github.com/hedglen/Aethra"
   url: "https://github.com/hedglen/Aethra"
-  license: "MIT OR Apache-2.0"
+  license: "GPL-2.0-or-later"

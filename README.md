@@ -73,7 +73,7 @@ Contributions are welcome.
 
 ## Build Your Own App
 
-You are explicitly encouraged to fork Aethra, build your own app from this work, and ship derivatives (including commercial ones) under the selected permissive license terms for Aethra-owned source.
+You are explicitly encouraged to fork Aethra, build your own app from this work, and ship derivatives (including commercial ones) under GPL-2.0-or-later terms.
 
 If you redistribute binaries, you must also satisfy the license/notice obligations of bundled third-party native libraries (see `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md`).
 
@@ -85,17 +85,12 @@ To keep credit transparent and ecosystem-friendly:
 
 ## License And Attribution
 
-This repository is dual-licensed under:
-
-- [MIT License](LICENSE), or
-- [Apache License 2.0](LICENSE-APACHE)
-
-You may choose either license when using this code.
+This repository is licensed under [GNU GPL v2 or later](LICENSE) (`GPL-2.0-or-later`).
 
 ### Attribution Expectations
 
 - Keep license text and copyright notices in redistributed source.
-- For Apache-2.0 redistributions, keep the project [NOTICE](NOTICE) file.
+- Keep the project [NOTICE](NOTICE) file and provenance notices when redistributing.
 - When practical, acknowledge upstream source as: Aethra by Rob Hedglen ([github.com/hedglen/Aethra](https://github.com/hedglen/Aethra)).
 - Citation metadata is provided in `CITATION.cff`.
 

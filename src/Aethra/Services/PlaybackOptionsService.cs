@@ -176,6 +176,15 @@ public sealed class PlaybackOptionsService
         ApplyStringProperty("deinterlace", profile.DeinterlaceEnabled ? "yes" : "no");
     }
 
+    public void ApplyVideoEnhancementPreferences(VideoPreferencesProfile profile)
+    {
+        ApplyVideoQualityPreset(profile.QualityPreset);
+        if (profile.ShaderPreset == ShaderChainPreset.None && !string.IsNullOrWhiteSpace(profile.CustomShaderChain))
+            ApplyCustomShaderChain(profile.CustomShaderChain);
+        else
+            ApplyShaderPreset(profile.ShaderPreset);
+    }
+
     public void ApplyAudioPreferences(AudioPreferencesProfile profile)
     {
         var audioDevice = string.IsNullOrWhiteSpace(profile.OutputDevice) || profile.OutputDevice == "System default"
@@ -201,6 +210,7 @@ public sealed class PlaybackOptionsService
             ApplyStringProperty("slang", profile.PreferredLanguagesCsv);
         ApplyStringProperty("sub-border-style", profile.BorderAndShadow ? "outline-and-shadow" : "none");
         ApplyNumericProperty("sub-font-size", Math.Clamp(profile.FontSize, 12, 100));
+        ApplyNumericProperty("sub-delay", Math.Clamp(profile.SubtitleDelaySeconds, -10, 10));
     }
 
     public void ApplyAdvancedPreferences(AdvancedPreferencesProfile profile)

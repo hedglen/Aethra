@@ -27,6 +27,20 @@ public sealed class PreferencesProfileBundleExchangeTests
                 {
                     Name = "Cinema",
                     Playback = new PlaybackPreferencesProfile { DefaultPlaybackSpeedPercent = 125 },
+                    Video = new VideoPreferencesProfile
+                    {
+                        QualityPreset = VideoQualityPreset.Cinema,
+                        ShaderPreset = ShaderChainPreset.None,
+                        CustomShaderChain = "~~/shaders/cinema.glsl"
+                    },
+                    Audio = new AudioPreferencesProfile
+                    {
+                        OutputDevice = "wasapi/{cinema-device}"
+                    },
+                    Subtitles = new SubtitlePreferencesProfile
+                    {
+                        SubtitleDelaySeconds = 0.5
+                    },
                     Network = new NetworkPreferencesProfile
                     {
                         NetworkTimeoutSeconds = 50,
@@ -49,6 +63,10 @@ public sealed class PreferencesProfileBundleExchangeTests
             Assert.Equal(2, imported.Bundles.Count);
             var cinema = Assert.Single(imported.Bundles, bundle => bundle.Name == "Cinema");
             Assert.Equal(125, cinema.Playback.DefaultPlaybackSpeedPercent);
+            Assert.Equal(VideoQualityPreset.Cinema, cinema.Video.QualityPreset);
+            Assert.Equal("~~/shaders/cinema.glsl", cinema.Video.CustomShaderChain);
+            Assert.Equal("wasapi/{cinema-device}", cinema.Audio.OutputDevice);
+            Assert.Equal(0.5, cinema.Subtitles.SubtitleDelaySeconds);
             Assert.Equal(50, cinema.Network.NetworkTimeoutSeconds);
             Assert.Equal(NetworkProxyMode.Http, cinema.Network.ProxyMode);
             Assert.Equal("#223344", cinema.Customization.AccentHex);

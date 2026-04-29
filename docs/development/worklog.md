@@ -16,7 +16,7 @@ Superseded historical policy guardrail: older entries may mention now-retired li
 - MVVM with CommunityToolkit.Mvvm when view models are introduced.
 - Plan before edits, take one small step at a time, run `dotnet build` after each step, and stop for review.
 - Do not add dependencies or broad refactors without a concrete request. Repo-readiness scaffolding (README, LICENSE, CONTRIBUTING, CI, CHANGELOG, etc.) is now in scope per `docs/development/copilot-instructions.md` and may be added in small reviewed steps.
-- Repo license: MIT OR Apache-2.0.
+- Repo license: GPL-2.0-or-later.
 - Open-source distribution rule: Aethra is free and published on GitHub; prioritize the best native playback/GPU renderer while keeping third-party notices, source links, and build provenance current. No telemetry, analytics, or remote logging.
 - Product vocabulary: use Preferences for persistent app behavior, Adjustments for immediate playback tweaks, Controls for input bindings, Customization for appearance, Advanced for expert/raw options, and avoid Control Panel.
 
@@ -1068,6 +1068,80 @@ Active steps:
     - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (55 tests).
   - Manual smoke status:
     - pending desktop verification: launch -> auto-load `test.mp4`; drag another media file onto video surface -> immediate playback.
+- 2026-04-29 completed Preferences power-user + Input UX deepening pass:
+  - Phase 1 runtime/apply parity:
+    - Added post-backend persisted profile apply in `src/Aethra/Views/MainWindow.xaml.cs` so typed Preferences now reliably apply after runtime backends are registered (eliminating early no-op apply timing drift).
+    - Added `PlaybackPersistenceStore.ClearLastMedia()` and wired `Library.RememberRecentFiles` behavior so disabling recent-history persistence now clears saved last-media state on close.
+  - Phase 2 Preferences core coverage:
+    - Extended typed profile model in `src/Aethra/Profiles/PreferencesPageProfiles.cs`:
+      - `VideoPreferencesProfile`: `QualityPreset`, `ShaderPreset`, `CustomShaderChain`
+      - `SubtitlePreferencesProfile`: `SubtitleDelaySeconds`
+    - Extended profile exchange clone/round-trip support in `src/Aethra/Configuration/PreferencesProfileBundleExchange.cs` for the new typed fields.
+    - Extended service apply in `src/Aethra/Services/PlaybackOptionsService.cs`:
+      - new `ApplyVideoEnhancementPreferences(...)` for quality + shader/custom chain parity,
+      - subtitle delay apply via `sub-delay`.
+    - Upgraded Preferences UI wiring in `src/Aethra/Views/FullSettingsPanel.xaml` + `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`:
+      - audio output now supports explicit device-id override text persistence/apply,
+      - subtitle delay slider is persisted and applied,
+      - video quality/shader/custom-chain are now persisted with profile state rather than session-only behavior.
+  - Phase 3 Input UX-first deepening:
+    - Added stronger conflict ergonomics:
+      - conflict-only filter toggle,
+      - richer conflict status with runtime winner rule context.
+    - Added command validity guidance:
+      - unsupported command counting/status feedback via new `src/Aethra/Input/InputCommandSupport.cs`.
+    - Added save clarity:
+      - explicit incomplete-row skip messaging when persisting bindings.
+    - Added row-edit ergonomics:
+      - move up/down, duplicate, clear actions per binding row.
+  - Test coverage expansion:
+    - Added `tests/Aethra.Tests/Input/InputCommandSupportTests.cs`.
+    - Expanded `tests/Aethra.Tests/Services/PlaybackOptionsServiceTests.cs` for video enhancement apply + subtitle delay.
+    - Expanded `tests/Aethra.Tests/Profiles/PreferencesPageProfilesTests.cs` defaults assertions for new typed fields.
+    - Expanded `tests/Aethra.Tests/Configuration/PreferencesProfilesStoreTests.cs` and `tests/Aethra.Tests/Configuration/PreferencesProfileBundleExchangeTests.cs` for new profile round-trip fields.
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with zero warnings/errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (70 tests).
+- 2026-04-29 completed GPL-2.0-or-later reuse transition baseline:
+  - Relicensed public/legal posture to GPL-2.0-or-later:
+    - replaced root `LICENSE` content with GPLv2 text and explicit "or later" grant,
+    - removed now-obsolete `LICENSE-APACHE`,
+    - updated `README.md`, `CONTRIBUTING.md`, `CITATION.cff`, `docs/project/DIRECTION.md`,
+      `docs/project/ATTRIBUTION.md`, `docs/project/roadmap.md`, `CHANGELOG.md`,
+      `docs/development/copilot-instructions.md`, and root `NOTICE`.
+  - Added explicit managed-code provenance tracking in:
+    - `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` (`Third-Party Reused Code Provenance` section),
+    - `docs/project/MPVNET_REUSE_MAP.md` (source -> target intake map with baseline commit).
+  - Imported/adapted mpv.net C# config parsing behavior for Input UX:
+    - `src/Aethra/Configuration/InputBindingSettingsStore.cs` now includes `ImportFromInputConf(...)` and
+      a normalization helper adapted from mpv.net `Player.cs` config-line handling.
+    - Preferences Input UI now supports direct `input.conf` import through
+      `src/Aethra/Views/FullSettingsPanel.xaml` and
+      `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`.
+  - Test coverage added:
+    - `tests/Aethra.Tests/Configuration/InputBindingSettingsStoreTests.cs`.
+- 2026-04-29 completed native-first reuse snappiness pass (balanced two-step):
+  - Step 1 command pipeline + safe passthrough:
+    - Added non-UI command chain parsing in `src/Aethra/Input/MpvCommandLineParser.cs` (semicolon-aware, quote-safe).
+    - Expanded backend contract with generic command execution:
+      - `src/Aethra/Native/INativeMpvPlayerBackend.cs`
+      - `src/Aethra/Native/NativeMpvSoftwarePlayer.cs`
+      - `src/Aethra/Native/NativeMpvOpenGlPlayer.cs`
+    - Replaced hardcoded `ExecuteInputCommand` verb branching in `src/Aethra/Views/MainWindow.xaml.cs` with parser-driven execution while preserving native aliases (`aethra:*`, fullscreen/settings/playlist, quit paths).
+    - Added safe-passthrough denylist policy in `src/Aethra/Input/InputCommandSupport.cs` for `run`, `subprocess`, `script-message-to`.
+  - Step 2 importer depth + status mapping:
+    - Added shared config normalization/parser helper in `src/Aethra/Configuration/MpvConfigLineSupport.cs` (adapted from mpv.net `Player.cs` parsing behavior).
+    - Updated `src/Aethra/Configuration/InputBindingSettingsStore.cs` and `src/Aethra/Configuration/MpvPortableConfigImporter.cs` to use shared parser support.
+    - `MpvPortableConfigImporter` now supports option shorthand (`flag` => `flag=yes`) and profile-scoped key capture (`profile:<name>:<key>`).
+    - Updated `src/Aethra/Preferences/FullSettingsPanel.xaml.cs` import status + validation text to report safety-policy-blocked commands explicitly.
+  - Provenance updates:
+    - Expanded `docs/project/MPVNET_REUSE_MAP.md`.
+    - Expanded `src/Aethra/ThirdPartyNotices/THIRD_PARTY_NOTICES.md` managed-code provenance entries.
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with zero warnings/errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (82 tests).
+  - Manual smoke status:
+    - pending desktop verification for input import/command execution and close-path snappiness.
 
 ## Roadmap
 

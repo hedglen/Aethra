@@ -72,6 +72,14 @@ internal sealed class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
         EnqueueCommand("set", name, value);
     }
 
+    public void ExecuteCommand(params string[] args)
+    {
+        if (args is null || args.Length == 0)
+            return;
+
+        EnqueueCommand(args);
+    }
+
     public void Seek(double seconds)
     {
         EnqueueCommand("seek", seconds.ToString(CultureInfo.InvariantCulture));

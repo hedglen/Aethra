@@ -15,6 +15,7 @@ internal interface INativeMpvPlayerBackend : IDisposable
     void Pause();
     void SetProperty(string name, double value);
     void SetProperty(string name, string value);
+    void ExecuteCommand(params string[] args);
     void Seek(double seconds);
     void SeekToTime(double seconds);
     void SeekToPercent(double percent);

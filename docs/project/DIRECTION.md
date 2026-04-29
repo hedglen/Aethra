@@ -62,7 +62,7 @@ Folder responsibility baseline:
 
 Two-layer licensing model:
 
-1. Aethra-owned repository source is dual-licensed as `MIT OR Apache-2.0`.
+1. Aethra-owned repository source is licensed as `GPL-2.0-or-later`.
 2. Redistributed native runtime binaries may impose additional obligations based on actual build choices.
 
 Default public-binary posture:
