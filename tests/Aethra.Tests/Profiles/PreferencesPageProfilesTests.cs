@@ -15,6 +15,11 @@ public sealed class PreferencesPageProfilesTests
         Assert.Equal(PlaybackEndOfFileAction.Stop, defaults.Playback.EndOfFileAction);
         Assert.Equal(100, defaults.Playback.DefaultPlaybackSpeedPercent);
 
+        Assert.Equal(VideoOutputMode.GpuNext, defaults.Video.OutputMode);
+        Assert.Equal(HardwareDecodeMode.Auto, defaults.Video.HardwareDecode);
+        Assert.False(defaults.Video.InterpolationEnabled);
+        Assert.False(defaults.Video.DeinterlaceEnabled);
+
         Assert.Equal("System default", defaults.Audio.OutputDevice);
         Assert.Equal(AudioChannelLayout.Auto, defaults.Audio.ChannelLayout);
         Assert.False(defaults.Audio.DynamicRangeCompression);
@@ -28,5 +33,10 @@ public sealed class PreferencesPageProfilesTests
         Assert.False(defaults.Library.WatchFoldersEnabled);
         Assert.True(defaults.Library.RememberRecentFiles);
         Assert.Equal("Default", defaults.Profiles.ActiveProfileName);
+        Assert.Single(defaults.Profiles.Bundles);
+        Assert.Equal("Default", defaults.Profiles.Bundles[0].Name);
+
+        Assert.Equal(AdvancedLogLevel.Warnings, defaults.Advanced.LogLevel);
+        Assert.Equal(string.Empty, defaults.Advanced.ExtraMpvOptionsText);
     }
 }

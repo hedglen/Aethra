@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Aethra.Configuration;
 using Aethra.Input;
 using Aethra.Profiles;
@@ -164,6 +165,8 @@ public sealed partial class FullSettingsPanel : UserControl
     private void InitializePageProfiles()
     {
         _pageProfiles = PreferencesProfilesStore.Load();
+        EnsureDefaultProfileBundle();
+        PopulateProfilesCombo();
         HydratePageControlsFromProfiles();
         ApplyProfilesToPlaybackRuntime();
     }
@@ -183,6 +186,22 @@ public sealed partial class FullSettingsPanel : UserControl
             };
             PlaybackDefaultSpeedSlider.Value = _pageProfiles.Playback.DefaultPlaybackSpeedPercent;
             PlaybackStatusText.Text = "Playback settings loaded.";
+
+            VideoOutputCombo.SelectedIndex = _pageProfiles.Video.OutputMode switch
+            {
+                VideoOutputMode.Gpu => 1,
+                _ => 0
+            };
+            VideoHardwareDecodeCombo.SelectedIndex = _pageProfiles.Video.HardwareDecode switch
+            {
+                HardwareDecodeMode.Nvdec => 1,
+                HardwareDecodeMode.Dxva2 => 2,
+                HardwareDecodeMode.Copy => 3,
+                _ => 0
+            };
+            VideoInterpolationToggle.IsOn = _pageProfiles.Video.InterpolationEnabled;
+            VideoDeinterlaceToggle.IsOn = _pageProfiles.Video.DeinterlaceEnabled;
+            VideoStatusText.Text = "Video settings loaded.";
 
             AudioDeviceCombo.SelectedIndex = 0;
             AudioDrcToggle.IsOn = _pageProfiles.Audio.DynamicRangeCompression;
@@ -207,8 +226,18 @@ public sealed partial class FullSettingsPanel : UserControl
             LibraryStatusText.Text = "Library settings loaded.";
 
             ProfilesActiveProfileTextBox.Text = _pageProfiles.Profiles.ActiveProfileName;
-            ProfilesActiveProfileCombo.SelectedIndex = 0;
+            SelectActiveProfileInCombo();
             ProfilesStatusText.Text = "Profile settings loaded.";
+
+            AdvancedLogLevelCombo.SelectedIndex = _pageProfiles.Advanced.LogLevel switch
+            {
+                AdvancedLogLevel.Off => 0,
+                AdvancedLogLevel.Verbose => 2,
+                AdvancedLogLevel.Debug => 3,
+                _ => 1
+            };
+            AdvancedExtraOptionsTextBox.Text = _pageProfiles.Advanced.ExtraMpvOptionsText;
+            AdvancedStatusText.Text = "Advanced settings loaded.";
         }
         finally
         {
@@ -227,6 +256,21 @@ public sealed partial class FullSettingsPanel : UserControl
             _ => PlaybackEndOfFileAction.Stop
         };
         _pageProfiles.Playback.DefaultPlaybackSpeedPercent = Math.Clamp(PlaybackDefaultSpeedSlider.Value, 50, 200);
+
+        _pageProfiles.Video.OutputMode = VideoOutputCombo.SelectedIndex switch
+        {
+            1 => VideoOutputMode.Gpu,
+            _ => VideoOutputMode.GpuNext
+        };
+        _pageProfiles.Video.HardwareDecode = VideoHardwareDecodeCombo.SelectedIndex switch
+        {
+            1 => HardwareDecodeMode.Nvdec,
+            2 => HardwareDecodeMode.Dxva2,
+            3 => HardwareDecodeMode.Copy,
+            _ => HardwareDecodeMode.Auto
+        };
+        _pageProfiles.Video.InterpolationEnabled = VideoInterpolationToggle.IsOn;
+        _pageProfiles.Video.DeinterlaceEnabled = VideoDeinterlaceToggle.IsOn;
 
         _pageProfiles.Audio.OutputDevice = "System default";
         _pageProfiles.Audio.DynamicRangeCompression = AudioDrcToggle.IsOn;
@@ -249,6 +293,15 @@ public sealed partial class FullSettingsPanel : UserControl
 
         var activeProfileName = (ProfilesActiveProfileTextBox.Text ?? string.Empty).Trim();
         _pageProfiles.Profiles.ActiveProfileName = string.IsNullOrWhiteSpace(activeProfileName) ? "Default" : activeProfileName;
+
+        _pageProfiles.Advanced.LogLevel = AdvancedLogLevelCombo.SelectedIndex switch
+        {
+            0 => AdvancedLogLevel.Off,
+            2 => AdvancedLogLevel.Verbose,
+            3 => AdvancedLogLevel.Debug,
+            _ => AdvancedLogLevel.Warnings
+        };
+        _pageProfiles.Advanced.ExtraMpvOptionsText = (AdvancedExtraOptionsTextBox.Text ?? string.Empty).Trim();
     }
 
     private void SavePageProfiles()
@@ -261,8 +314,110 @@ public sealed partial class FullSettingsPanel : UserControl
     private void ApplyProfilesToPlaybackRuntime()
     {
         _playbackOptions.ApplyPlaybackPreferences(_pageProfiles.Playback);
+        _playbackOptions.ApplyVideoPreferences(_pageProfiles.Video);
         _playbackOptions.ApplyAudioPreferences(_pageProfiles.Audio);
         _playbackOptions.ApplySubtitlePreferences(_pageProfiles.Subtitles);
+        _playbackOptions.ApplyAdvancedPreferences(_pageProfiles.Advanced);
+    }
+
+    private void EnsureDefaultProfileBundle()
+    {
+        if (_pageProfiles.Profiles.Bundles is null)
+            _pageProfiles.Profiles.Bundles = new List<NamedPreferencesProfileBundle>();
+
+        if (_pageProfiles.Profiles.Bundles.Count == 0)
+            _pageProfiles.Profiles.Bundles.Add(NamedPreferencesProfileBundle.CreateDefault());
+    }
+
+    private void PopulateProfilesCombo()
+    {
+        ProfilesActiveProfileCombo.Items.Clear();
+        foreach (var bundle in _pageProfiles.Profiles.Bundles.OrderBy(bundle => bundle.Name, StringComparer.OrdinalIgnoreCase))
+            ProfilesActiveProfileCombo.Items.Add(bundle.Name);
+    }
+
+    private void SelectActiveProfileInCombo()
+    {
+        var activeName = _pageProfiles.Profiles.ActiveProfileName;
+        if (string.IsNullOrWhiteSpace(activeName))
+            activeName = "Default";
+
+        ProfilesActiveProfileCombo.SelectedItem = activeName;
+        if (ProfilesActiveProfileCombo.SelectedIndex < 0 && ProfilesActiveProfileCombo.Items.Count > 0)
+            ProfilesActiveProfileCombo.SelectedIndex = 0;
+    }
+
+    private void ApplyBundle(NamedPreferencesProfileBundle bundle)
+    {
+        _pageProfiles.Playback = Clone(bundle.Playback);
+        _pageProfiles.Video = Clone(bundle.Video);
+        _pageProfiles.Audio = Clone(bundle.Audio);
+        _pageProfiles.Subtitles = Clone(bundle.Subtitles);
+        _pageProfiles.Library = Clone(bundle.Library);
+        _pageProfiles.Advanced = Clone(bundle.Advanced);
+        _pageProfiles.Profiles.ActiveProfileName = bundle.Name;
+    }
+
+    private static PlaybackPreferencesProfile Clone(PlaybackPreferencesProfile source)
+    {
+        return new PlaybackPreferencesProfile
+        {
+            ResumeWhereLeftOff = source.ResumeWhereLeftOff,
+            AutoplayOnOpen = source.AutoplayOnOpen,
+            EndOfFileAction = source.EndOfFileAction,
+            DefaultPlaybackSpeedPercent = source.DefaultPlaybackSpeedPercent
+        };
+    }
+
+    private static VideoPreferencesProfile Clone(VideoPreferencesProfile source)
+    {
+        return new VideoPreferencesProfile
+        {
+            OutputMode = source.OutputMode,
+            HardwareDecode = source.HardwareDecode,
+            InterpolationEnabled = source.InterpolationEnabled,
+            DeinterlaceEnabled = source.DeinterlaceEnabled
+        };
+    }
+
+    private static AudioPreferencesProfile Clone(AudioPreferencesProfile source)
+    {
+        return new AudioPreferencesProfile
+        {
+            OutputDevice = source.OutputDevice,
+            DynamicRangeCompression = source.DynamicRangeCompression,
+            ReplayGainNormalization = source.ReplayGainNormalization,
+            ChannelLayout = source.ChannelLayout
+        };
+    }
+
+    private static SubtitlePreferencesProfile Clone(SubtitlePreferencesProfile source)
+    {
+        return new SubtitlePreferencesProfile
+        {
+            AutoLoadMatchingSubtitles = source.AutoLoadMatchingSubtitles,
+            PreferredLanguagesCsv = source.PreferredLanguagesCsv,
+            FontSize = source.FontSize,
+            BorderAndShadow = source.BorderAndShadow
+        };
+    }
+
+    private static LibraryPreferencesProfile Clone(LibraryPreferencesProfile source)
+    {
+        return new LibraryPreferencesProfile
+        {
+            WatchFoldersEnabled = source.WatchFoldersEnabled,
+            RememberRecentFiles = source.RememberRecentFiles
+        };
+    }
+
+    private static AdvancedPreferencesProfile Clone(AdvancedPreferencesProfile source)
+    {
+        return new AdvancedPreferencesProfile
+        {
+            LogLevel = source.LogLevel,
+            ExtraMpvOptionsText = source.ExtraMpvOptionsText
+        };
     }
 
     private void InitializeInputBindings()
@@ -600,6 +755,23 @@ public sealed partial class FullSettingsPanel : UserControl
         PlaybackStatusText.Text = "Playback settings reset to defaults.";
     }
 
+    private void VideoSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        VideoStatusText.Text = "Video settings saved.";
+    }
+
+    private void VideoResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Video = VideoPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        VideoStatusText.Text = "Video settings reset to defaults.";
+    }
+
     private void AudioSaveButton_Click(object sender, RoutedEventArgs e)
     {
         if (_isHydratingPageControls)
@@ -656,6 +828,34 @@ public sealed partial class FullSettingsPanel : UserControl
         if (_isHydratingPageControls)
             return;
 
+        ReadPageProfilesFromControls();
+        var activeName = _pageProfiles.Profiles.ActiveProfileName;
+        var existing = _pageProfiles.Profiles.Bundles.FirstOrDefault(bundle => string.Equals(bundle.Name, activeName, StringComparison.OrdinalIgnoreCase));
+        if (existing is null)
+        {
+            _pageProfiles.Profiles.Bundles.Add(new NamedPreferencesProfileBundle
+            {
+                Name = activeName,
+                Playback = Clone(_pageProfiles.Playback),
+                Video = Clone(_pageProfiles.Video),
+                Audio = Clone(_pageProfiles.Audio),
+                Subtitles = Clone(_pageProfiles.Subtitles),
+                Library = Clone(_pageProfiles.Library),
+                Advanced = Clone(_pageProfiles.Advanced)
+            });
+        }
+        else
+        {
+            existing.Playback = Clone(_pageProfiles.Playback);
+            existing.Video = Clone(_pageProfiles.Video);
+            existing.Audio = Clone(_pageProfiles.Audio);
+            existing.Subtitles = Clone(_pageProfiles.Subtitles);
+            existing.Library = Clone(_pageProfiles.Library);
+            existing.Advanced = Clone(_pageProfiles.Advanced);
+        }
+
+        PopulateProfilesCombo();
+        SelectActiveProfileInCombo();
         SavePageProfiles();
         ProfilesStatusText.Text = $"Active profile '{_pageProfiles.Profiles.ActiveProfileName}' saved.";
     }
@@ -663,9 +863,120 @@ public sealed partial class FullSettingsPanel : UserControl
     private void ProfilesResetButton_Click(object sender, RoutedEventArgs e)
     {
         _pageProfiles.Profiles = ProfilesPreferencesProfile.CreateDefault();
+        EnsureDefaultProfileBundle();
+        PopulateProfilesCombo();
         HydratePageControlsFromProfiles();
         SavePageProfiles();
         ProfilesStatusText.Text = "Profile settings reset to defaults.";
+    }
+
+    private void ProfilesCreateButton_Click(object sender, RoutedEventArgs e)
+    {
+        var requestedName = (ProfilesActiveProfileTextBox.Text ?? string.Empty).Trim();
+        var baseName = string.IsNullOrWhiteSpace(requestedName) ? "Profile" : requestedName;
+        var name = baseName;
+        var suffix = 2;
+        while (_pageProfiles.Profiles.Bundles.Any(bundle => string.Equals(bundle.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            name = $"{baseName} {suffix}";
+            suffix++;
+        }
+
+        _pageProfiles.Profiles.Bundles.Add(new NamedPreferencesProfileBundle
+        {
+            Name = name,
+            Playback = Clone(_pageProfiles.Playback),
+            Video = Clone(_pageProfiles.Video),
+            Audio = Clone(_pageProfiles.Audio),
+            Subtitles = Clone(_pageProfiles.Subtitles),
+            Library = Clone(_pageProfiles.Library),
+            Advanced = Clone(_pageProfiles.Advanced)
+        });
+        _pageProfiles.Profiles.ActiveProfileName = name;
+        PopulateProfilesCombo();
+        SelectActiveProfileInCombo();
+        ProfilesActiveProfileTextBox.Text = name;
+        SavePageProfiles();
+        ProfilesStatusText.Text = $"Created profile '{name}'.";
+    }
+
+    private void ProfilesApplyButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedName = (ProfilesActiveProfileCombo.SelectedItem as string ?? ProfilesActiveProfileTextBox.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(selectedName))
+        {
+            ProfilesStatusText.Text = "Select a profile first.";
+            return;
+        }
+
+        var bundle = _pageProfiles.Profiles.Bundles.FirstOrDefault(item => string.Equals(item.Name, selectedName, StringComparison.OrdinalIgnoreCase));
+        if (bundle is null)
+        {
+            ProfilesStatusText.Text = $"Profile '{selectedName}' was not found.";
+            return;
+        }
+
+        ApplyBundle(bundle);
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        ProfilesStatusText.Text = $"Applied profile '{bundle.Name}'.";
+    }
+
+    private void ProfilesDeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedName = (ProfilesActiveProfileCombo.SelectedItem as string ?? ProfilesActiveProfileTextBox.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(selectedName))
+        {
+            ProfilesStatusText.Text = "Select a profile to delete.";
+            return;
+        }
+
+        var index = _pageProfiles.Profiles.Bundles.FindIndex(bundle => string.Equals(bundle.Name, selectedName, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+        {
+            ProfilesStatusText.Text = $"Profile '{selectedName}' was not found.";
+            return;
+        }
+
+        if (_pageProfiles.Profiles.Bundles.Count == 1)
+        {
+            ProfilesStatusText.Text = "At least one profile must remain.";
+            return;
+        }
+
+        _pageProfiles.Profiles.Bundles.RemoveAt(index);
+        _pageProfiles.Profiles.ActiveProfileName = _pageProfiles.Profiles.Bundles[0].Name;
+        PopulateProfilesCombo();
+        SelectActiveProfileInCombo();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        ProfilesStatusText.Text = $"Deleted profile '{selectedName}'.";
+    }
+
+    private void ProfilesActiveProfileCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        if (ProfilesActiveProfileCombo.SelectedItem is string name)
+            ProfilesActiveProfileTextBox.Text = name;
+    }
+
+    private void AdvancedSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isHydratingPageControls)
+            return;
+
+        SavePageProfiles();
+        AdvancedStatusText.Text = "Advanced settings saved.";
+    }
+
+    private void AdvancedResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _pageProfiles.Advanced = AdvancedPreferencesProfile.CreateDefault();
+        HydratePageControlsFromProfiles();
+        SavePageProfiles();
+        AdvancedStatusText.Text = "Advanced settings reset to defaults.";
     }
 
     private void VideoQualityPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

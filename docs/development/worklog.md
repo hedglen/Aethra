@@ -914,6 +914,31 @@ Active steps:
     - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passes (41 tests).
   - Remaining Phase 3 gap:
     - page coverage is baseline-first; deeper profile engine capabilities (named profile composition/import/export workflows and broader Network/Customization/Advanced parity) remain follow-up work.
+- 2026-04-28 completed Phase 3 depth parity increment:
+  - Expanded typed profile model coverage in `src/Aethra/Profiles/PreferencesPageProfiles.cs`:
+    - added Video model (`VideoPreferencesProfile`) with output/hardware decode/interpolation/deinterlace settings,
+    - added Advanced model (`AdvancedPreferencesProfile`) with log level + raw options text,
+    - added named bundle support (`NamedPreferencesProfileBundle`) for profile catalog MVP.
+  - Kept persistence under `PreferencesProfilesStore` and extended saved payloads through the same JSON-backed flow.
+  - Extended `PlaybackOptionsService` apply surface:
+    - `ApplyVideoPreferences(...)` for video output/hwdec/interpolation/deinterlace,
+    - `ApplyAdvancedPreferences(...)` for log-level and parsed key=value raw mpv options,
+    - refined playback end-of-file mapping for loop/playlist-next behavior.
+  - Reworked Preferences UI depth in `Views/FullSettingsPanel.xaml` + `Preferences/FullSettingsPanel.xaml.cs`:
+    - Video page now has real save/reset flows and persisted/apply-backed controls,
+    - Advanced page now has real save/reset flows for log level and extra mpv options,
+    - Profiles page now supports MVP create/apply/delete/select workflows with explicit bundle scope.
+  - Maintained service-boundary architecture: page actions update typed models, persist through configuration store, and apply via `PlaybackOptionsService` event pipeline.
+  - Added test coverage for the depth increment:
+    - expanded `PreferencesPageProfilesTests` defaults assertions for Video/Advanced/profile bundles,
+    - expanded `PreferencesProfilesStoreTests` for Video/Advanced/bundle round-trip persistence,
+    - added `PlaybackOptionsServiceTests` for video and advanced apply property emission behavior.
+  - Validation:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passes with zero warnings/errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passes (43 tests).
+  - Remaining follow-up after this increment:
+    - full Network page parity and deeper profile import/export workflows remain deferred,
+    - final desktop manual shell/preferences smoke loop remains recommended before release-focused milestones.
 
 ## Roadmap
 

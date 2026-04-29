@@ -150,8 +150,30 @@ public sealed class PlaybackOptionsService
         ApplyNumericProperty("speed", Math.Clamp(profile.DefaultPlaybackSpeedPercent, 25, 400) / 100.0);
         var loopValue = profile.EndOfFileAction == PlaybackEndOfFileAction.LoopCurrentFile ? "inf" : "no";
         ApplyStringProperty("loop-file", loopValue);
-        ApplyStringProperty("keep-open", profile.AutoplayOnOpen ? "no" : "yes");
+        ApplyStringProperty("keep-open", profile.EndOfFileAction == PlaybackEndOfFileAction.PlayNextInFolder ? "no" : (profile.AutoplayOnOpen ? "no" : "yes"));
+        ApplyStringProperty("playlist-next", profile.EndOfFileAction == PlaybackEndOfFileAction.PlayNextInFolder ? "force" : "no");
         ApplyStringProperty("save-position-on-quit", profile.ResumeWhereLeftOff ? "yes" : "no");
+    }
+
+    public void ApplyVideoPreferences(VideoPreferencesProfile profile)
+    {
+        var vo = profile.OutputMode switch
+        {
+            VideoOutputMode.Gpu => "gpu",
+            _ => "gpu-next"
+        };
+        ApplyStringProperty("vo", vo);
+
+        var hwdec = profile.HardwareDecode switch
+        {
+            HardwareDecodeMode.Nvdec => "nvdec",
+            HardwareDecodeMode.Dxva2 => "dxva2",
+            HardwareDecodeMode.Copy => "auto-copy",
+            _ => "auto-safe"
+        };
+        ApplyStringProperty("hwdec", hwdec);
+        ApplyStringProperty("interpolation", profile.InterpolationEnabled ? "yes" : "no");
+        ApplyStringProperty("deinterlace", profile.DeinterlaceEnabled ? "yes" : "no");
     }
 
     public void ApplyAudioPreferences(AudioPreferencesProfile profile)
@@ -179,5 +201,36 @@ public sealed class PlaybackOptionsService
             ApplyStringProperty("slang", profile.PreferredLanguagesCsv);
         ApplyStringProperty("sub-border-style", profile.BorderAndShadow ? "outline-and-shadow" : "none");
         ApplyNumericProperty("sub-font-size", Math.Clamp(profile.FontSize, 12, 100));
+    }
+
+    public void ApplyAdvancedPreferences(AdvancedPreferencesProfile profile)
+    {
+        var msgLevel = profile.LogLevel switch
+        {
+            AdvancedLogLevel.Off => "all=no",
+            AdvancedLogLevel.Verbose => "all=v",
+            AdvancedLogLevel.Debug => "all=debug",
+            _ => "all=warn"
+        };
+        ApplyStringProperty("msg-level", msgLevel);
+
+        var lines = (profile.ExtraMpvOptionsText ?? string.Empty)
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var line in lines)
+        {
+            if (line.StartsWith('#'))
+                continue;
+
+            var separator = line.IndexOf('=');
+            if (separator <= 0 || separator >= line.Length - 1)
+                continue;
+
+            var key = line[..separator].Trim();
+            var value = line[(separator + 1)..].Trim();
+            if (key.Length == 0 || value.Length == 0)
+                continue;
+
+            ApplyStringProperty(key, value);
+        }
     }
 }

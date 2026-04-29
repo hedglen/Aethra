@@ -203,13 +203,19 @@
                         <TextBlock Text="Output, decoding, and scaling." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Video Output" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox SelectedIndex="0" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="VideoOutputCombo"
+                                  SelectedIndex="0"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="GPU Next (Modern)"/>
                             <ComboBoxItem Content="GPU (Standard)"/>
                         </ComboBox>
 
                         <TextBlock Text="Hardware Decoding" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox SelectedIndex="1" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="VideoHardwareDecodeCombo"
+                                  SelectedIndex="0"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="Auto"/>
                             <ComboBoxItem Content="NVDEC (NVIDIA)"/>
                             <ComboBoxItem Content="DXVA2 (Windows)"/>
@@ -217,8 +223,16 @@
                         </ComboBox>
 
                         <TextBlock Text="Smoothness" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch Header="Video Interpolation (Smooth Motion)" OffContent="Off" OnContent="On" Foreground="White"/>
-                        <ToggleSwitch Header="Deinterlacing (for interlaced content)" OffContent="Off" OnContent="On" Foreground="White"/>
+                        <ToggleSwitch x:Name="VideoInterpolationToggle"
+                                      Header="Video Interpolation (Smooth Motion)"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
+                        <ToggleSwitch x:Name="VideoDeinterlaceToggle"
+                                      Header="Deinterlacing (for interlaced content)"
+                                      OffContent="Off"
+                                      OnContent="On"
+                                      Foreground="White"/>
 
                         <TextBlock Text="Quality preset" Style="{StaticResource GroupHeaderStyle}"/>
                         <ComboBox x:Name="VideoQualityPresetCombo"
@@ -232,6 +246,26 @@
                             <ComboBoxItem Content="LowResBoost"/>
                             <ComboBoxItem Content="NativeClean"/>
                         </ComboBox>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="VideoSaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save video"/>
+                            </Button>
+                            <Button Click="VideoResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset video"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="VideoStatusText" Foreground="#9FA0A4" FontSize="12"/>
                     </StackPanel>
 
                     <StackPanel x:Name="AudioPanel" Spacing="12" Visibility="Collapsed">
@@ -668,6 +702,7 @@
 
                         <TextBlock Text="Active profile" Style="{StaticResource GroupHeaderStyle}"/>
                         <ComboBox x:Name="ProfilesActiveProfileCombo"
+                                  SelectionChanged="ProfilesActiveProfileCombo_SelectionChanged"
                                   SelectedIndex="0"
                                   HorizontalAlignment="Stretch"
                                   Foreground="White">
@@ -680,6 +715,32 @@
                                  PlaceholderText="Default"
                                  Foreground="White"/>
                         <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="ProfilesCreateButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Create"/>
+                            </Button>
+                            <Button Click="ProfilesApplyButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Apply profile"/>
+                            </Button>
+                            <Button Click="ProfilesDeleteButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Delete"/>
+                            </Button>
                             <Button Click="ProfilesSaveButton_Click"
                                     Padding="12,8"
                                     Background="{StaticResource AethraAccentBrush}"
@@ -769,7 +830,11 @@
                         <TextBlock Text="Raw mpv options and expert controls." Style="{StaticResource SectionSubtitleStyle}"/>
 
                         <TextBlock Text="Logging" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox Header="Log level" SelectedIndex="1" HorizontalAlignment="Stretch" Foreground="White">
+                        <ComboBox x:Name="AdvancedLogLevelCombo"
+                                  Header="Log level"
+                                  SelectedIndex="1"
+                                  HorizontalAlignment="Stretch"
+                                  Foreground="White">
                             <ComboBoxItem Content="Off"/>
                             <ComboBoxItem Content="Warnings"/>
                             <ComboBoxItem Content="Verbose"/>
@@ -777,7 +842,32 @@
                         </ComboBox>
 
                         <TextBlock Text="Extra mpv options" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBox PlaceholderText="key=value pairs, one per line" AcceptsReturn="True" TextWrapping="Wrap" Height="120" Foreground="White"/>
+                        <TextBox x:Name="AdvancedExtraOptionsTextBox"
+                                 PlaceholderText="key=value pairs, one per line"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="120"
+                                 Foreground="White"/>
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <Button Click="AdvancedSaveButton_Click"
+                                    Padding="12,8"
+                                    Background="{StaticResource AethraAccentBrush}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Save advanced"/>
+                            </Button>
+                            <Button Click="AdvancedResetButton_Click"
+                                    Padding="12,8"
+                                    Background="#1F1F1F"
+                                    BorderBrush="#3A3A3A"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Foreground="White">
+                                <TextBlock Text="Reset advanced"/>
+                            </Button>
+                        </StackPanel>
+                        <TextBlock x:Name="AdvancedStatusText" Foreground="#9FA0A4" FontSize="12"/>
 
                         <TextBlock Text="Script extensions" Style="{StaticResource GroupHeaderStyle}"/>
                         <ToggleSwitch x:Name="ScriptsEnabledToggle"

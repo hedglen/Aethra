@@ -1,4 +1,28 @@
+using System.Collections.Generic;
+
 namespace Aethra.Profiles;
+
+public enum VideoOutputMode
+{
+    GpuNext = 0,
+    Gpu = 1
+}
+
+public enum HardwareDecodeMode
+{
+    Auto = 0,
+    Nvdec = 1,
+    Dxva2 = 2,
+    Copy = 3
+}
+
+public enum AdvancedLogLevel
+{
+    Off = 0,
+    Warnings = 1,
+    Verbose = 2,
+    Debug = 3
+}
 
 public sealed class PlaybackPreferencesProfile
 {
@@ -18,6 +42,16 @@ public sealed class AudioPreferencesProfile
     public AudioChannelLayout ChannelLayout { get; set; } = AudioChannelLayout.Auto;
 
     public static AudioPreferencesProfile CreateDefault() => new();
+}
+
+public sealed class VideoPreferencesProfile
+{
+    public VideoOutputMode OutputMode { get; set; } = VideoOutputMode.GpuNext;
+    public HardwareDecodeMode HardwareDecode { get; set; } = HardwareDecodeMode.Auto;
+    public bool InterpolationEnabled { get; set; }
+    public bool DeinterlaceEnabled { get; set; }
+
+    public static VideoPreferencesProfile CreateDefault() => new();
 }
 
 public sealed class SubtitlePreferencesProfile
@@ -41,16 +75,43 @@ public sealed class LibraryPreferencesProfile
 public sealed class ProfilesPreferencesProfile
 {
     public string ActiveProfileName { get; set; } = "Default";
+    public List<NamedPreferencesProfileBundle> Bundles { get; set; } = new()
+    {
+        NamedPreferencesProfileBundle.CreateDefault()
+    };
 
     public static ProfilesPreferencesProfile CreateDefault() => new();
+}
+
+public sealed class AdvancedPreferencesProfile
+{
+    public AdvancedLogLevel LogLevel { get; set; } = AdvancedLogLevel.Warnings;
+    public string ExtraMpvOptionsText { get; set; } = string.Empty;
+
+    public static AdvancedPreferencesProfile CreateDefault() => new();
+}
+
+public sealed class NamedPreferencesProfileBundle
+{
+    public string Name { get; set; } = "Default";
+    public PlaybackPreferencesProfile Playback { get; set; } = PlaybackPreferencesProfile.CreateDefault();
+    public VideoPreferencesProfile Video { get; set; } = VideoPreferencesProfile.CreateDefault();
+    public AudioPreferencesProfile Audio { get; set; } = AudioPreferencesProfile.CreateDefault();
+    public SubtitlePreferencesProfile Subtitles { get; set; } = SubtitlePreferencesProfile.CreateDefault();
+    public LibraryPreferencesProfile Library { get; set; } = LibraryPreferencesProfile.CreateDefault();
+    public AdvancedPreferencesProfile Advanced { get; set; } = AdvancedPreferencesProfile.CreateDefault();
+
+    public static NamedPreferencesProfileBundle CreateDefault() => new();
 }
 
 public sealed class PreferencesPageProfiles
 {
     public PlaybackPreferencesProfile Playback { get; set; } = PlaybackPreferencesProfile.CreateDefault();
+    public VideoPreferencesProfile Video { get; set; } = VideoPreferencesProfile.CreateDefault();
     public AudioPreferencesProfile Audio { get; set; } = AudioPreferencesProfile.CreateDefault();
     public SubtitlePreferencesProfile Subtitles { get; set; } = SubtitlePreferencesProfile.CreateDefault();
     public LibraryPreferencesProfile Library { get; set; } = LibraryPreferencesProfile.CreateDefault();
+    public AdvancedPreferencesProfile Advanced { get; set; } = AdvancedPreferencesProfile.CreateDefault();
     public ProfilesPreferencesProfile Profiles { get; set; } = ProfilesPreferencesProfile.CreateDefault();
 
     public static PreferencesPageProfiles CreateDefault() => new();
