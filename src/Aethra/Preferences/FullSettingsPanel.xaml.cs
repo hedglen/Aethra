@@ -1462,11 +1462,23 @@ public sealed partial class FullSettingsPanel : UserControl
 
             ImportedShaderCountText.Text = $"{imported.ShaderFiles.Count} shader files detected";
             ImportedScriptCountText.Text = $"{imported.ScriptFiles.Count} script files detected";
-            var unsupportedMpvRowsCount = imported.UnsupportedMpvRows.Count;
+            var unsupportedInputRowsCount = imported.UnsupportedInputRows.Count;
+            var includeDiagnosticsCount = imported.UnsupportedMpvRows.Count(row =>
+                row.StartsWith("include-", StringComparison.OrdinalIgnoreCase));
+            var profileDiagnosticsCount = imported.UnsupportedMpvRows.Count(row =>
+                row.StartsWith("profile-", StringComparison.OrdinalIgnoreCase));
+            var unsupportedOptionRowsCount = imported.UnsupportedMpvRows.Count - includeDiagnosticsCount - profileDiagnosticsCount;
             var includeCount = imported.IncludedMpvConfigFiles.Count;
-            PortableImportStatusText.Text = blockedCount == 0
-                ? $"Imported {imported.InputBindings.Count} bindings, {imported.MpvOptions.Count} mpv options, {includeCount} include file(s), {unsupportedMpvRowsCount} unsupported mpv row(s)."
-                : $"Imported {imported.InputBindings.Count} bindings ({blockedCount} need review). {blockedSample.binding?.Gesture ?? "Command"}: {blockedSample.reason}. {unsupportedMpvRowsCount} unsupported mpv row(s).";
+            var mergedProfileCount = imported.ProfileMergedOptions.Count;
+            var blockedSummary = blockedCount == 0
+                ? "0 blocked command row(s)"
+                : $"{blockedCount} blocked command row(s)";
+            var blockedSampleText = blockedCount == 0
+                ? string.Empty
+                : $" {blockedSample.binding?.Gesture ?? "Command"}: {blockedSample.reason}.";
+            PortableImportStatusText.Text =
+                $"Imported {imported.InputBindings.Count} bindings, {imported.MpvOptions.Count} mpv options, {mergedProfileCount} merged profile(s), {includeCount} include file(s). " +
+                $"Diagnostics: {blockedSummary}, {unsupportedInputRowsCount} unsupported input row(s), {unsupportedOptionRowsCount} unsupported mpv option row(s), {includeDiagnosticsCount} include diagnostic row(s), {profileDiagnosticsCount} profile diagnostic row(s).{blockedSampleText}";
         }
         catch (Exception ex)
         {

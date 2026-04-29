@@ -20,4 +20,7 @@ public sealed class MpvImportedConfig
     public IReadOnlyList<string> UnsupportedMpvRows { get; init; } = new List<string>();
 
     public IReadOnlyList<string> IncludedMpvConfigFiles { get; init; } = new List<string>();
+
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> ProfileMergedOptions { get; init; }
+        = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 }

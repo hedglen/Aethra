@@ -1177,6 +1177,29 @@ Active steps:
   - Verification gate:
     - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed.
     - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (104 tests).
+- 2026-04-29 completed mpv.conf/import parity deepening increment:
+  - Include policy hardening in `src/Aethra/Configuration/MpvPortableConfigImporter.cs`:
+    - Added deterministic include-file tracking (existing includes only, stable first-seen order).
+    - Added explicit diagnostics for include edge cases:
+      - `include-missing:<path>`
+      - `include-cycle:<path>`
+      - `include-invalid:<line>`
+    - Added `include=` directive support in addition to `include <path>`.
+  - Duplicate precedence + profile merge shaping:
+    - Kept line-order/last-write option precedence deterministic across include chains.
+    - Added explicit merged profile computation with parent inheritance (`profile=<base,...>`) and cycle/missing-base diagnostics:
+      - `profile-cycle:<name>`
+      - `profile-missing-base:<profile>:<parent>`
+    - Stored merged profile outputs as:
+      - `MpvImportedConfig.ProfileMergedOptions`
+      - flattened `profile-merged:<profile>:<key>` entries in imported mpv options.
+  - Import diagnostics surface:
+    - Updated portable import status text in `src/Aethra/Preferences/FullSettingsPanel.xaml.cs` to report blocked commands, unsupported input rows, unsupported mpv option rows, include diagnostics, profile diagnostics, include-file count, and merged-profile count.
+  - Regression coverage:
+    - Expanded `tests/Aethra.Tests/Configuration/MpvPortableConfigImporterTests.cs` with include-cycle/missing/invalid cases, deterministic include ordering, duplicate precedence checks, and merged-profile assertions.
+  - Verification gate:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (105 tests).
 
 ## Roadmap
 
