@@ -97,6 +97,7 @@ This repository is licensed under [GNU GPL v2 or later](LICENSE) (`GPL-2.0-or-la
 ## Planning and Direction
 
 - Canonical direction/framework policy: `docs/project/DIRECTION.md`
+- Repository sitemap for AI agents and repo navigation: `docs/architecture/agent-sitemap.md`
 - Documentation index: `docs/README.md`
 - Active roadmap: `docs/project/roadmap.md`
 - Architectural guidance for agent-driven changes: `docs/development/copilot-instructions.md`

@@ -5,16 +5,18 @@ Start here before making changes.
 ## First Steps
 
 Direction source of truth: `docs/project/DIRECTION.md`.
+Repository layout guide: `docs/architecture/agent-sitemap.md`.
 
-1. Read `docs/development/worklog.md`.
-2. Confirm the current focus, completed work, and next items from the worklog.
-3. Use `docs/project/roadmap.md` as the current execution order unless the user explicitly redirects.
-4. Plan the requested change as a numbered list before editing files.
-5. Make one small step only.
-6. Run `dotnet build .\Aethra.slnx -p:Platform=x64`.
-7. Fix warnings and errors before stopping.
-8. Update `docs/development/worklog.md` with what changed, what was verified, and what remains next.
-9. Stop for review.
+1. Read `docs/architecture/agent-sitemap.md` to find the real authoring targets and the owning guidance docs.
+2. Read `docs/development/worklog.md`.
+3. Confirm the current focus, completed work, and next items from the worklog.
+4. Use `docs/project/roadmap.md` as the current execution order unless the user explicitly redirects.
+5. Plan the requested change as a numbered list before editing files.
+6. Make one small step only.
+7. Run `dotnet build .\Aethra.slnx -p:Platform=x64`.
+8. Fix warnings and errors before stopping.
+9. Update `docs/development/worklog.md` with what changed, what was verified, and what remains next.
+10. Stop for review.
 
 ## Product Direction
 

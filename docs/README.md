@@ -6,13 +6,14 @@ This folder contains project documentation for contributors and maintainers.
 
 - `project/`: roadmap and project-direction docs.
 - `development/`: implementation workflow and handoff context.
-- `architecture/`: system-level structure and design notes.
+- `architecture/`: system-level structure, repo navigation, and design notes.
 - `contributing/`: contributor process details that extend root docs.
 - `packaging/`: distribution and packaging notes.
 
 ## Quick Links
 
 - Canonical direction and framework policy: `docs/project/DIRECTION.md`
+- Repository sitemap for AI agents: `docs/architecture/agent-sitemap.md`
 - Project entry point: `README.md`
 - Contributing guide: `CONTRIBUTING.md`
 - Roadmap: `docs/project/roadmap.md`

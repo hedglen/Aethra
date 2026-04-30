@@ -1227,6 +1227,26 @@ Active steps:
     - Validation passed:
       - `dotnet test .\\tests\\Aethra.Tests\\Aethra.Tests.csproj -p:Platform=x64 --filter "FullyQualifiedName~Input|FullyQualifiedName~Configuration.InputBindingSettingsStoreTests"`
       - `dotnet build .\\Aethra.slnx -p:Platform=x64`
+- 2026-04-30 completed AI agent sitemap + guidance ownership alignment:
+  - Added `docs/architecture/agent-sitemap.md` as the canonical repo-navigation and path-ownership guide for AI agents:
+    - read order for the guiding docs,
+    - conflict rules for policy vs sequencing vs workflow vs recent history,
+    - repository map for root folders and `src/Aethra` domains,
+    - important entry points for startup, shell, Preferences, input, persistence, native playback, and tests,
+    - explicit wrong-target guidance for `src/Aethra/` vs top-level `Aethra/` and build-output folders.
+  - Threaded sitemap discoverability into the main guidance entrypoints:
+    - `README.md`
+    - `docs/README.md`
+    - `docs/architecture/README.md`
+    - `docs/project/DIRECTION.md`
+    - `docs/development/copilot-instructions.md`
+    - `Aethra/README.md`
+  - Made the workflow durable for future sessions:
+    - the sitemap now points every agent to `docs/project/DIRECTION.md`, `docs/development/copilot-instructions.md`, `docs/project/roadmap.md`, and `docs/development/worklog.md` before decisions,
+    - the sitemap and instructions now explicitly require updating `docs/development/worklog.md` after completed work.
+  - Verification:
+    - verified the new sitemap is linked from the expected entrypoint docs,
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed.
 
 ## Roadmap
 

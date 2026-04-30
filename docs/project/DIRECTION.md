@@ -74,6 +74,7 @@ Default public-binary posture:
 ## Canonical Guidance Ownership
 
 - Direction/framework/policy canon: `docs/project/DIRECTION.md` (this file).
+- Repository navigation and path ownership map: `docs/architecture/agent-sitemap.md`.
 - Execution sequencing and phase scope: `docs/project/roadmap.md`.
 - Historical implementation record: `docs/development/worklog.md`.
 - Agent implementer rules: `docs/development/copilot-instructions.md`.
