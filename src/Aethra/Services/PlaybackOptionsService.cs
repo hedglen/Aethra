@@ -203,7 +203,17 @@ public sealed class PlaybackOptionsService
         ApplyStringProperty("sub-auto", profile.AutoLoadMatchingSubtitles ? "fuzzy" : "no");
         if (!string.IsNullOrWhiteSpace(profile.PreferredLanguagesCsv))
             ApplyStringProperty("slang", profile.PreferredLanguagesCsv);
-        ApplyStringProperty("sub-border-style", profile.BorderAndShadow ? "outline-and-shadow" : "none");
+        if (profile.BorderAndShadow)
+        {
+            ApplyStringProperty("sub-border-style", "outline-and-shadow");
+            ApplyNumericProperty("sub-outline-size", 1.65);
+        }
+        else
+        {
+            ApplyNumericProperty("sub-outline-size", 0);
+            ApplyNumericProperty("sub-shadow-offset", 0);
+        }
+
         ApplyNumericProperty("sub-font-size", Math.Clamp(profile.FontSize, 12, 100));
         ApplyNumericProperty("sub-delay", Math.Clamp(profile.SubtitleDelaySeconds, -10, 10));
     }

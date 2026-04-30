@@ -212,6 +212,54 @@ public sealed class PlaybackOptionsServiceTests
     }
 
     [Fact]
+    public void ApplySubtitlePreferences_DisablesBorderAndShadowWithValidRuntimeProperties()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplySubtitlePreferences(new SubtitlePreferencesProfile
+            {
+                BorderAndShadow = false
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.DoesNotContain(("sub-border-style", "none"), emitted);
+        Assert.Contains(("sub-outline-size", "0"), emitted);
+        Assert.Contains(("sub-shadow-offset", "0"), emitted);
+    }
+
+    [Fact]
+    public void ApplySubtitlePreferences_EnablesBorderAndShadowWithValidBorderStyle()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplySubtitlePreferences(new SubtitlePreferencesProfile
+            {
+                BorderAndShadow = true
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.DoesNotContain(("sub-border-style", "none"), emitted);
+        Assert.Contains(("sub-border-style", "outline-and-shadow"), emitted);
+        Assert.Contains(("sub-outline-size", "1.65"), emitted);
+    }
+
+    [Fact]
     public void ApplyPlaybackPreferences_DoesNotEmitConfigOnlySavePositionOption()
     {
         var service = PlaybackOptionsService.Instance;

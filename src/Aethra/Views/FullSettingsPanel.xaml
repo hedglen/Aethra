@@ -9,24 +9,35 @@
     mc:Ignorable="d">
 
     <UserControl.Resources>
+        <SolidColorBrush x:Key="GalleryPageBrush" Color="#20242E"/>
+        <SolidColorBrush x:Key="GalleryTopBarBrush" Color="#1E2129"/>
+        <SolidColorBrush x:Key="GalleryPaneBrush" Color="#1F2229"/>
+        <SolidColorBrush x:Key="GalleryCardBrush" Color="#2B2F39"/>
+        <SolidColorBrush x:Key="GalleryCardBorderBrush" Color="#373C47"/>
+        <SolidColorBrush x:Key="GalleryControlBrush" Color="#242832"/>
+        <SolidColorBrush x:Key="GalleryControlBorderBrush" Color="#414754"/>
+        <SolidColorBrush x:Key="GalleryTextBrush" Color="#F6F7FA"/>
+        <SolidColorBrush x:Key="GalleryMutedTextBrush" Color="#C8CBD2"/>
+
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontSize" Value="30"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#F2F2F2"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="Foreground" Value="{StaticResource GalleryTextBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
         </Style>
 
         <Style x:Key="SectionSubtitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Foreground" Value="#9FA0A4"/>
-            <Setter Property="Margin" Value="0,0,0,24"/>
+            <Setter Property="Foreground" Value="{StaticResource GalleryMutedTextBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,18"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style x:Key="GroupHeaderStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#AAAAAA"/>
-            <Setter Property="Margin" Value="0,12,0,0"/>
+            <Setter Property="Foreground" Value="{StaticResource GalleryTextBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
         </Style>
 
         <Style x:Key="ComingSoonStyle" TargetType="TextBlock">
@@ -34,60 +45,118 @@
             <Setter Property="Foreground" Value="#6C6D71"/>
             <Setter Property="FontStyle" Value="Italic"/>
         </Style>
+
+        <Style x:Key="CardDescriptionStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource GalleryMutedTextBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <Style x:Key="StatusTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource GalleryMutedTextBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="SettingsCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource GalleryCardBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource GalleryCardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style x:Key="SettingsTableCardStyle" TargetType="Border" BasedOn="{StaticResource SettingsCardStyle}">
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style x:Key="StretchListViewItemStyle" TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style x:Key="PrimaryCommandButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AethraAccentBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="MinHeight" Value="34"/>
+        </Style>
+
+        <Style x:Key="SecondaryCommandButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource GalleryControlBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource GalleryControlBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Foreground" Value="{StaticResource GalleryTextBrush}"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="MinHeight" Value="34"/>
+        </Style>
+
+        <Style x:Key="IconOnlyButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryCommandButtonStyle}">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
     </UserControl.Resources>
 
-    <Grid Background="#F20A0A0A">
+    <Grid Background="{StaticResource GalleryPageBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="44"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Padding="32,20,24,16" Background="#F2141414">
+        <Grid Padding="8,0,12,0" Background="{StaticResource GalleryTopBarBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                <Border Width="36" Height="36" CornerRadius="18" Background="#1F1F1F" BorderBrush="{StaticResource AethraAccentBrush}" BorderThickness="1">
-                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" FontSize="18" Foreground="#F2F2F2"/>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button x:Name="CloseButton"
+                        Click="CloseButton_Click"
+                        Style="{StaticResource IconOnlyButtonStyle}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ToolTipService.ToolTip="Close Preferences">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72B;" FontSize="14"/>
+                </Button>
+                <Button Style="{StaticResource IconOnlyButtonStyle}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        IsEnabled="False"
+                        ToolTipService.ToolTip="Navigation">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE700;" FontSize="14"/>
+                </Button>
+                <Border Width="16" Height="16" CornerRadius="3" Background="{StaticResource AethraAccentBrush}">
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" FontSize="10" Foreground="White"/>
                 </Border>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="All settings" FontSize="22" FontWeight="SemiBold" Foreground="#F2F2F2"/>
-                    <TextBlock Text="Every Aethra setting, organized by area." FontSize="12" Foreground="#9FA0A4"/>
-                </StackPanel>
+                <TextBlock Text="Aethra Preferences"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource GalleryTextBrush}"
+                           VerticalAlignment="Center"/>
             </StackPanel>
 
             <StackPanel Grid.Column="1"
-                        MaxWidth="420"
-                        Spacing="4"
+                        MaxWidth="300"
                         VerticalAlignment="Center"
-                        HorizontalAlignment="Right"
-                        Margin="24,0,24,0">
+                        HorizontalAlignment="Center">
                 <TextBox x:Name="PreferencesSearchBox"
-                         PlaceholderText="Filter sections (video, network, shortcuts...)"
+                         PlaceholderText="Search Preferences"
                          TextChanged="PreferencesSearchBox_TextChanged"
+                         Height="34"
                          Foreground="White"/>
-                <TextBlock x:Name="PreferencesFilterStatusText"
-                           Foreground="#9FA0A4"
-                           FontSize="12"/>
             </StackPanel>
 
-            <Button Grid.Column="2"
-                    x:Name="CloseButton"
-                    Click="CloseButton_Click"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Foreground="#F2F2F2"
-                    Padding="10,6"
-                    VerticalAlignment="Center"
-                    ToolTipService.ToolTip="Close all settings">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE711;" FontSize="14"/>
-                    <TextBlock Text="Close" FontSize="13"/>
-                </StackPanel>
-            </Button>
+            <TextBlock x:Name="PreferencesFilterStatusText"
+                       Grid.Column="2"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource GalleryMutedTextBrush}"
+                       FontSize="12"/>
         </Grid>
 
         <NavigationView x:Name="NavView"
@@ -95,16 +164,31 @@
                         PaneDisplayMode="Left"
                         IsBackButtonVisible="Collapsed"
                         IsSettingsVisible="False"
-                        OpenPaneLength="240"
+                        IsPaneToggleButtonVisible="False"
+                        IsPaneOpen="True"
+                        OpenPaneLength="300"
                         SelectionChanged="NavView_SelectionChanged"
-                        Background="Transparent"
+                        Background="{StaticResource GalleryPaneBrush}"
                         Foreground="#F2F2F2">
             <NavigationView.MenuItems>
+                <NavigationViewItemHeader x:Name="CoreNavHeader" Content="Core"/>
                 <NavigationViewItem Content="Playback" Tag="Playback" IsSelected="True">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE768;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="Input" Tag="Input">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE765;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Library" Tag="Library">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8F1;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItemHeader x:Name="MediaNavHeader" Content="Media"/>
                 <NavigationViewItem Content="Video" Tag="Video">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE714;"/>
@@ -120,24 +204,16 @@
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xED1E;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Input" Tag="Input">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE765;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Library" Tag="Library">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE8F1;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Network" Tag="Network">
-                    <NavigationViewItem.Icon>
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE774;"/>
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
                 <NavigationViewItem Content="Shaders" Tag="Shaders">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE71C;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItemHeader x:Name="SystemNavHeader" Content="System"/>
+                <NavigationViewItem Content="Network" Tag="Network">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE774;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem Content="Profiles" Tag="Profiles">
@@ -157,275 +233,310 @@
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
-            <ScrollViewer Padding="48,32,48,48" VerticalScrollBarVisibility="Auto">
-                <Grid>
-                    <StackPanel x:Name="PlaybackPanel" Spacing="12" Visibility="Visible">
+            <NavigationView.PaneFooter>
+                <Border BorderBrush="{StaticResource GalleryCardBorderBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="8">
+                    <Button Click="CloseButton_Click"
+                            Style="{StaticResource SecondaryCommandButtonStyle}"
+                            HorizontalAlignment="Stretch"
+                            ToolTipService.ToolTip="Close Preferences">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE711;" FontSize="13"/>
+                            <TextBlock Text="Close Preferences"/>
+                        </StackPanel>
+                    </Button>
+                </Border>
+            </NavigationView.PaneFooter>
+
+            <ScrollViewer x:Name="PreferencesScrollViewer"
+                          Padding="32,28,48,48"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <Grid x:Name="PreferencesContentHost"
+                      Width="{Binding ViewportWidth, ElementName=PreferencesScrollViewer}"
+                      MaxWidth="1480"
+                      HorizontalAlignment="Left">
+                    <StackPanel x:Name="PlaybackPanel" Spacing="12" Visibility="Visible" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Playback" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="How files load, queue, and play." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Startup" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="PlaybackResumeToggle"
-                                      Header="Resume where you left off"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <ToggleSwitch x:Name="PlaybackAutoplayToggle"
-                                      Header="Autoplay when a file is opened"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      IsOn="True"
-                                      Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Startup" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Choose what happens when media opens or when Aethra starts with a remembered file." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="PlaybackResumeToggle"
+                                              Header="Resume where you left off"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="PlaybackAutoplayToggle"
+                                              Header="Autoplay when a file is opened"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              IsOn="True"
+                                              Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="After a file finishes" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="PlaybackEndOfFileCombo"
-                                  Header="On end-of-file"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="Stop"/>
-                            <ComboBoxItem Content="Play next in folder"/>
-                            <ComboBoxItem Content="Loop current file"/>
-                        </ComboBox>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Queue and speed" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Set end-of-file behavior and the default playback speed for new media." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="PlaybackEndOfFileCombo"
+                                          Header="On end-of-file"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="Stop"/>
+                                    <ComboBoxItem Content="Play next in folder"/>
+                                    <ComboBoxItem Content="Loop current file"/>
+                                </ComboBox>
+                                <Slider x:Name="PlaybackDefaultSpeedSlider"
+                                        Header="Default playback speed"
+                                        Minimum="50"
+                                        Maximum="200"
+                                        Value="100"
+                                        TickFrequency="25"
+                                        TickPlacement="Outside"
+                                        Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Speed" Style="{StaticResource GroupHeaderStyle}"/>
-                        <Slider x:Name="PlaybackDefaultSpeedSlider"
-                                Header="Default playback speed"
-                                Minimum="50"
-                                Maximum="200"
-                                Value="100"
-                                TickFrequency="25"
-                                TickPlacement="Outside"
-                                Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="PlaybackSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save playback"/>
-                            </Button>
-                            <Button Click="PlaybackResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset playback"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="PlaybackStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="PlaybackSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save playback"/>
+                                    </Button>
+                                    <Button Click="PlaybackResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset playback"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="PlaybackStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="VideoPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="VideoPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Video" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Output, decoding, and scaling." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Video Output" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="VideoOutputCombo"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="GPU Next (Modern)"/>
-                            <ComboBoxItem Content="GPU (Standard)"/>
-                        </ComboBox>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Renderer" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Pick the output path and hardware decode strategy used for playback." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="VideoOutputCombo"
+                                          Header="Video output"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="GPU Next (Modern)"/>
+                                    <ComboBoxItem Content="GPU (Standard)"/>
+                                </ComboBox>
+                                <ComboBox x:Name="VideoHardwareDecodeCombo"
+                                          Header="Hardware decoding"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="Auto"/>
+                                    <ComboBoxItem Content="NVDEC (NVIDIA)"/>
+                                    <ComboBoxItem Content="DXVA2 (Windows)"/>
+                                    <ComboBoxItem Content="Copy (CPU callback)"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Hardware Decoding" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="VideoHardwareDecodeCombo"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="Auto"/>
-                            <ComboBoxItem Content="NVDEC (NVIDIA)"/>
-                            <ComboBoxItem Content="DXVA2 (Windows)"/>
-                            <ComboBoxItem Content="Copy (CPU callback)"/>
-                        </ComboBox>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Motion and quality" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Tune smoothness and choose a preset tuned for the material you watch most." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="VideoInterpolationToggle"
+                                              Header="Video Interpolation (Smooth Motion)"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="VideoDeinterlaceToggle"
+                                              Header="Deinterlacing (for interlaced content)"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ComboBox x:Name="VideoQualityPresetCombo"
+                                          Header="Quality preset"
+                                          SelectedIndex="0"
+                                          SelectionChanged="VideoQualityPresetCombo_SelectionChanged"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="Reference"/>
+                                    <ComboBoxItem Content="Cinema"/>
+                                    <ComboBoxItem Content="Anime"/>
+                                    <ComboBoxItem Content="LowResBoost"/>
+                                    <ComboBoxItem Content="NativeClean"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Smoothness" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="VideoInterpolationToggle"
-                                      Header="Video Interpolation (Smooth Motion)"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <ToggleSwitch x:Name="VideoDeinterlaceToggle"
-                                      Header="Deinterlacing (for interlaced content)"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-
-                        <TextBlock Text="Quality preset" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="VideoQualityPresetCombo"
-                                  SelectedIndex="0"
-                                  SelectionChanged="VideoQualityPresetCombo_SelectionChanged"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="Reference"/>
-                            <ComboBoxItem Content="Cinema"/>
-                            <ComboBoxItem Content="Anime"/>
-                            <ComboBoxItem Content="LowResBoost"/>
-                            <ComboBoxItem Content="NativeClean"/>
-                        </ComboBox>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="VideoSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save video"/>
-                            </Button>
-                            <Button Click="VideoResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset video"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="VideoStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="VideoSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save video"/>
+                                    </Button>
+                                    <Button Click="VideoResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset video"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="VideoStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="AudioPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="AudioPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Audio" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Output device, loudness, and channels." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Output" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="AudioDeviceCombo"
-                                  Header="Audio device"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="System default"/>
-                            <ComboBoxItem Content="WASAPI Shared (auto)"/>
-                            <ComboBoxItem Content="WASAPI Exclusive (example: wasapi/{GUID})"/>
-                        </ComboBox>
-                        <TextBox x:Name="AudioDeviceTextBox"
-                                 Header="Audio device id (optional override)"
-                                 PlaceholderText="auto or wasapi/{device-id}"
-                                 Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Output" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Route audio to the system device or an explicit WASAPI target." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="AudioDeviceCombo"
+                                          Header="Audio device"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="System default"/>
+                                    <ComboBoxItem Content="WASAPI Shared (auto)"/>
+                                    <ComboBoxItem Content="WASAPI Exclusive (example: wasapi/{GUID})"/>
+                                </ComboBox>
+                                <TextBox x:Name="AudioDeviceTextBox"
+                                         Header="Audio device id (optional override)"
+                                         PlaceholderText="auto or wasapi/{device-id}"
+                                         Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Loudness" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="AudioDrcToggle"
-                                      Header="Dynamic Range Compression"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <ToggleSwitch x:Name="AudioReplayGainToggle"
-                                      Header="ReplayGain normalization"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Loudness and channels" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Normalize uneven media and choose the preferred channel layout." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="AudioDrcToggle"
+                                              Header="Dynamic Range Compression"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="AudioReplayGainToggle"
+                                              Header="ReplayGain normalization"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ComboBox x:Name="AudioChannelLayoutCombo"
+                                          Header="Preferred channel layout"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="Auto (match source)"/>
+                                    <ComboBoxItem Content="Stereo"/>
+                                    <ComboBoxItem Content="5.1 surround"/>
+                                    <ComboBoxItem Content="7.1 surround"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Channels" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="AudioChannelLayoutCombo"
-                                  Header="Preferred channel layout"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="Auto (match source)"/>
-                            <ComboBoxItem Content="Stereo"/>
-                            <ComboBoxItem Content="5.1 surround"/>
-                            <ComboBoxItem Content="7.1 surround"/>
-                        </ComboBox>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="AudioSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save audio"/>
-                            </Button>
-                            <Button Click="AudioResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset audio"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="AudioStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="AudioSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save audio"/>
+                                    </Button>
+                                    <Button Click="AudioResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset audio"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="AudioStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="SubtitlesPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="SubtitlesPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Subtitles" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Track selection, font, and timing." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Auto-load" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="SubtitlesAutoLoadToggle"
-                                      Header="Load matching subtitles from the same folder"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      IsOn="True"
-                                      Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Tracks" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Control how sidecar subtitles are loaded and which languages are preferred." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="SubtitlesAutoLoadToggle"
+                                              Header="Load matching subtitles from the same folder"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              IsOn="True"
+                                              Foreground="White"/>
+                                <TextBox x:Name="SubtitlesLanguagesTextBox"
+                                         Header="Preferred languages (comma-separated ISO codes)"
+                                         PlaceholderText="eng,jpn"
+                                         Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Language preference" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBox x:Name="SubtitlesLanguagesTextBox"
-                                 Header="Preferred languages (comma-separated ISO codes)"
-                                 PlaceholderText="eng,jpn"
-                                 Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Appearance and timing" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Set subtitle scale, outline behavior, and the default timing offset." Style="{StaticResource CardDescriptionStyle}"/>
+                                <Slider x:Name="SubtitlesFontSizeSlider"
+                                        Header="Font size"
+                                        Minimum="20"
+                                        Maximum="80"
+                                        Value="40"
+                                        Foreground="White"/>
+                                <ToggleSwitch x:Name="SubtitlesBorderShadowToggle"
+                                              Header="Border and shadow"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              IsOn="True"
+                                              Foreground="White"/>
+                                <Slider x:Name="SubtitlesDelaySlider"
+                                        Header="Subtitle delay (seconds)"
+                                        Minimum="-10"
+                                        Maximum="10"
+                                        StepFrequency="0.1"
+                                        TickFrequency="1"
+                                        TickPlacement="Outside"
+                                        Value="0"
+                                        Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Appearance" Style="{StaticResource GroupHeaderStyle}"/>
-                        <Slider x:Name="SubtitlesFontSizeSlider"
-                                Header="Font size"
-                                Minimum="20"
-                                Maximum="80"
-                                Value="40"
-                                Foreground="White"/>
-                        <ToggleSwitch x:Name="SubtitlesBorderShadowToggle"
-                                      Header="Border and shadow"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      IsOn="True"
-                                      Foreground="White"/>
-                        <Slider x:Name="SubtitlesDelaySlider"
-                                Header="Subtitle delay (seconds)"
-                                Minimum="-10"
-                                Maximum="10"
-                                StepFrequency="0.1"
-                                TickFrequency="1"
-                                TickPlacement="Outside"
-                                Value="0"
-                                Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="SubtitlesSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save subtitles"/>
-                            </Button>
-                            <Button Click="SubtitlesResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset subtitles"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="SubtitlesStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="SubtitlesSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save subtitles"/>
+                                    </Button>
+                                    <Button Click="SubtitlesResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset subtitles"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="SubtitlesStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="InputPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="InputPanel" Spacing="12" Visibility="Collapsed" MaxWidth="1380" HorizontalAlignment="Stretch">
                         <TextBlock Text="Input" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Keyboard shortcuts, mouse buttons, and mpv command bindings." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <Border BorderBrush="#303030"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Background="#141414"
-                                Padding="12">
-                            <StackPanel Spacing="10">
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
                                 <TextBlock Text="Primary controls" Style="{StaticResource GroupHeaderStyle}"/>
-                                <TextBlock Text="Quickly edit core actions without digging through the full list." Foreground="#9FA0A4" FontSize="12"/>
+                                <TextBlock Text="Quickly edit core actions without digging through the full list." Style="{StaticResource CardDescriptionStyle}"/>
                                 <Grid ColumnSpacing="12" RowSpacing="10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="220"/>
@@ -448,27 +559,19 @@
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Spacing="12">
                                     <Button Click="PrimaryControlsApplyButton_Click"
-                                            Padding="12,8"
-                                            Background="{StaticResource AethraAccentBrush}"
-                                            BorderThickness="0"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
                                         <TextBlock Text="Apply primary controls"/>
                                     </Button>
                                     <Button Click="PrimaryControlsResetButton_Click"
-                                            Padding="12,8"
-                                            Background="#1F1F1F"
-                                            BorderBrush="#3A3A3A"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
                                         <TextBlock Text="Reset primary defaults"/>
                                     </Button>
                                 </StackPanel>
-                                <TextBlock x:Name="PrimaryControlsStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                                <TextBlock x:Name="PrimaryControlsStatusText" Style="{StaticResource StatusTextStyle}"/>
                             </StackPanel>
                         </Border>
 
+                        <Border Style="{StaticResource SettingsCardStyle}">
                         <Expander Header="Advanced bindings" IsExpanded="True">
                             <StackPanel Spacing="12" Padding="0,8,0,0">
                                 <Grid ColumnSpacing="12">
@@ -514,12 +617,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Button Click="AddInputBindingButton_Click"
-                                            Padding="12,8"
-                                            Background="#1F1F1F"
-                                            BorderBrush="#3A3A3A"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE710;" FontSize="12"/>
                                             <TextBlock Text="Add binding"/>
@@ -528,12 +626,7 @@
 
                                     <Button Grid.Column="1"
                                             Click="ResetInputBindingsButton_Click"
-                                            Padding="12,8"
-                                            Background="#1F1F1F"
-                                            BorderBrush="#3A3A3A"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
                                             <TextBlock Text="Reset list"/>
@@ -542,22 +635,13 @@
 
                                     <Button Grid.Column="2"
                                             Click="SaveInputBindingsButton_Click"
-                                            Padding="12,8"
-                                            Background="{StaticResource AethraAccentBrush}"
-                                            BorderThickness="0"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
                                         <TextBlock Text="Save bindings"/>
                                     </Button>
 
                                     <Button Grid.Column="3"
                                             Click="ExportInputConfButton_Click"
-                                            Padding="12,8"
-                                            Background="#1F1F1F"
-                                            BorderBrush="#3A3A3A"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
                                         <TextBlock Text="Export input.conf"/>
                                     </Button>
 
@@ -568,7 +652,7 @@
                                                Foreground="#9FA0A4"
                                                FontSize="12"/>
                                 </Grid>
-                                <TextBlock x:Name="InputBindingStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                                <TextBlock x:Name="InputBindingStatusText" Style="{StaticResource StatusTextStyle}"/>
                                 <TextBlock x:Name="InputConflictStatusText" Foreground="#D69E2E" FontSize="12"/>
                                 <TextBlock x:Name="InputCommandValidationText" Foreground="#F5C16C" FontSize="12"/>
                                 <ToggleSwitch x:Name="InputConflictsOnlyToggle"
@@ -590,11 +674,7 @@
                                              Foreground="White"/>
                                     <Button Grid.Column="1"
                                             Click="ImportPortableConfigButton_Click"
-                                            Padding="12,8"
-                                            Background="{StaticResource AethraAccentBrush}"
-                                            BorderThickness="0"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
                                         <TextBlock Text="Import"/>
                                     </Button>
                                 </Grid>
@@ -610,568 +690,532 @@
                                              Foreground="White"/>
                                     <Button Grid.Column="1"
                                             Click="ImportInputConfButton_Click"
-                                            Padding="12,8"
-                                            Background="#1F1F1F"
-                                            BorderBrush="#3A3A3A"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Foreground="White">
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
                                         <TextBlock Text="Import input.conf"/>
                                     </Button>
                                 </Grid>
-                                <TextBlock x:Name="PortableImportStatusText" Foreground="#9FA0A4" FontSize="12"/>
-                                <TextBlock x:Name="ImportedShaderCountText" Foreground="#9FA0A4" FontSize="12"/>
-                                <TextBlock x:Name="ImportedScriptCountText" Foreground="#9FA0A4" FontSize="12"/>
+                                <TextBlock x:Name="PortableImportStatusText" Style="{StaticResource StatusTextStyle}"/>
+                                <TextBlock x:Name="ImportedShaderCountText" Style="{StaticResource StatusTextStyle}"/>
+                                <TextBlock x:Name="ImportedScriptCountText" Style="{StaticResource StatusTextStyle}"/>
 
-                                <Border BorderBrush="#303030"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        Background="#141414">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                        </Grid.RowDefinitions>
+                                <Border Style="{StaticResource SettingsTableCardStyle}">
+                                    <ScrollViewer x:Name="InputBindingsTableScrollViewer"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  HorizontalScrollMode="Enabled"
+                                                  VerticalScrollBarVisibility="Disabled"
+                                                  VerticalScrollMode="Disabled">
+                                        <Grid Width="{Binding ActualWidth, ElementName=InputBindingsTableScrollViewer}"
+                                              MinWidth="1040">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
 
-                                        <Grid Padding="12,10" ColumnSpacing="12" Background="#1B1B1B">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="130"/>
-                                                <ColumnDefinition Width="170"/>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="90"/>
-                                                <ColumnDefinition Width="160"/>
-                                            </Grid.ColumnDefinitions>
+                                            <Grid Padding="12,10" ColumnSpacing="12" Background="{StaticResource GalleryControlBrush}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="170"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="2*"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="180"/>
+                                                </Grid.ColumnDefinitions>
 
-                                            <TextBlock Text="Category" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
-                                            <TextBlock Grid.Column="1" Text="Gesture" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
-                                            <TextBlock Grid.Column="2" Text="Command" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
-                                            <TextBlock Grid.Column="3" Text="Description" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
-                                            <TextBlock Grid.Column="4" Text="Source" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
-                                            <TextBlock Grid.Column="5" Text="Actions" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Text="Category" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Grid.Column="1" Text="Gesture" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Grid.Column="2" Text="Command" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Grid.Column="3" Text="Description" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Grid.Column="4" Text="Source" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                                <TextBlock Grid.Column="5" Text="Actions" Foreground="#C9C9C9" FontSize="12" FontWeight="SemiBold"/>
+                                            </Grid>
+
+                                            <ListView x:Name="InputBindingsList"
+                                                      Grid.Row="1"
+                                                      MaxHeight="520"
+                                                      Background="Transparent"
+                                                      BorderThickness="0"
+                                                      ItemContainerStyle="{StaticResource StretchListViewItemStyle}"
+                                                      SelectionMode="None">
+                                                <ListView.ItemTemplate>
+                                                    <DataTemplate x:DataType="input:InputBindingSetting">
+                                                        <Grid ColumnSpacing="12" Padding="12,8" HorizontalAlignment="Stretch">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="130"/>
+                                                                <ColumnDefinition Width="170"/>
+                                                                <ColumnDefinition Width="2*"/>
+                                                                <ColumnDefinition Width="2*"/>
+                                                                <ColumnDefinition Width="90"/>
+                                                                <ColumnDefinition Width="180"/>
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Text="{Binding Category}"
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="White"
+                                                                       TextTrimming="CharacterEllipsis"/>
+
+                                                            <TextBox Grid.Column="1"
+                                                                     Text="{Binding Gesture, Mode=TwoWay}"
+                                                                     PlaceholderText="Key or mouse"
+                                                                     TextChanged="InputBindingField_TextChanged"
+                                                                     KeyDown="InputGestureTextBox_KeyDown"
+                                                                     PointerPressed="InputGestureTextBox_PointerPressed"
+                                                                     PointerWheelChanged="InputGestureTextBox_PointerWheelChanged"
+                                                                     Foreground="White"/>
+
+                                                            <TextBox Grid.Column="2"
+                                                                     Text="{Binding Command, Mode=TwoWay}"
+                                                                     PlaceholderText="mpv command"
+                                                                     TextWrapping="Wrap"
+                                                                     AcceptsReturn="False"
+                                                                     TextChanged="InputBindingField_TextChanged"
+                                                                     Foreground="White"/>
+
+                                                            <TextBox Grid.Column="3"
+                                                                     Text="{Binding Description, Mode=TwoWay}"
+                                                                     PlaceholderText="What it does"
+                                                                     TextWrapping="Wrap"
+                                                                     AcceptsReturn="False"
+                                                                     TextChanged="InputBindingField_TextChanged"
+                                                                     Foreground="White"/>
+
+                                                            <TextBlock Grid.Column="4"
+                                                                       Text="{Binding Source}"
+                                                                       VerticalAlignment="Center"
+                                                                       Foreground="#9FA0A4"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       FontSize="12"/>
+
+                                                            <StackPanel Grid.Column="5"
+                                                                        Orientation="Horizontal"
+                                                                        Spacing="6"
+                                                                        HorizontalAlignment="Right">
+                                                                <Button Click="MoveBindingUpButton_Click"
+                                                                        Padding="6,4"
+                                                                        Background="#1F1F1F"
+                                                                        BorderBrush="#3A3A3A"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="6"
+                                                                        Foreground="White">
+                                                                    <TextBlock Text="Up"/>
+                                                                </Button>
+                                                                <Button Click="MoveBindingDownButton_Click"
+                                                                        Padding="6,4"
+                                                                        Background="#1F1F1F"
+                                                                        BorderBrush="#3A3A3A"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="6"
+                                                                        Foreground="White">
+                                                                    <TextBlock Text="Down"/>
+                                                                </Button>
+                                                                <Button Click="DuplicateBindingButton_Click"
+                                                                        Padding="6,4"
+                                                                        Background="#1F1F1F"
+                                                                        BorderBrush="#3A3A3A"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="6"
+                                                                        Foreground="White">
+                                                                    <TextBlock Text="Copy"/>
+                                                                </Button>
+                                                                <Button Click="ClearBindingButton_Click"
+                                                                        Padding="6,4"
+                                                                        Background="#1F1F1F"
+                                                                        BorderBrush="#3A3A3A"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="6"
+                                                                        Foreground="White">
+                                                                    <TextBlock Text="Clear"/>
+                                                                </Button>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListView.ItemTemplate>
+                                            </ListView>
                                         </Grid>
-
-                                        <ListView x:Name="InputBindingsList"
-                                                  Grid.Row="1"
-                                                  MaxHeight="520"
-                                                  Background="Transparent"
-                                                  BorderThickness="0"
-                                                  SelectionMode="None">
-                                            <ListView.ItemTemplate>
-                                                <DataTemplate x:DataType="input:InputBindingSetting">
-                                                    <Grid ColumnSpacing="12" Padding="12,8">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="130"/>
-                                                            <ColumnDefinition Width="170"/>
-                                                            <ColumnDefinition Width="2*"/>
-                                                            <ColumnDefinition Width="2*"/>
-                                                            <ColumnDefinition Width="90"/>
-                                                            <ColumnDefinition Width="160"/>
-                                                        </Grid.ColumnDefinitions>
-
-                                                        <ComboBox SelectedValue="{Binding Category, Mode=TwoWay}"
-                                                                  SelectedValuePath="Content"
-                                                                  HorizontalAlignment="Stretch"
-                                                                  Foreground="White">
-                                                            <ComboBoxItem Content="Mouse"/>
-                                                            <ComboBoxItem Content="Shaders"/>
-                                                            <ComboBoxItem Content="General"/>
-                                                            <ComboBoxItem Content="Picture"/>
-                                                            <ComboBoxItem Content="Video"/>
-                                                            <ComboBoxItem Content="Audio"/>
-                                                            <ComboBoxItem Content="Subtitles"/>
-                                                            <ComboBoxItem Content="Playback"/>
-                                                            <ComboBoxItem Content="Playlist"/>
-                                                            <ComboBoxItem Content="Screenshots"/>
-                                                            <ComboBoxItem Content="Window"/>
-                                                            <ComboBoxItem Content="Scripts"/>
-                                                            <ComboBoxItem Content="Scimitar"/>
-                                                            <ComboBoxItem Content="Aethra"/>
-                                                            <ComboBoxItem Content="Custom"/>
-                                                        </ComboBox>
-
-                                                        <TextBox Grid.Column="1"
-                                                                 Text="{Binding Gesture, Mode=TwoWay}"
-                                                                 PlaceholderText="Key or mouse"
-                                                                 TextChanged="InputBindingField_TextChanged"
-                                                                 KeyDown="InputGestureTextBox_KeyDown"
-                                                                 PointerPressed="InputGestureTextBox_PointerPressed"
-                                                                 PointerWheelChanged="InputGestureTextBox_PointerWheelChanged"
-                                                                 Foreground="White"/>
-
-                                                        <TextBox Grid.Column="2"
-                                                                 Text="{Binding Command, Mode=TwoWay}"
-                                                                 PlaceholderText="mpv command"
-                                                                 TextWrapping="Wrap"
-                                                                 AcceptsReturn="False"
-                                                                 TextChanged="InputBindingField_TextChanged"
-                                                                 Foreground="White"/>
-
-                                                        <TextBox Grid.Column="3"
-                                                                 Text="{Binding Description, Mode=TwoWay}"
-                                                                 PlaceholderText="What it does"
-                                                                 TextWrapping="Wrap"
-                                                                 AcceptsReturn="False"
-                                                                 TextChanged="InputBindingField_TextChanged"
-                                                                 Foreground="White"/>
-
-                                                        <TextBlock Grid.Column="4"
-                                                                   Text="{Binding Source}"
-                                                                   VerticalAlignment="Center"
-                                                                   Foreground="#9FA0A4"
-                                                                   FontSize="12"/>
-
-                                                        <StackPanel Grid.Column="5"
-                                                                    Orientation="Horizontal"
-                                                                    Spacing="6"
-                                                                    HorizontalAlignment="Right">
-                                                            <Button Click="MoveBindingUpButton_Click"
-                                                                    Padding="6,4"
-                                                                    Background="#1F1F1F"
-                                                                    BorderBrush="#3A3A3A"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="6"
-                                                                    Foreground="White">
-                                                                <TextBlock Text="Up"/>
-                                                            </Button>
-                                                            <Button Click="MoveBindingDownButton_Click"
-                                                                    Padding="6,4"
-                                                                    Background="#1F1F1F"
-                                                                    BorderBrush="#3A3A3A"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="6"
-                                                                    Foreground="White">
-                                                                <TextBlock Text="Down"/>
-                                                            </Button>
-                                                            <Button Click="DuplicateBindingButton_Click"
-                                                                    Padding="6,4"
-                                                                    Background="#1F1F1F"
-                                                                    BorderBrush="#3A3A3A"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="6"
-                                                                    Foreground="White">
-                                                                <TextBlock Text="Copy"/>
-                                                            </Button>
-                                                            <Button Click="ClearBindingButton_Click"
-                                                                    Padding="6,4"
-                                                                    Background="#1F1F1F"
-                                                                    BorderBrush="#3A3A3A"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="6"
-                                                                    Foreground="White">
-                                                                <TextBlock Text="Clear"/>
-                                                            </Button>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ListView.ItemTemplate>
-                                        </ListView>
-                                    </Grid>
+                                    </ScrollViewer>
                                 </Border>
                             </StackPanel>
                         </Expander>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="LibraryPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="LibraryPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Library" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Recent files, watched folders, and history." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Watched folders" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="LibraryWatchFoldersToggle"
-                                      Header="Enable watched folders"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Discovery and history" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Choose whether Aethra keeps a lightweight media history and watches known folders." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="LibraryWatchFoldersToggle"
+                                              Header="Enable watched folders"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="LibraryRememberRecentToggle"
+                                              Header="Remember recently opened files"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              IsOn="True"
+                                              Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="History" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="LibraryRememberRecentToggle"
-                                      Header="Remember recently opened files"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      IsOn="True"
-                                      Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="LibrarySaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save library"/>
-                            </Button>
-                            <Button Click="LibraryResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset library"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="LibraryStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="LibrarySaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save library"/>
+                                    </Button>
+                                    <Button Click="LibraryResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset library"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="LibraryStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="NetworkPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="NetworkPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Network" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Streaming behavior, proxy mode, and transport timeouts." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Transport" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="NetworkPreferIpv6Toggle"
-                                      Header="Prefer IPv6 when available"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <ToggleSwitch x:Name="NetworkAllowMeteredToggle"
-                                      Header="Allow metered network playback"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <TextBox x:Name="NetworkTimeoutSecondsBox"
-                                 Header="Network timeout (seconds)"
-                                 PlaceholderText="30"
-                                 Foreground="White"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Transport" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Set streaming behavior for IPv6, metered connections, and slow responses." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="NetworkPreferIpv6Toggle"
+                                              Header="Prefer IPv6 when available"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="NetworkAllowMeteredToggle"
+                                              Header="Allow metered network playback"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <TextBox x:Name="NetworkTimeoutSecondsBox"
+                                         Header="Network timeout (seconds)"
+                                         PlaceholderText="30"
+                                         Foreground="White"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Proxy" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="NetworkProxyModeCombo"
-                                  Header="Proxy mode"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="System"/>
-                            <ComboBoxItem Content="Direct (no proxy)"/>
-                            <ComboBoxItem Content="HTTP proxy"/>
-                        </ComboBox>
-                        <TextBox x:Name="NetworkProxyUrlBox"
-                                 Header="HTTP proxy URL"
-                                 PlaceholderText="http://127.0.0.1:8080"
-                                 Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="NetworkSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save network"/>
-                            </Button>
-                            <Button Click="NetworkResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset network"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="NetworkStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Proxy" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Use system proxy settings or provide a direct HTTP proxy for streams." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="NetworkProxyModeCombo"
+                                          Header="Proxy mode"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="System"/>
+                                    <ComboBoxItem Content="Direct (no proxy)"/>
+                                    <ComboBoxItem Content="HTTP proxy"/>
+                                </ComboBox>
+                                <TextBox x:Name="NetworkProxyUrlBox"
+                                         Header="HTTP proxy URL"
+                                         PlaceholderText="http://127.0.0.1:8080"
+                                         Foreground="White"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="NetworkSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save network"/>
+                                    </Button>
+                                    <Button Click="NetworkResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset network"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="NetworkStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="ShadersPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="ShadersPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Shaders" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Upscalers and post-processing profiles." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Active shader profile" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="ShaderPresetCombo"
-                                  SelectedIndex="0"
-                                  SelectionChanged="ShaderPresetCombo_SelectionChanged"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="None (basic scaling)"/>
-                            <ComboBoxItem Content="FSRCNNX (live action)"/>
-                            <ComboBoxItem Content="Anime4K (animation)"/>
-                            <ComboBoxItem Content="SSimDownscaler + FSRCNNX"/>
-                        </ComboBox>
-
-                        <TextBlock Text="Custom" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBox x:Name="CustomShaderChainBox"
-                                 PlaceholderText="~~/shaders/file1.glsl:~~/shaders/file2.glsl"
-                                 Foreground="White"/>
-                        <Button Click="ApplyCustomShaderChainButton_Click"
-                                Padding="12,8"
-                                Background="#1F1F1F"
-                                BorderBrush="#3A3A3A"
-                                BorderThickness="1"
-                                CornerRadius="6"
-                                Foreground="White">
-                            <TextBlock Text="Apply custom chain"/>
-                        </Button>
-                        <TextBlock x:Name="ShaderStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Active shader profile" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Pick a known chain or enter a custom mpv shader chain." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="ShaderPresetCombo"
+                                          Header="Preset"
+                                          SelectedIndex="0"
+                                          SelectionChanged="ShaderPresetCombo_SelectionChanged"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="None (basic scaling)"/>
+                                    <ComboBoxItem Content="FSRCNNX (live action)"/>
+                                    <ComboBoxItem Content="Anime4K (animation)"/>
+                                    <ComboBoxItem Content="SSimDownscaler + FSRCNNX"/>
+                                </ComboBox>
+                                <TextBox x:Name="CustomShaderChainBox"
+                                         Header="Custom chain"
+                                         PlaceholderText="~~/shaders/file1.glsl:~~/shaders/file2.glsl"
+                                         Foreground="White"/>
+                                <Button Click="ApplyCustomShaderChainButton_Click"
+                                        Style="{StaticResource SecondaryCommandButtonStyle}"
+                                        HorizontalAlignment="Left">
+                                    <TextBlock Text="Apply custom chain"/>
+                                </Button>
+                                <TextBlock x:Name="ShaderStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="ProfilesPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="ProfilesPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Profiles" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Named bundles of settings you can switch between." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Active profile" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="ProfilesActiveProfileCombo"
-                                  SelectionChanged="ProfilesActiveProfileCombo_SelectionChanged"
-                                  SelectedIndex="0"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="Default"/>
-                        </ComboBox>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Active profile" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Switch between saved bundles of playback, media, and customization preferences." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="ProfilesActiveProfileCombo"
+                                          Header="Profile"
+                                          SelectionChanged="ProfilesActiveProfileCombo_SelectionChanged"
+                                          SelectedIndex="0"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="Default"/>
+                                </ComboBox>
+                                <TextBox x:Name="ProfilesActiveProfileTextBox"
+                                         Header="Active profile name"
+                                         PlaceholderText="Default"
+                                         Foreground="White"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="ProfilesCreateButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Create"/>
+                                    </Button>
+                                    <Button Click="ProfilesApplyButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Apply profile"/>
+                                    </Button>
+                                    <Button Click="ProfilesDeleteButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Delete"/>
+                                    </Button>
+                                    <Button Click="ProfilesSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save profile state"/>
+                                    </Button>
+                                    <Button Click="ProfilesResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset profile state"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="ProfilesStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Manage" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBox x:Name="ProfilesActiveProfileTextBox"
-                                 Header="Active profile name"
-                                 PlaceholderText="Default"
-                                 Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="ProfilesCreateButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Create"/>
-                            </Button>
-                            <Button Click="ProfilesApplyButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Apply profile"/>
-                            </Button>
-                            <Button Click="ProfilesDeleteButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Delete"/>
-                            </Button>
-                            <Button Click="ProfilesSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save profile state"/>
-                            </Button>
-                            <Button Click="ProfilesResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset profile state"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock Text="Import and export" Style="{StaticResource GroupHeaderStyle}"/>
-                        <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="ProfilesExchangePathBox"
-                                     Grid.Column="0"
-                                     Header="Bundle file path"
-                                     PlaceholderText="C:\Users\...\aethra-profiles.json"
-                                     Foreground="White"/>
-                            <Button Grid.Column="1"
-                                    Click="ProfilesExportButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White"
-                                    VerticalAlignment="Bottom">
-                                <TextBlock Text="Export bundles"/>
-                            </Button>
-                            <Button Grid.Column="2"
-                                    Click="ProfilesImportButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White"
-                                    VerticalAlignment="Bottom">
-                                <TextBlock Text="Import bundles"/>
-                            </Button>
-                        </Grid>
-                        <TextBlock x:Name="ProfilesImportExportStatusText" Foreground="#9FA0A4" FontSize="12"/>
-                        <TextBlock x:Name="ProfilesStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Import and export" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Move profile bundles between machines or keep a backup copy." Style="{StaticResource CardDescriptionStyle}"/>
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="ProfilesExchangePathBox"
+                                             Grid.Column="0"
+                                             Header="Bundle file path"
+                                             PlaceholderText="C:\Users\...\aethra-profiles.json"
+                                             Foreground="White"/>
+                                    <Button Grid.Column="1"
+                                            Click="ProfilesExportButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}"
+                                            VerticalAlignment="Bottom">
+                                        <TextBlock Text="Export bundles"/>
+                                    </Button>
+                                    <Button Grid.Column="2"
+                                            Click="ProfilesImportButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}"
+                                            VerticalAlignment="Bottom">
+                                        <TextBlock Text="Import bundles"/>
+                                    </Button>
+                                </Grid>
+                                <TextBlock x:Name="ProfilesImportExportStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="CustomizationPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="CustomizationPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Customization" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Colors, layout density, and UI behavior." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Accent color" Style="{StaticResource GroupHeaderStyle}"/>
-                        <Grid ColumnSpacing="12" MaxWidth="520" HorizontalAlignment="Left">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="260"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Accent color" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Aethra uses this accent throughout controls, selection, and transport highlights." Style="{StaticResource CardDescriptionStyle}"/>
+                                <Grid ColumnSpacing="12" MaxWidth="620" HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="260"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
 
-                            <Border Width="36"
-                                    Height="36"
-                                    CornerRadius="18"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderBrush="{StaticResource AethraAccentSoftBrush}"
-                                    BorderThickness="2"
-                                    VerticalAlignment="Bottom"/>
+                                    <Border Width="36"
+                                            Height="36"
+                                            CornerRadius="18"
+                                            Background="{StaticResource AethraAccentBrush}"
+                                            BorderBrush="{StaticResource AethraAccentSoftBrush}"
+                                            BorderThickness="2"
+                                            VerticalAlignment="Bottom"/>
 
-                            <TextBox x:Name="FullAccentHexBox"
-                                     Grid.Column="1"
-                                     Header="Hex"
-                                     PlaceholderText="#7B2FFF"
-                                     TextChanged="FullAccentHexBox_TextChanged"
-                                     Foreground="White"/>
+                                    <TextBox x:Name="FullAccentHexBox"
+                                             Grid.Column="1"
+                                             Header="Hex"
+                                             PlaceholderText="#7B2FFF"
+                                             TextChanged="FullAccentHexBox_TextChanged"
+                                             Foreground="White"/>
 
-                            <Button Grid.Column="2"
-                                    Click="FullApplyAccentButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White"
-                                    VerticalAlignment="Bottom">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE73E;" FontSize="12"/>
-                                    <TextBlock Text="Apply"/>
+                                    <Button Grid.Column="2"
+                                            Click="FullApplyAccentButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}"
+                                            VerticalAlignment="Bottom">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE73E;" FontSize="12"/>
+                                            <TextBlock Text="Apply"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Grid.Column="3"
+                                            Click="FullResetAccentButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}"
+                                            VerticalAlignment="Bottom">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
+                                            <TextBlock Text="Reset"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock x:Name="FullAccentStatusText"
+                                           Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Behavior" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Tune the chrome density and playback overlays around the media surface." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="CustomizationUseSystemThemeToggle"
+                                              Header="Follow system theme"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="CustomizationDenseLayoutToggle"
+                                              Header="Use dense layout in controls and lists"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <ToggleSwitch x:Name="CustomizationShowHudToggle"
+                                              Header="Show playback HUD overlays"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="CustomizationSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save customization"/>
+                                    </Button>
+                                    <Button Click="CustomizationResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset customization"/>
+                                    </Button>
                                 </StackPanel>
-                            </Button>
-
-                            <Button Grid.Column="3"
-                                    Click="FullResetAccentButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White"
-                                    VerticalAlignment="Bottom">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
-                                    <TextBlock Text="Reset"/>
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-
-                        <TextBlock x:Name="FullAccentStatusText"
-                                   FontSize="13"
-                                   Foreground="#9FA0A4"/>
-                        <TextBlock Text="Behavior" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="CustomizationUseSystemThemeToggle"
-                                      Header="Follow system theme"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <ToggleSwitch x:Name="CustomizationDenseLayoutToggle"
-                                      Header="Use dense layout in controls and lists"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <ToggleSwitch x:Name="CustomizationShowHudToggle"
-                                      Header="Show playback HUD overlays"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="CustomizationSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save customization"/>
-                            </Button>
-                            <Button Click="CustomizationResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset customization"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="CustomizationStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                                <TextBlock x:Name="CustomizationStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel x:Name="AdvancedPanel" Spacing="12" Visibility="Collapsed">
+                    <StackPanel x:Name="AdvancedPanel" Spacing="12" Visibility="Collapsed" MaxWidth="920" HorizontalAlignment="Stretch">
                         <TextBlock Text="Advanced" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Raw mpv options and expert controls." Style="{StaticResource SectionSubtitleStyle}"/>
 
-                        <TextBlock Text="Logging" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ComboBox x:Name="AdvancedLogLevelCombo"
-                                  Header="Log level"
-                                  SelectedIndex="1"
-                                  HorizontalAlignment="Stretch"
-                                  Foreground="White">
-                            <ComboBoxItem Content="Off"/>
-                            <ComboBoxItem Content="Warnings"/>
-                            <ComboBoxItem Content="Verbose"/>
-                            <ComboBoxItem Content="Debug"/>
-                        </ComboBox>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Logging and raw mpv options" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Use this area for expert options that do not yet have a first-class Preferences control." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ComboBox x:Name="AdvancedLogLevelCombo"
+                                          Header="Log level"
+                                          SelectedIndex="1"
+                                          HorizontalAlignment="Stretch"
+                                          Foreground="White">
+                                    <ComboBoxItem Content="Off"/>
+                                    <ComboBoxItem Content="Warnings"/>
+                                    <ComboBoxItem Content="Verbose"/>
+                                    <ComboBoxItem Content="Debug"/>
+                                </ComboBox>
+                                <TextBox x:Name="AdvancedExtraOptionsTextBox"
+                                         Header="Extra mpv options"
+                                         PlaceholderText="key=value pairs, one per line"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         Height="120"
+                                         Foreground="White"/>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Click="AdvancedSaveButton_Click"
+                                            Style="{StaticResource PrimaryCommandButtonStyle}">
+                                        <TextBlock Text="Save advanced"/>
+                                    </Button>
+                                    <Button Click="AdvancedResetButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}">
+                                        <TextBlock Text="Reset advanced"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="AdvancedStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
 
-                        <TextBlock Text="Extra mpv options" Style="{StaticResource GroupHeaderStyle}"/>
-                        <TextBox x:Name="AdvancedExtraOptionsTextBox"
-                                 PlaceholderText="key=value pairs, one per line"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="120"
-                                 Foreground="White"/>
-                        <StackPanel Orientation="Horizontal" Spacing="12">
-                            <Button Click="AdvancedSaveButton_Click"
-                                    Padding="12,8"
-                                    Background="{StaticResource AethraAccentBrush}"
-                                    BorderThickness="0"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save advanced"/>
-                            </Button>
-                            <Button Click="AdvancedResetButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Reset advanced"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="AdvancedStatusText" Foreground="#9FA0A4" FontSize="12"/>
-
-                        <TextBlock Text="Script extensions" Style="{StaticResource GroupHeaderStyle}"/>
-                        <ToggleSwitch x:Name="ScriptsEnabledToggle"
-                                      Header="Enable optional Lua scripts"
-                                      Toggled="ScriptsEnabledToggle_Toggled"
-                                      OffContent="Off"
-                                      OnContent="On"
-                                      Foreground="White"/>
-                        <Grid ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="ScriptsFolderBox"
-                                     Grid.Column="0"
-                                     PlaceholderText="Scripts folder path"
-                                     Foreground="White"/>
-                            <Button Grid.Column="1"
-                                    Click="ScriptsFolderApplyButton_Click"
-                                    Padding="12,8"
-                                    Background="#1F1F1F"
-                                    BorderBrush="#3A3A3A"
-                                    BorderThickness="1"
-                                    CornerRadius="6"
-                                    Foreground="White">
-                                <TextBlock Text="Save"/>
-                            </Button>
-                        </Grid>
-                        <TextBlock x:Name="ScriptStatusText" Foreground="#9FA0A4" FontSize="12"/>
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Script extensions" Style="{StaticResource GroupHeaderStyle}"/>
+                                <TextBlock Text="Enable optional Lua scripts and point Aethra at the folder to load from." Style="{StaticResource CardDescriptionStyle}"/>
+                                <ToggleSwitch x:Name="ScriptsEnabledToggle"
+                                              Header="Enable optional Lua scripts"
+                                              Toggled="ScriptsEnabledToggle_Toggled"
+                                              OffContent="Off"
+                                              OnContent="On"
+                                              Foreground="White"/>
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="ScriptsFolderBox"
+                                             Grid.Column="0"
+                                             Header="Scripts folder"
+                                             PlaceholderText="Scripts folder path"
+                                             Foreground="White"/>
+                                    <Button Grid.Column="1"
+                                            Click="ScriptsFolderApplyButton_Click"
+                                            Style="{StaticResource SecondaryCommandButtonStyle}"
+                                            VerticalAlignment="Bottom">
+                                        <TextBlock Text="Save"/>
+                                    </Button>
+                                </Grid>
+                                <TextBlock x:Name="ScriptStatusText" Style="{StaticResource StatusTextStyle}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Grid>
             </ScrollViewer>

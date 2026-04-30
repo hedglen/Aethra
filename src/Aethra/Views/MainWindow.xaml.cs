@@ -17,6 +17,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 // Aliased rather than `using Microsoft.UI.Xaml.Shapes;` because that namespace
 // also contains a `Path` type which collides with `System.IO.Path` used here.
 using Rectangle = Microsoft.UI.Xaml.Shapes.Rectangle;
@@ -99,6 +100,8 @@ namespace Aethra
         private bool _isVideoPointerDraggingWindow;
         private string? _lastLoadedMediaPath;
         private bool _startupMediaLoaded;
+        private Storyboard? _gearSpinIn;
+        private Storyboard? _gearSpinOut;
         private const string PreferredStartupMediaPath = @"C:\Users\rjh\Videos\test.mp4";
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
@@ -142,6 +145,7 @@ namespace Aethra
             _videoPrimaryClickTracker = new PrimaryClickTracker(VideoDoubleClickWindow);
 
             InitializeComponent();
+            InitGearAnimation();
             InitializeInputRuntime();
             FullSettings.SetInputBindings(_currentInputBindings);
             FullSettings.InputBindingsChanged += FullSettings_InputBindingsChanged;
@@ -788,6 +792,36 @@ namespace Aethra
         {
             CloseFullSettingsPanel();
             RefreshPlaybackActivityState();
+        }
+
+        private void InitGearAnimation()
+        {
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var duration = new Duration(TimeSpan.FromMilliseconds(167));
+
+            var spinIn = new DoubleAnimation { To = 36, Duration = duration, EasingFunction = easing };
+            Storyboard.SetTarget(spinIn, GearRotateTransform);
+            Storyboard.SetTargetProperty(spinIn, "Angle");
+            _gearSpinIn = new Storyboard();
+            _gearSpinIn.Children.Add(spinIn);
+
+            var spinOut = new DoubleAnimation { To = 0, Duration = duration, EasingFunction = easing };
+            Storyboard.SetTarget(spinOut, GearRotateTransform);
+            Storyboard.SetTargetProperty(spinOut, "Angle");
+            _gearSpinOut = new Storyboard();
+            _gearSpinOut.Children.Add(spinOut);
+        }
+
+        private void TransportSettingsButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            _gearSpinOut?.Stop();
+            _gearSpinIn?.Begin();
+        }
+
+        private void TransportSettingsButton_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+        {
+            _gearSpinIn?.Stop();
+            _gearSpinOut?.Begin();
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)

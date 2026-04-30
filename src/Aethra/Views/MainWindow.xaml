@@ -887,6 +887,23 @@
                             ToolTipService.ToolTip="Adjustments">
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE712;" FontSize="15"/>
                     </Button>
+
+                    <Button x:Name="TransportSettingsButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="SettingsButton_Click"
+                            PointerEntered="TransportSettingsButton_PointerEntered"
+                            PointerExited="TransportSettingsButton_PointerExited"
+                            ToolTipService.ToolTip="Settings">
+                        <FontIcon x:Name="GearIcon"
+                                  FontFamily="Segoe Fluent Icons"
+                                  Glyph="&#xE713;"
+                                  FontSize="15"
+                                  RenderTransformOrigin="0.5,0.5">
+                            <FontIcon.RenderTransform>
+                                <RotateTransform x:Name="GearRotateTransform"/>
+                            </FontIcon.RenderTransform>
+                        </FontIcon>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Grid>

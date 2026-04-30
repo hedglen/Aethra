@@ -86,7 +86,7 @@ public sealed partial class FullSettingsPanel : UserControl
     private void InitializePreferencesSectionFilter()
     {
         if (PreferencesFilterStatusText is not null)
-            PreferencesFilterStatusText.Text = $"Showing {NavView.MenuItems.Count} sections.";
+            PreferencesFilterStatusText.Text = $"Showing {NavView.MenuItems.OfType<NavigationViewItem>().Count()} sections.";
         ApplyPreferencesSectionFilter();
     }
 
@@ -123,6 +123,8 @@ public sealed partial class FullSettingsPanel : UserControl
                 visibleSections.Add(item);
         }
 
+        ApplyNavigationGroupHeaderVisibility(visibleSections);
+
         if (visibleSections.Count == 0)
         {
             SetActiveSection(string.Empty);
@@ -142,6 +144,25 @@ public sealed partial class FullSettingsPanel : UserControl
         PreferencesFilterStatusText.Text = string.IsNullOrWhiteSpace(query)
             ? $"Showing {visibleSections.Count} sections."
             : $"Showing {visibleSections.Count} of {totalSections} sections.";
+    }
+
+    private void ApplyNavigationGroupHeaderVisibility(IReadOnlyCollection<NavigationViewItem> visibleSections)
+    {
+        CoreNavHeader.Visibility = HasVisibleSection(visibleSections, "Playback", "Input", "Library")
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        MediaNavHeader.Visibility = HasVisibleSection(visibleSections, "Video", "Audio", "Subtitles", "Shaders")
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SystemNavHeader.Visibility = HasVisibleSection(visibleSections, "Network", "Profiles", "Customization", "Advanced")
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private static bool HasVisibleSection(IEnumerable<NavigationViewItem> visibleSections, params string[] tags)
+    {
+        var tagSet = new HashSet<string>(tags, StringComparer.OrdinalIgnoreCase);
+        return visibleSections.Any(section => tagSet.Contains(section.Tag?.ToString() ?? string.Empty));
     }
 
     private static bool MatchesPreferencesFilter(NavigationViewItem item, string query)
