@@ -31,7 +31,7 @@ public sealed class PreferencesPageProfilesTests
 
         Assert.True(defaults.Subtitles.AutoLoadMatchingSubtitles);
         Assert.Equal("eng,jpn", defaults.Subtitles.PreferredLanguagesCsv);
-        Assert.Equal(40, defaults.Subtitles.FontSize);
+        Assert.Equal(20, defaults.Subtitles.FontSize);
         Assert.True(defaults.Subtitles.BorderAndShadow);
         Assert.Equal(0, defaults.Subtitles.SubtitleDelaySeconds);
 

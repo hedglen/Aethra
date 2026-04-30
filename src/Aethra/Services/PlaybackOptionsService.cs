@@ -25,6 +25,11 @@ public sealed class ShaderPresetChangedEventArgs(ShaderChainPreset preset, strin
 
 public sealed class PlaybackOptionsService
 {
+    private const double MinimumSubtitleFontSize = 14;
+    private const double MaximumSubtitleFontSize = 28;
+    private const double DefaultSubtitleFontSize = 20;
+    private const string DefaultSubtitleFont = "Segoe UI";
+
     private static readonly IReadOnlyDictionary<VideoQualityPreset, IReadOnlyList<(string Property, string Value)>> Presets
         = new Dictionary<VideoQualityPreset, IReadOnlyList<(string Property, string Value)>>
         {
@@ -204,18 +209,85 @@ public sealed class PlaybackOptionsService
         ApplyStringProperty("sub-auto", profile.AutoLoadMatchingSubtitles ? "fuzzy" : "no");
         if (!string.IsNullOrWhiteSpace(profile.PreferredLanguagesCsv))
             ApplyStringProperty("slang", profile.PreferredLanguagesCsv);
+
+        var fontSize = double.IsFinite(profile.FontSize)
+            ? Math.Clamp(profile.FontSize, MinimumSubtitleFontSize, MaximumSubtitleFontSize)
+            : DefaultSubtitleFontSize;
+        var fontSizeText = fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // Windows-Media-Player look: white Segoe UI, regular weight, single soft drop
+        // shadow (no hard outline), bottom-centered with breathing room above the chrome.
+        ApplyStringProperty("sub-font", DefaultSubtitleFont);
+        ApplyStringProperty("sub-bold", "no");
+        ApplyStringProperty("sub-italic", "no");
+        ApplyStringProperty("sub-color", "#FFFFFFFF");
+        ApplyStringProperty("sub-back-color", "#00000000");
+
+        // Layout / scaling. Keep subtitle size tied to the video plane so it behaves
+        // more like native Windows Media Player subtitles instead of scaling with the
+        // outer window chrome/letterbox area.
+        ApplyNumericProperty("sub-scale", 1);
+        ApplyStringProperty("sub-scale-with-window", "no");
+        ApplyStringProperty("sub-ass-scale-with-window", "no");
+        ApplyStringProperty("sub-scale-signs", "no");
+        ApplyStringProperty("sub-align-x", "center");
+        ApplyStringProperty("sub-align-y", "bottom");
+        ApplyStringProperty("sub-justify", "center");
+        ApplyNumericProperty("sub-margin-x", 64);
+        ApplyNumericProperty("sub-margin-y", 96);
+        ApplyStringProperty("sub-use-margins", "yes");
+        ApplyNumericProperty("sub-spacing", 0);
+
         if (profile.BorderAndShadow)
         {
+            // Soft drop shadow only — matches WMP. A hint of outline (0.6) keeps text
+            // legible against bright/white scenes without looking like classic karaoke.
             ApplyStringProperty("sub-border-style", "outline-and-shadow");
-            ApplyNumericProperty("sub-outline-size", 1.65);
+            ApplyStringProperty("sub-outline-color", "#FF000000");
+            ApplyStringProperty("sub-shadow-color", "#A6000000");
+            ApplyNumericProperty("sub-outline-size", 0.6);
+            ApplyNumericProperty("sub-shadow-offset", 2.0);
+            ApplyNumericProperty("sub-blur", 0.4);
         }
         else
         {
+            ApplyStringProperty("sub-border-style", "outline-and-shadow");
             ApplyNumericProperty("sub-outline-size", 0);
             ApplyNumericProperty("sub-shadow-offset", 0);
+            ApplyNumericProperty("sub-blur", 0);
         }
 
-        ApplyNumericProperty("sub-font-size", Math.Clamp(profile.FontSize, 12, 100));
+        ApplyNumericProperty("sub-font-size", fontSize);
+
+        // For ASS-styled tracks (e.g. embedded .ass / converted SRT inside many mkvs),
+        // mpv's `sub-*` properties are ignored unless we force the equivalent ASS
+        // style fields. `sub-ass-override=force` plus a complete style override pins
+        // everything we care about — font, size, weight, colors, border style — so a
+        // stray embedded "FontSize=200" can't hijack the look. Opacity nibble in
+        // PrimaryColour stays 00 (fully opaque).
+        var outlineAss = (profile.BorderAndShadow ? 0.6 : 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var shadowAss = (profile.BorderAndShadow ? 2.0 : 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var assOverrides = string.Join(",",
+            $"FontName={DefaultSubtitleFont}",
+            $"FontSize={fontSizeText}",
+            "Bold=0",
+            "Italic=0",
+            "PrimaryColour=&H00FFFFFF",
+            "OutlineColour=&H00000000",
+            "BackColour=&HA6000000",
+            $"Outline={outlineAss}",
+            $"Shadow={shadowAss}",
+            "BorderStyle=1",
+            "Alignment=2",
+            "MarginL=64",
+            "MarginR=64",
+            "MarginV=24",
+            "ScaleX=100",
+            "ScaleY=100",
+            "Spacing=0");
+        ApplyStringProperty("sub-ass-style-overrides", assOverrides);
+        ApplyStringProperty("sub-ass-override", "force");
+
         ApplyNumericProperty("sub-delay", Math.Clamp(profile.SubtitleDelaySeconds, -10, 10));
     }
 

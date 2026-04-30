@@ -840,13 +840,19 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <FontIcon Grid.Column="0"
-                                              x:Name="VolumeFlyoutIcon"
-                                              FontFamily="Segoe Fluent Icons"
-                                              Glyph="&#xE995;"
-                                              FontSize="16"
-                                              VerticalAlignment="Center"
-                                              Foreground="{StaticResource AethraTextBrush}"/>
+                                    <Button Grid.Column="0"
+                                            Style="{StaticResource TransportIconButtonStyle}"
+                                            Width="28"
+                                            Height="28"
+                                            ToolTipService.ToolTip="Toggle mute"
+                                            Click="VolumeFlyoutMuteButton_Click">
+                                        <FontIcon x:Name="VolumeFlyoutIcon"
+                                                  FontFamily="Segoe Fluent Icons"
+                                                  Glyph="&#xE995;"
+                                                  FontSize="16"
+                                                  VerticalAlignment="Center"
+                                                  Foreground="{StaticResource AethraTextBrush}"/>
+                                    </Button>
                                     <Slider Grid.Column="1"
                                             x:Name="VolumeSlider"
                                             Minimum="0"

@@ -38,7 +38,11 @@ public static class PreferencesProfilesStore
         {
             var json = File.ReadAllText(path);
             var loaded = JsonSerializer.Deserialize<PreferencesPageProfiles>(json, JsonOptions);
-            return loaded ?? PreferencesPageProfiles.CreateDefault();
+            if (loaded is null)
+                return PreferencesPageProfiles.CreateDefault();
+
+            NormalizeSubtitleFontSizes(loaded);
+            return loaded;
         }
         catch
         {
@@ -56,5 +60,27 @@ public static class PreferencesProfilesStore
     private static string GetStorePath()
     {
         return Path.Combine(ApplicationData.Current.LocalFolder.Path, FileName);
+    }
+
+    private static void NormalizeSubtitleFontSizes(PreferencesPageProfiles profiles)
+    {
+        var bundles = profiles.Profiles.Bundles;
+        if (bundles is null)
+            return;
+
+        foreach (var bundle in bundles)
+        {
+            if (bundle?.Subtitles is null)
+                continue;
+
+            var fontSize = bundle.Subtitles.FontSize;
+            if (!double.IsFinite(fontSize))
+            {
+                bundle.Subtitles.FontSize = SubtitlePreferencesProfile.CreateDefault().FontSize;
+                continue;
+            }
+
+            bundle.Subtitles.FontSize = Math.Clamp(fontSize, 14, 28);
+        }
     }
 }

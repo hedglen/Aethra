@@ -69,7 +69,7 @@ public sealed class SubtitlePreferencesProfile
 {
     public bool AutoLoadMatchingSubtitles { get; set; } = true;
     public string PreferredLanguagesCsv { get; set; } = "eng,jpn";
-    public double FontSize { get; set; } = 40;
+    public double FontSize { get; set; } = 20;
     public bool BorderAndShadow { get; set; } = true;
     public double SubtitleDelaySeconds { get; set; }
 

@@ -491,9 +491,9 @@
                                 <TextBlock Text="Set subtitle scale, outline behavior, and the default timing offset." Style="{StaticResource CardDescriptionStyle}"/>
                                 <Slider x:Name="SubtitlesFontSizeSlider"
                                         Header="Font size"
-                                        Minimum="20"
-                                        Maximum="80"
-                                        Value="40"
+                                    Minimum="14"
+                                    Maximum="28"
+                                    Value="20"
                                         Foreground="White"/>
                                 <ToggleSwitch x:Name="SubtitlesBorderShadowToggle"
                                               Header="Border and shadow"

@@ -256,7 +256,65 @@ public sealed class PlaybackOptionsServiceTests
 
         Assert.DoesNotContain(("sub-border-style", "none"), emitted);
         Assert.Contains(("sub-border-style", "outline-and-shadow"), emitted);
-        Assert.Contains(("sub-outline-size", "1.65"), emitted);
+        Assert.Contains(("sub-outline-size", "0.6"), emitted);
+        Assert.Contains(("sub-shadow-offset", "2"), emitted);
+        Assert.Contains(("sub-outline-color", "#FF000000"), emitted);
+        Assert.Contains(("sub-shadow-color", "#A6000000"), emitted);
+    }
+
+    [Fact]
+    public void ApplySubtitlePreferences_EmitsModernSubtitleStyle()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplySubtitlePreferences(SubtitlePreferencesProfile.CreateDefault());
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.Contains(("sub-font", "Segoe UI"), emitted);
+        Assert.Contains(("sub-font-size", "20"), emitted);
+        Assert.Contains(("sub-ass-style-overrides", "FontName=Segoe UI,FontSize=20,Bold=0,Italic=0,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&HA6000000,Outline=0.6,Shadow=2,BorderStyle=1,Alignment=2,MarginL=64,MarginR=64,MarginV=24,ScaleX=100,ScaleY=100,Spacing=0"), emitted);
+        Assert.Contains(("sub-ass-override", "force"), emitted);
+        Assert.Contains(("sub-scale", "1"), emitted);
+        Assert.Contains(("sub-scale-with-window", "no"), emitted);
+        Assert.Contains(("sub-ass-scale-with-window", "no"), emitted);
+        Assert.Contains(("sub-scale-signs", "no"), emitted);
+        Assert.Contains(("sub-color", "#FFFFFFFF"), emitted);
+        Assert.Contains(("sub-align-x", "center"), emitted);
+        Assert.Contains(("sub-align-y", "bottom"), emitted);
+        Assert.Contains(("sub-justify", "center"), emitted);
+        Assert.Contains(("sub-margin-x", "64"), emitted);
+        Assert.Contains(("sub-margin-y", "96"), emitted);
+        Assert.Contains(("sub-use-margins", "yes"), emitted);
+    }
+
+    [Fact]
+    public void ApplySubtitlePreferences_ClampsOversizedPersistedFontSize()
+    {
+        var service = PlaybackOptionsService.Instance;
+        var emitted = new List<(string Property, string Value)>();
+        EventHandler<PlaybackPropertyApplyEventArgs> handler = (_, args) => emitted.Add((args.PropertyName, args.PropertyValue));
+        service.PropertyApplyRequested += handler;
+        try
+        {
+            service.ApplySubtitlePreferences(new SubtitlePreferencesProfile
+            {
+                FontSize = 80
+            });
+        }
+        finally
+        {
+            service.PropertyApplyRequested -= handler;
+        }
+
+        Assert.Contains(("sub-font-size", "28"), emitted);
     }
 
     [Fact]

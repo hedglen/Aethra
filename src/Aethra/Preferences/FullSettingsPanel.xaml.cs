@@ -573,7 +573,7 @@ public sealed partial class FullSettingsPanel : UserControl
 
         _pageProfiles.Subtitles.AutoLoadMatchingSubtitles = SubtitlesAutoLoadToggle.IsOn;
         _pageProfiles.Subtitles.PreferredLanguagesCsv = (SubtitlesLanguagesTextBox.Text ?? string.Empty).Trim();
-        _pageProfiles.Subtitles.FontSize = Math.Clamp(SubtitlesFontSizeSlider.Value, 20, 80);
+        _pageProfiles.Subtitles.FontSize = Math.Clamp(SubtitlesFontSizeSlider.Value, 14, 28);
         _pageProfiles.Subtitles.BorderAndShadow = SubtitlesBorderShadowToggle.IsOn;
         _pageProfiles.Subtitles.SubtitleDelaySeconds = Math.Clamp(SubtitlesDelaySlider.Value, -10, 10);
 

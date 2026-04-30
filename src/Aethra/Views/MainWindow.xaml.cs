@@ -1359,6 +1359,11 @@ namespace Aethra
             MarkPlaybackActivity();
         }
 
+        private void VolumeFlyoutMuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleMute();
+        }
+
         private void UpdateVolumeUi()
         {
             var volumeGlyph = VolumeGlyphFor(_currentVolume, _isMuted);
