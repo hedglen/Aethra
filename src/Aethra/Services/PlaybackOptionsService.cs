@@ -150,6 +150,7 @@ public sealed class PlaybackOptionsService
         ApplyNumericProperty("speed", Math.Clamp(profile.DefaultPlaybackSpeedPercent, 25, 400) / 100.0);
         var loopValue = profile.EndOfFileAction == PlaybackEndOfFileAction.LoopCurrentFile ? "inf" : "no";
         ApplyStringProperty("loop-file", loopValue);
+        ApplyStringProperty("loop-playlist", "no");
         // `save-position-on-quit` is an mpv config-file option, not a runtime property.
         // Runtime persistence is handled by Aethra-owned PlaybackPersistenceStore.
         _ = profile.ResumeWhereLeftOff;

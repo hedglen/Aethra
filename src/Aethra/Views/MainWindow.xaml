@@ -794,10 +794,24 @@
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Spacing="2">
-                    <Button Style="{StaticResource TransportIconButtonStyle}"
-                            IsEnabled="False"
-                            ToolTipService.ToolTip="Captions">
-                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEDE4;" FontSize="15"/>
+                    <Button x:Name="RepeatButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="RepeatButton_Click"
+                            ToolTipService.ToolTip="Repeat off">
+                        <FontIcon x:Name="RepeatButtonIcon"
+                                  FontFamily="Segoe Fluent Icons"
+                                  Glyph="&#xF5E7;"
+                                  FontSize="15"/>
+                    </Button>
+
+                    <Button x:Name="SubtitleButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="SubtitleButton_Click"
+                            ToolTipService.ToolTip="Subtitles on">
+                        <FontIcon x:Name="SubtitleButtonIcon"
+                                  FontFamily="Segoe Fluent Icons"
+                                  Glyph="&#xE7F0;"
+                                  FontSize="15"/>
                     </Button>
 
                     <Button Style="{StaticResource TransportIconButtonStyle}"

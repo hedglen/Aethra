@@ -89,8 +89,14 @@ internal sealed class AethraCommandDispatcher
             case AethraCommandIds.ResetLoop:
                 _context.ResetLoop();
                 return true;
+            case AethraCommandIds.CycleRepeat:
+                _context.CycleRepeat();
+                return true;
             case AethraCommandIds.ToggleLoopFile:
-                _context.ToggleLoopFile();
+                _context.CycleRepeat();
+                return true;
+            case AethraCommandIds.ToggleSubtitles:
+                _context.ToggleSubtitles();
                 return true;
             case AethraCommandIds.OpenFile:
                 _context.OpenFile();

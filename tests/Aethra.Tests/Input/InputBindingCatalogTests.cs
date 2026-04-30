@@ -53,15 +53,24 @@ public sealed class InputBindingCatalogTests
     }
 
     [Fact]
-    public void CreateDefaults_UsesNativeLoopFileBinding()
+    public void CreateDefaults_UsesNativeRepeatBinding()
     {
         var defaults = InputBindingCatalog.CreateDefaults();
         var decimalOn = defaults.Single(binding => string.Equals(binding.Gesture, "KP_DEC", StringComparison.Ordinal));
         var decimalOff = defaults.Single(binding => string.Equals(binding.Gesture, "KP_DEL", StringComparison.Ordinal));
 
-        Assert.Equal(AethraCommandIds.ToggleLoopFile, decimalOn.Command);
-        Assert.Equal(AethraCommandIds.ToggleLoopFile, decimalOff.Command);
+        Assert.Equal(AethraCommandIds.CycleRepeat, decimalOn.Command);
+        Assert.Equal(AethraCommandIds.CycleRepeat, decimalOff.Command);
         Assert.DoesNotContain("show-text", decimalOn.Command, StringComparison.Ordinal);
         Assert.DoesNotContain("show-text", decimalOff.Command, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateDefaults_UsesNativeSubtitleToggleBinding()
+    {
+        var defaults = InputBindingCatalog.CreateDefaults();
+        var subtitleToggle = defaults.Single(binding => string.Equals(binding.Gesture, "v", StringComparison.Ordinal));
+
+        Assert.Equal(AethraCommandIds.ToggleSubtitles, subtitleToggle.Command);
     }
 }

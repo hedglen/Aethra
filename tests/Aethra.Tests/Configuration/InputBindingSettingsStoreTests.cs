@@ -11,6 +11,7 @@ namespace Aethra.Tests.Configuration;
 public sealed class InputBindingSettingsStoreTests
 {
     private const string LegacyLoopFileCommand = "cycle-values loop-file \"inf\" \"no\" ; show-text \"Loop: ${loop-file}\"";
+    private const string LegacySubtitleCommand = "cycle sub-visibility";
 
     [Fact]
     public void ImportFromInputConf_ParsesBindingsAndSkipsComments()
@@ -85,7 +86,39 @@ public sealed class InputBindingSettingsStoreTests
             InputBindingCatalog.CreateLegacyDefaultsSnapshot());
 
         Assert.True(result.WasMigrated);
-        Assert.Equal(AethraCommandIds.ToggleLoopFile, GetCommand(result.Bindings, "KP_DEC"));
+        Assert.Equal(AethraCommandIds.CycleRepeat, GetCommand(result.Bindings, "KP_DEC"));
+    }
+
+    [Fact]
+    public void ApplyMigrationForRows_ReplacesLegacySubtitleToggleBinding()
+    {
+        var result = InputBindingSettingsStore.ApplyMigrationForRows(
+            InputBindingCatalog.CreateDefaults(),
+            new[]
+            {
+                new InputBindingSetting("Subtitles", "v", LegacySubtitleCommand, "legacy subtitle", "Baseline")
+            },
+            InputBindingCatalog.CreateLegacyDefaultsSnapshot());
+
+        Assert.True(result.WasMigrated);
+        Assert.Equal(AethraCommandIds.ToggleSubtitles, GetCommand(result.Bindings, "v"));
+    }
+
+    [Fact]
+    public void ApplyMigrationForRows_PreservesUserEditedSubtitleBinding()
+    {
+        const string customCommand = "cycle sub down";
+
+        var result = InputBindingSettingsStore.ApplyMigrationForRows(
+            InputBindingCatalog.CreateDefaults(),
+            new[]
+            {
+                new InputBindingSetting("Subtitles", "v", customCommand, "custom subtitle", "Custom")
+            },
+            InputBindingCatalog.CreateLegacyDefaultsSnapshot());
+
+        Assert.True(result.WasMigrated);
+        Assert.Equal(customCommand, GetCommand(result.Bindings, "v"));
     }
 
     [Fact]

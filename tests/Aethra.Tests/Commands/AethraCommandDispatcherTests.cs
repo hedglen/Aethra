@@ -67,7 +67,9 @@ public sealed class AethraCommandDispatcherTests
         yield return new object[] { AethraCommandIds.MarkLoopA, new[] { "MarkLoopA" } };
         yield return new object[] { AethraCommandIds.MarkLoopB, new[] { "MarkLoopB" } };
         yield return new object[] { AethraCommandIds.ResetLoop, new[] { "ResetLoop" } };
-        yield return new object[] { AethraCommandIds.ToggleLoopFile, new[] { "ToggleLoopFile" } };
+        yield return new object[] { AethraCommandIds.CycleRepeat, new[] { "CycleRepeat" } };
+        yield return new object[] { AethraCommandIds.ToggleLoopFile, new[] { "CycleRepeat" } };
+        yield return new object[] { AethraCommandIds.ToggleSubtitles, new[] { "ToggleSubtitles" } };
         yield return new object[] { AethraCommandIds.OpenFile, new[] { "OpenFile" } };
         yield return new object[] { AethraCommandIds.OpenFolder, new[] { "OpenFolder" } };
         yield return new object[] { AethraCommandIds.OpenRecent, new[] { "OpenRecent" } };
@@ -114,7 +116,8 @@ public sealed class AethraCommandDispatcherTests
             () => Mark("MarkLoopA"),
             () => Mark("MarkLoopB"),
             () => Mark("ResetLoop"),
-            () => Mark("ToggleLoopFile"),
+            () => Mark("CycleRepeat"),
+            () => Mark("ToggleSubtitles"),
             () => Mark("OpenFile"),
             () => Mark("OpenFolder"),
             () => Mark("OpenRecent"),

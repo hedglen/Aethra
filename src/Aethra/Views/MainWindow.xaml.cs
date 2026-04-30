@@ -28,6 +28,13 @@ namespace Aethra
 {
     public sealed partial class MainWindow : Window
     {
+        private enum RepeatMode
+        {
+            Off,
+            One,
+            All
+        }
+
         private NativeMpvSoftwarePlayer? _softwarePlayer;
         private NativeMpvOpenGlPlayer? _gpuPlayer;
         private readonly List<INativeMpvPlayerBackend> _activeBackends = new();
@@ -78,7 +85,10 @@ namespace Aethra
         private bool _suppressVolumeSliderValueChanged;
         private double _currentVolume = 100;
         private bool _isMuted;
-        private bool _isLoopFileEnabled;
+        private RepeatMode _repeatMode = RepeatMode.Off;
+        private bool _isRuntimeLoopFileEnabled;
+        private bool _isRuntimeLoopPlaylistEnabled;
+        private bool _areSubtitlesVisible = true;
         // A/B loop point state. null means the point is not set; the value is
         // the timestamp in seconds we wrote to mpv's ab-loop-{a,b} property.
         private double? _loopPointA;
@@ -112,6 +122,10 @@ namespace Aethra
         private const double TopChromeHeight = 32;
         private const double TransientOsdInset = 16;
         private const double WindowDragThreshold = 6;
+        private const string RepeatOffGlyph = "\uF5E7";
+        private const string RepeatOneGlyph = "\uE8ED";
+        private const string RepeatAllGlyph = "\uE8EE";
+        private const string SubtitleGlyph = "\uE7F0";
 
         public MainWindow()
         {
@@ -156,6 +170,7 @@ namespace Aethra
             FullSettings.InputBindingsChanged += FullSettings_InputBindingsChanged;
             ApplyPlayPauseVisualState();
             InitializeVolumeUi();
+            InitializeTransportOptionButtons();
             CommandRail.Loaded += CommandRail_Loaded;
             SetCommandRailExpanded(false);
             UpdateTransientOsdPlacement();
@@ -186,7 +201,8 @@ namespace Aethra
                 ToggleLoopPointA,
                 ToggleLoopPointB,
                 ResetLoopPoints,
-                ToggleLoopFile,
+                CycleRepeatMode,
+                ToggleSubtitles,
                 OpenFileFromCommand,
                 OpenFolderFromCommand,
                 OpenRecentFromCommand,
@@ -910,7 +926,14 @@ namespace Aethra
         private void PlaybackOptions_PropertyApplyRequested(object? sender, PlaybackPropertyApplyEventArgs e)
         {
             if (string.Equals(e.PropertyName, "loop-file", StringComparison.Ordinal))
-                _isLoopFileEnabled = IsLoopFileEnabledValue(e.PropertyValue);
+                SyncRepeatModeFromRuntime(loopFileValue: e.PropertyValue, loopPlaylistValue: null);
+            else if (string.Equals(e.PropertyName, "loop-playlist", StringComparison.Ordinal))
+                SyncRepeatModeFromRuntime(loopFileValue: null, loopPlaylistValue: e.PropertyValue);
+            else if (string.Equals(e.PropertyName, "sub-visibility", StringComparison.Ordinal))
+            {
+                _areSubtitlesVisible = IsEnabledPropertyValue(e.PropertyValue);
+                UpdateSubtitleButtonVisualState();
+            }
 
             ForEachPlayerBackend(player => player.SetProperty(e.PropertyName, e.PropertyValue));
         }
@@ -1451,6 +1474,16 @@ namespace Aethra
             MarkPlaybackActivity();
         }
 
+        private void RepeatButton_Click(object sender, RoutedEventArgs e)
+        {
+            CycleRepeatMode();
+        }
+
+        private void SubtitleButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleSubtitles();
+        }
+
         private void ToggleLoopPointA()
         {
             if (_loopPointA.HasValue)
@@ -1494,15 +1527,60 @@ namespace Aethra
             UpdateLoopMarkers();
         }
 
-        private void ToggleLoopFile()
+        private void CycleRepeatMode()
         {
-            _isLoopFileEnabled = !_isLoopFileEnabled;
-            _playbackOptions.ApplyStringProperty("loop-file", _isLoopFileEnabled ? "inf" : "no");
-            ShowTransientOsd(null, _isLoopFileEnabled ? "Loop file on" : "Loop file off", "Playback");
+            var nextMode = _repeatMode switch
+            {
+                RepeatMode.Off => RepeatMode.One,
+                RepeatMode.One => RepeatMode.All,
+                _ => RepeatMode.Off
+            };
+
+            ApplyRepeatMode(nextMode, showOsd: true);
+        }
+
+        private void ApplyRepeatMode(RepeatMode mode, bool showOsd)
+        {
+            _repeatMode = mode;
+            _isRuntimeLoopFileEnabled = mode == RepeatMode.One;
+            _isRuntimeLoopPlaylistEnabled = mode == RepeatMode.All;
+
+            _playbackOptions.ApplyStringProperty("loop-file", _isRuntimeLoopFileEnabled ? "inf" : "no");
+            _playbackOptions.ApplyStringProperty("loop-playlist", _isRuntimeLoopPlaylistEnabled ? "inf" : "no");
+            UpdateRepeatButtonVisualState();
+
+            if (showOsd)
+                ShowTransientOsd(RepeatGlyphFor(mode), RepeatLabelFor(mode), "Playback");
+
             MarkPlaybackActivity();
         }
 
-        private static bool IsLoopFileEnabledValue(string value)
+        private void ToggleSubtitles()
+        {
+            _areSubtitlesVisible = !_areSubtitlesVisible;
+            _playbackOptions.ApplyStringProperty("sub-visibility", _areSubtitlesVisible ? "yes" : "no");
+            UpdateSubtitleButtonVisualState();
+            ShowTransientOsd(SubtitleGlyph, _areSubtitlesVisible ? "Subtitles on" : "Subtitles off", "Playback");
+            MarkPlaybackActivity();
+        }
+
+        private void SyncRepeatModeFromRuntime(string? loopFileValue, string? loopPlaylistValue)
+        {
+            if (loopFileValue is not null)
+                _isRuntimeLoopFileEnabled = IsEnabledPropertyValue(loopFileValue);
+            if (loopPlaylistValue is not null)
+                _isRuntimeLoopPlaylistEnabled = IsEnabledPropertyValue(loopPlaylistValue);
+
+            _repeatMode = _isRuntimeLoopFileEnabled
+                ? RepeatMode.One
+                : _isRuntimeLoopPlaylistEnabled
+                    ? RepeatMode.All
+                    : RepeatMode.Off;
+
+            UpdateRepeatButtonVisualState();
+        }
+
+        private static bool IsEnabledPropertyValue(string value)
         {
             return !string.IsNullOrWhiteSpace(value)
                 && !value.Equals("no", StringComparison.OrdinalIgnoreCase)
@@ -1742,6 +1820,12 @@ namespace Aethra
             UpdateVolumeUi();
         }
 
+        private void InitializeTransportOptionButtons()
+        {
+            UpdateRepeatButtonVisualState();
+            UpdateSubtitleButtonVisualState();
+        }
+
         private void LoadMedia(string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -1820,6 +1904,56 @@ namespace Aethra
                 <= 65 => "\uE994",
                 _ => "\uE995"
             };
+        }
+
+        private static string RepeatGlyphFor(RepeatMode mode) =>
+            mode switch
+            {
+                RepeatMode.One => RepeatOneGlyph,
+                RepeatMode.All => RepeatAllGlyph,
+                _ => RepeatOffGlyph
+            };
+
+        private static string RepeatLabelFor(RepeatMode mode) =>
+            mode switch
+            {
+                RepeatMode.One => "Repeat 1",
+                RepeatMode.All => "Repeat all",
+                _ => "Repeat off"
+            };
+
+        private void UpdateRepeatButtonVisualState()
+        {
+            if (RepeatButtonIcon is not null)
+                RepeatButtonIcon.Glyph = RepeatGlyphFor(_repeatMode);
+
+            var isActive = _repeatMode != RepeatMode.Off;
+            SetTransportOptionVisual(RepeatButton, RepeatButtonIcon, isActive);
+
+            if (RepeatButton is not null)
+                ToolTipService.SetToolTip(RepeatButton, RepeatLabelFor(_repeatMode));
+        }
+
+        private void UpdateSubtitleButtonVisualState()
+        {
+            if (SubtitleButtonIcon is not null)
+                SubtitleButtonIcon.Glyph = SubtitleGlyph;
+
+            SetTransportOptionVisual(SubtitleButton, SubtitleButtonIcon, _areSubtitlesVisible);
+
+            if (SubtitleButton is not null)
+                ToolTipService.SetToolTip(SubtitleButton, _areSubtitlesVisible ? "Subtitles on" : "Subtitles off");
+        }
+
+        private static void SetTransportOptionVisual(Button? button, FontIcon? icon, bool isActive)
+        {
+            var brush = (Brush)Application.Current.Resources[isActive ? "AethraAccentBrush" : "AethraMutedTextBrush"];
+
+            if (button is not null)
+                button.Foreground = brush;
+
+            if (icon is not null)
+                icon.Foreground = brush;
         }
 
         private void ApplyPlayPauseVisualState()
