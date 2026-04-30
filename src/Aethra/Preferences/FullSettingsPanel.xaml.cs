@@ -10,6 +10,7 @@ using Aethra.Profiles;
 using Aethra.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.System;
 using Windows.UI;
 
@@ -35,6 +36,7 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private readonly List<InputBindingSetting> _inputBindings = new();
     private readonly ObservableCollection<InputBindingSetting> _visibleInputBindings = new();
+    private readonly ObservableCollection<AccentFavoriteColor> _favoriteAccentColors = new();
     private readonly PlaybackOptionsService _playbackOptions = PlaybackOptionsService.Instance;
     private PreferencesPageProfiles _pageProfiles = PreferencesPageProfiles.CreateDefault();
     private MpvImportedConfig? _importedConfig;
@@ -54,6 +56,7 @@ public sealed partial class FullSettingsPanel : UserControl
         InitializeComponent();
         InitializePreferencesSectionFilter();
         InitializeAccentControls();
+        InitializeFavoriteAccentColors();
         AccentColorService.AccentColorChanged += AccentColorService_AccentColorChanged;
         Unloaded += FullSettingsPanel_Unloaded;
         _isInitialized = false;
@@ -190,6 +193,12 @@ public sealed partial class FullSettingsPanel : UserControl
         FullAccentStatusText.Text = $"Using {AccentColorService.CurrentHex}";
     }
 
+    private void InitializeFavoriteAccentColors()
+    {
+        FavoriteAccentColorsGridView.ItemsSource = _favoriteAccentColors;
+        RefreshFavoriteAccentColors();
+    }
+
     private void FullAccentHexBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_syncingAccentText)
@@ -232,6 +241,43 @@ public sealed partial class FullSettingsPanel : UserControl
     private void FullApplyAccentButton_Click(object sender, RoutedEventArgs e)
     {
         ApplyAccentFromText();
+    }
+
+    private void AddFavoriteAccentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (AccentColorService.TryAddFavoriteHex(FullAccentHexBox.Text, out var normalizedHex))
+        {
+            SyncAccentText(normalizedHex);
+            RefreshFavoriteAccentColors();
+            FullAccentStatusText.Text = $"Saved {normalizedHex} to favorites.";
+            return;
+        }
+
+        FullAccentStatusText.Text = "Pick a valid accent color before adding it to favorites.";
+    }
+
+    private void FavoriteAccentColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: AccentFavoriteColor favorite })
+            return;
+
+        if (AccentColorService.TryApplyHex(favorite.Hex, out var normalizedHex))
+        {
+            SyncAccentText(normalizedHex);
+            FullAccentStatusText.Text = $"Using favorite {normalizedHex}";
+        }
+    }
+
+    private void RemoveFavoriteAccentColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: AccentFavoriteColor favorite })
+            return;
+
+        if (AccentColorService.TryRemoveFavoriteHex(favorite.Hex, out var normalizedHex))
+        {
+            RefreshFavoriteAccentColors();
+            FullAccentStatusText.Text = $"Removed {normalizedHex} from favorites.";
+        }
     }
 
     private void FullResetAccentButton_Click(object sender, RoutedEventArgs e)
@@ -324,6 +370,17 @@ public sealed partial class FullSettingsPanel : UserControl
     private static string ToHex(Color color)
     {
         return $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+    }
+
+    private void RefreshFavoriteAccentColors()
+    {
+        _favoriteAccentColors.Clear();
+        foreach (var hex in AccentColorService.LoadFavoriteHexColors())
+            _favoriteAccentColors.Add(new AccentFavoriteColor(hex));
+
+        FavoriteAccentEmptyText.Visibility = _favoriteAccentColors.Count == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void InitializePageProfiles()
@@ -1881,4 +1938,20 @@ public sealed partial class FullSettingsPanel : UserControl
         ScriptExtensionSettingsStore.ScriptsFolder = ScriptsFolderBox.Text ?? string.Empty;
         ScriptStatusText.Text = "Saved scripts folder path.";
     }
+}
+
+public sealed class AccentFavoriteColor
+{
+    public AccentFavoriteColor(string hex)
+    {
+        Hex = hex;
+        if (!AccentColorService.TryParseHexColor(hex, out var color, out _))
+            color = Color.FromArgb(0, 0, 0, 0);
+
+        Brush = new SolidColorBrush(color);
+    }
+
+    public string Hex { get; }
+
+    public SolidColorBrush Brush { get; }
 }

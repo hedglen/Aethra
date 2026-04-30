@@ -994,6 +994,20 @@ namespace Aethra
             if (!point.Properties.IsLeftButtonPressed)
             {
                 CancelPendingVideoPrimaryClick();
+                
+                // Show quick settings menu on right-click
+                if (point.Properties.IsRightButtonPressed)
+                {
+                    VideoContextFlyout.ShowAt(VideoContainer, new FlyoutShowOptions
+                    {
+                        Placement = FlyoutPlacementMode.Full,
+                        Position = point.Position
+                    });
+                    MarkPlaybackActivity();
+                    e.Handled = true;
+                    return;
+                }
+                
                 if (TryExecuteRuntimePointerPress(point))
                 {
                     MarkPlaybackActivity();

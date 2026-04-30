@@ -1060,10 +1060,10 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="Accent color" Style="{StaticResource GroupHeaderStyle}"/>
                                 <TextBlock Text="Aethra uses this accent throughout controls, selection, and transport highlights." Style="{StaticResource CardDescriptionStyle}"/>
-                                <Grid ColumnSpacing="18" RowSpacing="12" MaxWidth="760" HorizontalAlignment="Left">
+                                <Grid ColumnSpacing="18" RowSpacing="12" MaxWidth="900" HorizontalAlignment="Left">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="250"/>
+                                        <ColumnDefinition Width="280"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
@@ -1081,7 +1081,7 @@
                                                  IsHexInputVisible="True"
                                                  IsMoreButtonVisible="False"/>
 
-                                    <StackPanel Grid.Column="1" Spacing="12">
+                                    <StackPanel Grid.Column="1" Spacing="14">
                                         <RadioButtons x:Name="ColorSpectrumShapeRadioButtons"
                                                       Header="Colorspectrum shape"
                                                       SelectedIndex="0"
@@ -1103,6 +1103,86 @@
                                                     <SolidColorBrush Color="{Binding Color, ElementName=AccentColorPicker}"/>
                                                 </Rectangle.Fill>
                                             </Rectangle>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="8">
+                                            <Grid ColumnSpacing="10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Favorite accents"
+                                                           Foreground="{StaticResource GalleryTextBrush}"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1"
+                                                        Click="AddFavoriteAccentButton_Click"
+                                                        Style="{StaticResource SecondaryCommandButtonStyle}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE710;" FontSize="12"/>
+                                                        <TextBlock Text="Add current"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+
+                                            <TextBlock x:Name="FavoriteAccentEmptyText"
+                                                       Text="No favorite colors saved."
+                                                       Foreground="{StaticResource GalleryMutedTextBrush}"
+                                                       FontSize="12"/>
+
+                                            <GridView x:Name="FavoriteAccentColorsGridView"
+                                                      MaxHeight="220"
+                                                      Background="Transparent"
+                                                      BorderThickness="0"
+                                                      IsItemClickEnabled="False"
+                                                      SelectionMode="None">
+                                                <GridView.ItemContainerStyle>
+                                                    <Style TargetType="GridViewItem">
+                                                        <Setter Property="Padding" Value="0"/>
+                                                        <Setter Property="Margin" Value="0,0,8,8"/>
+                                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                    </Style>
+                                                </GridView.ItemContainerStyle>
+                                                <GridView.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Width="78" Spacing="4">
+                                                            <Button Click="FavoriteAccentColorButton_Click"
+                                                                    Padding="0"
+                                                                    Background="Transparent"
+                                                                    BorderBrush="{StaticResource GalleryControlBorderBrush}"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4"
+                                                                    ToolTipService.ToolTip="{Binding Hex}">
+                                                                <Border Height="42"
+                                                                        Width="74"
+                                                                        CornerRadius="3"
+                                                                        Background="{Binding Brush}"/>
+                                                            </Button>
+                                                            <Grid ColumnSpacing="4">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="{Binding Hex}"
+                                                                           FontSize="10"
+                                                                           Foreground="{StaticResource GalleryMutedTextBrush}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           VerticalAlignment="Center"/>
+                                                                <Button Grid.Column="1"
+                                                                        Click="RemoveFavoriteAccentColorButton_Click"
+                                                                        Width="22"
+                                                                        Height="22"
+                                                                        Padding="0"
+                                                                        Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        ToolTipService.ToolTip="Remove favorite">
+                                                                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE711;" FontSize="9"/>
+                                                                </Button>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </GridView.ItemTemplate>
+                                            </GridView>
                                         </StackPanel>
                                     </StackPanel>
 

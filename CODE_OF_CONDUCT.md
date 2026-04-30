@@ -5,12 +5,14 @@
 Contributors are expected to be respectful, constructive, inclusive, and focused on technical collaboration.
 
 Examples of expected behavior:
+
 - Respectful technical disagreement
 - Helpful code review feedback
 - Clear and professional communication
 - Welcoming new contributors and good-faith questions
 
 Examples of unacceptable behavior:
+
 - Harassment or discriminatory language
 - Personal attacks
 - Deliberate disruption of collaboration

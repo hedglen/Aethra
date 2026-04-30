@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -18,7 +20,10 @@ public sealed class AccentColorChangedEventArgs(string hex, Color color) : Event
 public static class AccentColorService
 {
     private const string SettingsKey = "AccentColorHex";
+    private const string FavoriteColorsSettingsKey = "FavoriteAccentColors";
+    private const char FavoriteColorsSeparator = '|';
     public const string DefaultAccentHex = "#7B2FFF";
+    public const int MaxFavoriteAccentColors = 12;
 
     public static event EventHandler<AccentColorChangedEventArgs>? AccentColorChanged;
 
@@ -48,6 +53,39 @@ public static class AccentColorService
         SaveHex(normalizedHex);
         ApplyColor(color);
         AccentColorChanged?.Invoke(null, new AccentColorChangedEventArgs(normalizedHex, color));
+        return true;
+    }
+
+    public static IReadOnlyList<string> LoadFavoriteHexColors()
+    {
+        return ReadFavoriteHexColors();
+    }
+
+    public static bool TryAddFavoriteHex(string input, out string normalizedHex)
+    {
+        if (!TryParseHexColor(input, out _, out normalizedHex))
+            return false;
+
+        var favorites = ReadFavoriteHexColors();
+        var favoriteHex = normalizedHex;
+        favorites.RemoveAll(hex => string.Equals(hex, favoriteHex, StringComparison.OrdinalIgnoreCase));
+        favorites.Insert(0, favoriteHex);
+        if (favorites.Count > MaxFavoriteAccentColors)
+            favorites.RemoveRange(MaxFavoriteAccentColors, favorites.Count - MaxFavoriteAccentColors);
+
+        SaveFavoriteHexColors(favorites);
+        return true;
+    }
+
+    public static bool TryRemoveFavoriteHex(string input, out string normalizedHex)
+    {
+        if (!TryParseHexColor(input, out _, out normalizedHex))
+            return false;
+
+        var favorites = ReadFavoriteHexColors();
+        var favoriteHex = normalizedHex;
+        favorites.RemoveAll(hex => string.Equals(hex, favoriteHex, StringComparison.OrdinalIgnoreCase));
+        SaveFavoriteHexColors(favorites);
         return true;
     }
 
@@ -133,11 +171,46 @@ public static class AccentColorService
         }
     }
 
+    private static List<string> ReadFavoriteHexColors()
+    {
+        try
+        {
+            var saved = ApplicationData.Current.LocalSettings.Values[FavoriteColorsSettingsKey] as string;
+            if (string.IsNullOrWhiteSpace(saved))
+                return new List<string>();
+
+            return saved
+                .Split(FavoriteColorsSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(value => TryParseHexColor(value, out _, out var normalizedHex) ? normalizedHex : string.Empty)
+                .Where(hex => !string.IsNullOrEmpty(hex))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxFavoriteAccentColors)
+                .ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
     private static void SaveHex(string hex)
     {
         try
         {
             ApplicationData.Current.LocalSettings.Values[SettingsKey] = hex;
+        }
+        catch
+        {
+            // Local settings can be unavailable in unusual unpackaged/debug contexts.
+        }
+    }
+
+    private static void SaveFavoriteHexColors(IReadOnlyList<string> favorites)
+    {
+        try
+        {
+            ApplicationData.Current.LocalSettings.Values[FavoriteColorsSettingsKey] =
+                string.Join(FavoriteColorsSeparator, favorites);
         }
         catch
         {
