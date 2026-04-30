@@ -829,7 +829,7 @@
                                     <FontIcon Grid.Column="0"
                                               x:Name="VolumeFlyoutIcon"
                                               FontFamily="Segoe Fluent Icons"
-                                              Glyph="&#xE767;"
+                                              Glyph="&#xE995;"
                                               FontSize="16"
                                               VerticalAlignment="Center"
                                               Foreground="{StaticResource AethraTextBrush}"/>
@@ -857,7 +857,7 @@
                         </Button.Flyout>
                         <FontIcon x:Name="VolumeButtonIcon"
                                   FontFamily="Segoe Fluent Icons"
-                                  Glyph="&#xE767;"
+                                  Glyph="&#xE995;"
                                   FontSize="15"/>
                     </Button>
 
@@ -909,36 +909,52 @@
                                      CloseRequested="FullSettings_CloseRequested"/>
         </Grid>
 
-        <!-- Transient volume readout shown while the user adjusts volume via the
-             scroll wheel. Non-hit-testing so it never blocks input; placed last so
-             it overlays the rest of the chrome. Sits below the system caption
-             buttons (~32px tall) so it doesn't fight them. -->
-        <Border x:Name="VolumeOsd"
+        <!-- Shared transient OSD for short app-owned overlays such as volume
+             changes and now-playing titles. Non-hit-testing so it never blocks
+             playback input; placed last so it floats above video and chrome. -->
+        <Border x:Name="TransientOsd"
                 Visibility="Collapsed"
                 IsHitTestVisible="False"
-                HorizontalAlignment="Right"
+                HorizontalAlignment="Left"
                 VerticalAlignment="Top"
-                Margin="0,48,16,0"
-                Background="#CC1C1824"
                 BorderBrush="{StaticResource AethraAccentSoftBrush}"
                 BorderThickness="1"
-                CornerRadius="10"
-                Padding="14,10">
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <FontIcon FontFamily="Segoe Fluent Icons"
-                          Glyph="&#xE767;"
+                CornerRadius="12"
+                Padding="12,9"
+                Opacity="1">
+            <Border.Background>
+                <AcrylicBrush TintColor="#1C1824"
+                              TintOpacity="0.74"
+                              TintLuminosityOpacity="0.72"
+                              FallbackColor="#E61C1824"/>
+            </Border.Background>
+            <Grid ColumnSpacing="10" VerticalAlignment="Center" MaxWidth="440">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <FontIcon x:Name="TransientOsdIcon"
+                          FontFamily="Segoe Fluent Icons"
+                          Glyph="&#xE995;"
                           FontSize="18"
                           VerticalAlignment="Center"
                           Foreground="{StaticResource AethraTextBrush}"/>
-                <TextBlock x:Name="VolumeOsdText"
-                           Text="100%"
-                           FontSize="20"
-                           FontWeight="SemiBold"
-                           MinWidth="48"
-                           TextAlignment="Right"
-                           VerticalAlignment="Center"
-                           Foreground="{StaticResource AethraTextBrush}"/>
-            </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                    <TextBlock x:Name="TransientOsdPrimaryText"
+                               Text="100%"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="380"
+                               Foreground="{StaticResource AethraTextBrush}"/>
+                    <TextBlock x:Name="TransientOsdSecondaryText"
+                               Text="Volume"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="380"
+                               Foreground="{StaticResource AethraMutedTextBrush}"/>
+                </StackPanel>
+            </Grid>
         </Border>
     </controls:CursorAwareGrid>
 </Window>

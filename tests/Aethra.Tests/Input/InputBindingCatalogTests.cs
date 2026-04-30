@@ -51,4 +51,17 @@ public sealed class InputBindingCatalogTests
         Assert.Equal(AethraCommandIds.ToggleFullscreen, doubleClick.Command);
         Assert.Equal(AethraCommandIds.BossKey, space.Command);
     }
+
+    [Fact]
+    public void CreateDefaults_UsesNativeLoopFileBinding()
+    {
+        var defaults = InputBindingCatalog.CreateDefaults();
+        var decimalOn = defaults.Single(binding => string.Equals(binding.Gesture, "KP_DEC", StringComparison.Ordinal));
+        var decimalOff = defaults.Single(binding => string.Equals(binding.Gesture, "KP_DEL", StringComparison.Ordinal));
+
+        Assert.Equal(AethraCommandIds.ToggleLoopFile, decimalOn.Command);
+        Assert.Equal(AethraCommandIds.ToggleLoopFile, decimalOff.Command);
+        Assert.DoesNotContain("show-text", decimalOn.Command, StringComparison.Ordinal);
+        Assert.DoesNotContain("show-text", decimalOff.Command, StringComparison.Ordinal);
+    }
 }

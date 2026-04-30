@@ -27,6 +27,7 @@ internal static class AethraCommandIds
     internal const string MarkLoopA = "aethra:ab-loop-mark-a";
     internal const string MarkLoopB = "aethra:ab-loop-mark-b";
     internal const string ResetLoop = "aethra:ab-loop-reset";
+    internal const string ToggleLoopFile = "aethra:toggle-loop-file";
     internal const string OpenFile = "aethra:open-file";
     internal const string OpenFolder = "aethra:open-folder";
     internal const string OpenRecent = "aethra:recent";

@@ -10,6 +10,8 @@ namespace Aethra.Tests.Configuration;
 
 public sealed class InputBindingSettingsStoreTests
 {
+    private const string LegacyLoopFileCommand = "cycle-values loop-file \"inf\" \"no\" ; show-text \"Loop: ${loop-file}\"";
+
     [Fact]
     public void ImportFromInputConf_ParsesBindingsAndSkipsComments()
     {
@@ -66,6 +68,41 @@ public sealed class InputBindingSettingsStoreTests
         Assert.True(result.WasMigrated);
         Assert.Equal("aethra:adjustments", GetCommand(result.Bindings, "MBTN_RIGHT"));
         Assert.Equal("aethra:quit", GetCommand(result.Bindings, "MBTN_MID"));
+    }
+
+    [Theory]
+    [InlineData("KP_DEC")]
+    [InlineData("KP_DEL")]
+    [InlineData("KP_DEC / KP_DEL")]
+    public void ApplyMigrationForRows_ReplacesLegacyLoopFileOsdBinding(string gesture)
+    {
+        var result = InputBindingSettingsStore.ApplyMigrationForRows(
+            InputBindingCatalog.CreateDefaults(),
+            new[]
+            {
+                new InputBindingSetting("Scimitar", gesture, LegacyLoopFileCommand, "legacy loop", "Baseline")
+            },
+            InputBindingCatalog.CreateLegacyDefaultsSnapshot());
+
+        Assert.True(result.WasMigrated);
+        Assert.Equal(AethraCommandIds.ToggleLoopFile, GetCommand(result.Bindings, "KP_DEC"));
+    }
+
+    [Fact]
+    public void ApplyMigrationForRows_PreservesUserEditedLoopFileBinding()
+    {
+        const string customCommand = "cycle-values loop-file \"inf\" \"no\"";
+
+        var result = InputBindingSettingsStore.ApplyMigrationForRows(
+            InputBindingCatalog.CreateDefaults(),
+            new[]
+            {
+                new InputBindingSetting("Scimitar", "KP_DEC", customCommand, "custom loop", "Custom")
+            },
+            InputBindingCatalog.CreateLegacyDefaultsSnapshot());
+
+        Assert.True(result.WasMigrated);
+        Assert.Equal(customCommand, GetCommand(result.Bindings, "KP_DEC"));
     }
 
     [Fact]

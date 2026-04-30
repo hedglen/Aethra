@@ -31,6 +31,7 @@ internal sealed class AethraCommandContext
         Action markLoopA,
         Action markLoopB,
         Action resetLoop,
+        Action toggleLoopFile,
         Action openFile,
         Action openFolder,
         Action openRecent,
@@ -67,6 +68,7 @@ internal sealed class AethraCommandContext
         MarkLoopA = markLoopA;
         MarkLoopB = markLoopB;
         ResetLoop = resetLoop;
+        ToggleLoopFile = toggleLoopFile;
         OpenFile = openFile;
         OpenFolder = openFolder;
         OpenRecent = openRecent;
@@ -129,6 +131,8 @@ internal sealed class AethraCommandContext
     internal Action MarkLoopB { get; }
 
     internal Action ResetLoop { get; }
+
+    internal Action ToggleLoopFile { get; }
 
     internal Action OpenFile { get; }
 

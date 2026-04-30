@@ -114,7 +114,7 @@ internal static class InputBindingCatalog
             new InputBindingSetting("Scimitar", "KP2", Aethra.Commands.AethraCommandIds.ResetLoop, "Button 8: A-B reset", "Baseline Native"),
             new InputBindingSetting("Scimitar", "KP3", Aethra.Commands.AethraCommandIds.MarkLoopA, "Button 9: A-B mark A", "Baseline Native"),
             new InputBindingSetting("Scimitar", "KP0", Aethra.Commands.AethraCommandIds.BossKey, "Button 10: BOSS KEY", "Baseline Native"),
-            new InputBindingSetting("Scimitar", "KP_DEC", "cycle-values loop-file \"inf\" \"no\" ; show-text \"Loop: ${loop-file}\"", "Button 11: loop toggle", "Baseline"),
+            new InputBindingSetting("Scimitar", "KP_DEC", Aethra.Commands.AethraCommandIds.ToggleLoopFile, "Button 11: loop toggle", "Baseline Native"),
             new InputBindingSetting("Scimitar", "KP_SUBTRACT", Aethra.Commands.AethraCommandIds.MarkLoopB, "Button 12: A-B mark B", "Baseline Native"),
 
             new InputBindingSetting("Scimitar", "KP_HOME", Aethra.Commands.AethraCommandIds.ToggleFullscreen, "Button 1 (NumLock off): fullscreen", "Baseline Native"),
@@ -129,7 +129,7 @@ internal static class InputBindingCatalog
             new InputBindingSetting("Scimitar", "KP_DOWN", Aethra.Commands.AethraCommandIds.ResetLoop, "Button 8 (NumLock off): A-B reset", "Baseline Native"),
             new InputBindingSetting("Scimitar", "KP_PGDN", Aethra.Commands.AethraCommandIds.MarkLoopA, "Button 9 (NumLock off): A-B mark A", "Baseline Native"),
             new InputBindingSetting("Scimitar", "KP_INSERT", Aethra.Commands.AethraCommandIds.BossKey, "Button 10 (NumLock off): BOSS KEY", "Baseline Native"),
-            new InputBindingSetting("Scimitar", "KP_DEL", "cycle-values loop-file \"inf\" \"no\" ; show-text \"Loop: ${loop-file}\"", "Button 11 (NumLock off): loop toggle", "Baseline"),
+            new InputBindingSetting("Scimitar", "KP_DEL", Aethra.Commands.AethraCommandIds.ToggleLoopFile, "Button 11 (NumLock off): loop toggle", "Baseline Native"),
 
             new InputBindingSetting("Aethra", "MBTN_BACK", Aethra.Commands.AethraCommandIds.ShowPlaylist, "Mouse back: show playlist", "Native"),
             new InputBindingSetting("Aethra", "MBTN_FORWARD", Aethra.Commands.AethraCommandIds.ShowTools, "Mouse forward: show tools", "Native")

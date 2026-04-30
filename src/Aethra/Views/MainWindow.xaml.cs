@@ -39,11 +39,12 @@ namespace Aethra
         private readonly Dictionary<IntPtr, IntPtr> _originalClassCursors = new();
         private readonly VideoAdjustmentBatcher _videoAdjustmentBatcher;
         private readonly DispatcherTimer _cursorHideEnforcementTimer;
-        private readonly DispatcherTimer _volumeOsdHideTimer;
+        private readonly DispatcherTimer _transientOsdHideTimer;
         private readonly DispatcherTimer _autoplayReassertTimer;
         private readonly DispatcherTimer _videoPrimaryClickTimer;
         private readonly PrimaryClickTracker _videoPrimaryClickTracker;
-        private static readonly TimeSpan VolumeOsdLingerDuration = TimeSpan.FromMilliseconds(1500);
+        private static readonly TimeSpan TransientOsdLingerDuration = TimeSpan.FromMilliseconds(1500);
+        private static readonly TimeSpan TransientOsdFadeOutDuration = TimeSpan.FromMilliseconds(180);
         private static readonly TimeSpan VideoDoubleClickWindow = TimeSpan.FromMilliseconds(250);
         private bool _useGpuVideoSurface = true;
         private static bool RunGpuSurfaceSmoke =>
@@ -77,6 +78,7 @@ namespace Aethra
         private bool _suppressVolumeSliderValueChanged;
         private double _currentVolume = 100;
         private bool _isMuted;
+        private bool _isLoopFileEnabled;
         // A/B loop point state. null means the point is not set; the value is
         // the timestamp in seconds we wrote to mpv's ab-loop-{a,b} property.
         private double? _loopPointA;
@@ -102,11 +104,13 @@ namespace Aethra
         private bool _startupMediaLoaded;
         private Storyboard? _gearSpinIn;
         private Storyboard? _gearSpinOut;
+        private Storyboard? _transientOsdFadeOut;
         private const string PreferredStartupMediaPath = @"C:\Users\rjh\Videos\test.mp4";
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
         private const double TransportBarHeight = 70;
         private const double TopChromeHeight = 32;
+        private const double TransientOsdInset = 16;
         private const double WindowDragThreshold = 6;
 
         public MainWindow()
@@ -127,11 +131,11 @@ namespace Aethra
                 Interval = TimeSpan.FromMilliseconds(100)
             };
             _cursorHideEnforcementTimer.Tick += CursorHideEnforcementTimer_Tick;
-            _volumeOsdHideTimer = new DispatcherTimer
+            _transientOsdHideTimer = new DispatcherTimer
             {
-                Interval = VolumeOsdLingerDuration
+                Interval = TransientOsdLingerDuration
             };
-            _volumeOsdHideTimer.Tick += VolumeOsdHideTimer_Tick;
+            _transientOsdHideTimer.Tick += TransientOsdHideTimer_Tick;
             _autoplayReassertTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(250)
@@ -146,6 +150,7 @@ namespace Aethra
 
             InitializeComponent();
             InitGearAnimation();
+            InitTransientOsdAnimation();
             InitializeInputRuntime();
             FullSettings.SetInputBindings(_currentInputBindings);
             FullSettings.InputBindingsChanged += FullSettings_InputBindingsChanged;
@@ -153,6 +158,7 @@ namespace Aethra
             InitializeVolumeUi();
             CommandRail.Loaded += CommandRail_Loaded;
             SetCommandRailExpanded(false);
+            UpdateTransientOsdPlacement();
             _commandDispatcher = new AethraCommandDispatcher(new AethraCommandContext(
                 PausePlayback,
                 MinimizeWindow,
@@ -180,6 +186,7 @@ namespace Aethra
                 ToggleLoopPointA,
                 ToggleLoopPointB,
                 ResetLoopPoints,
+                ToggleLoopFile,
                 OpenFileFromCommand,
                 OpenFolderFromCommand,
                 OpenRecentFromCommand,
@@ -202,7 +209,7 @@ namespace Aethra
         {
             _videoAdjustmentBatcher.Dispose();
             _cursorHideEnforcementTimer.Stop();
-            _volumeOsdHideTimer.Stop();
+            _transientOsdHideTimer.Stop();
             _autoplayReassertTimer.Stop();
             _videoPrimaryClickTimer.Stop();
             GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
@@ -487,10 +494,15 @@ namespace Aethra
         private void TopLeftMenuButton_Click(object sender, RoutedEventArgs e)
         {
             var topChromeHeight = TopChrome.ActualHeight > 0 ? TopChrome.ActualHeight : TopChrome.Height;
-            VideoContextFlyout.ShowAt(RootGrid, new FlyoutShowOptions
+            ShowVideoContextFlyoutAt(RootGrid, new Windows.Foundation.Point(0, topChromeHeight));
+        }
+
+        private void ShowVideoContextFlyoutAt(UIElement target, Windows.Foundation.Point position)
+        {
+            VideoContextFlyout.ShowAt(target, new FlyoutShowOptions
             {
                 Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft,
-                Position = new Windows.Foundation.Point(0, topChromeHeight)
+                Position = position
             });
         }
 
@@ -504,6 +516,7 @@ namespace Aethra
                 HideRailSubMenus();
 
             UpdateEmbeddedPanelOffset();
+            UpdateTransientOsdPlacement();
         }
 
         private void ToggleRailSubMenu(StackPanel subMenu)
@@ -812,6 +825,26 @@ namespace Aethra
             _gearSpinOut.Children.Add(spinOut);
         }
 
+        private void InitTransientOsdAnimation()
+        {
+            var fadeOut = new DoubleAnimation
+            {
+                To = 0,
+                Duration = new Duration(TransientOsdFadeOutDuration),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            Storyboard.SetTarget(fadeOut, TransientOsd);
+            Storyboard.SetTargetProperty(fadeOut, "Opacity");
+
+            _transientOsdFadeOut = new Storyboard();
+            _transientOsdFadeOut.Children.Add(fadeOut);
+            _transientOsdFadeOut.Completed += (_, _) =>
+            {
+                if (TransientOsd is not null)
+                    TransientOsd.Visibility = Visibility.Collapsed;
+            };
+        }
+
         private void TransportSettingsButton_PointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             _gearSpinOut?.Stop();
@@ -876,6 +909,9 @@ namespace Aethra
 
         private void PlaybackOptions_PropertyApplyRequested(object? sender, PlaybackPropertyApplyEventArgs e)
         {
+            if (string.Equals(e.PropertyName, "loop-file", StringComparison.Ordinal))
+                _isLoopFileEnabled = IsLoopFileEnabledValue(e.PropertyValue);
+
             ForEachPlayerBackend(player => player.SetProperty(e.PropertyName, e.PropertyValue));
         }
 
@@ -930,6 +966,7 @@ namespace Aethra
             RightDrawerHost.Visibility = Visibility.Collapsed;
             FullSettingsHost.Visibility = Visibility.Collapsed;
             RefreshPlaybackActivityState();
+            UpdateTransientOsdPlacement();
             this.AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
         }
 
@@ -948,6 +985,7 @@ namespace Aethra
             UpdateEmbeddedPanelOffset();
             ApplyTitleBarInsets();
             RefreshPlaybackActivityState();
+            UpdateTransientOsdPlacement();
         }
 
         private void InitializeNativeSoftwarePlayer()
@@ -991,23 +1029,20 @@ namespace Aethra
         private void VideoContainer_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
         {
             var point = e.GetCurrentPoint(VideoContainer);
+            if (point.Properties.IsRightButtonPressed)
+            {
+                CancelPendingVideoPrimaryClick();
+                ResetVideoPointerPressState();
+                ShowVideoContextFlyoutAt(VideoContainer, point.Position);
+                MarkPlaybackActivity();
+                e.Handled = true;
+                return;
+            }
+
             if (!point.Properties.IsLeftButtonPressed)
             {
                 CancelPendingVideoPrimaryClick();
-                
-                // Show quick settings menu on right-click
-                if (point.Properties.IsRightButtonPressed)
-                {
-                    VideoContextFlyout.ShowAt(VideoContainer, new FlyoutShowOptions
-                    {
-                        Placement = FlyoutPlacementMode.Full,
-                        Position = point.Position
-                    });
-                    MarkPlaybackActivity();
-                    e.Handled = true;
-                    return;
-                }
-                
+
                 if (TryExecuteRuntimePointerPress(point))
                 {
                     MarkPlaybackActivity();
@@ -1108,6 +1143,16 @@ namespace Aethra
         {
             if (_isVideoPointerPressPending || _isVideoPointerDraggingWindow)
                 VideoContainer.ReleasePointerCapture(e.Pointer);
+
+            _isVideoPointerPressPending = false;
+            _isVideoPointerDraggingWindow = false;
+            _videoPointerId = 0;
+        }
+
+        private void ResetVideoPointerPressState()
+        {
+            if (_isVideoPointerPressPending || _isVideoPointerDraggingWindow)
+                VideoContainer.ReleasePointerCaptures();
 
             _isVideoPointerPressPending = false;
             _isVideoPointerDraggingWindow = false;
@@ -1272,6 +1317,7 @@ namespace Aethra
             _currentVolume = Math.Clamp(_currentVolume + amount, 0, 100);
             SetVolume(_currentVolume);
             UpdateVolumeUi();
+            ShowVolumeTransientOsd();
         }
 
         private void SetVolume(double value)
@@ -1285,11 +1331,21 @@ namespace Aethra
         {
             _isMuted = !_isMuted;
             _playbackOptions.ApplyStringProperty("mute", _isMuted ? "yes" : "no");
+            UpdateVolumeUi();
+            ShowVolumeTransientOsd();
             MarkPlaybackActivity();
         }
 
         private void UpdateVolumeUi()
         {
+            var volumeGlyph = VolumeGlyphFor(_currentVolume, _isMuted);
+
+            if (VolumeButtonIcon is not null)
+                VolumeButtonIcon.Glyph = volumeGlyph;
+
+            if (VolumeFlyoutIcon is not null)
+                VolumeFlyoutIcon.Glyph = volumeGlyph;
+
             if (VolumeValueText is not null)
                 VolumeValueText.Text = $"{Math.Round(_currentVolume):0}%";
 
@@ -1314,6 +1370,7 @@ namespace Aethra
 
             SetVolume(e.NewValue);
             UpdateVolumeUi();
+            ShowVolumeTransientOsd();
             MarkPlaybackActivity();
         }
 
@@ -1364,7 +1421,6 @@ namespace Aethra
                 notches = delta > 0 ? 1 : -1;
 
             AddVolume(notches * VolumeStepPerNotch);
-            ShowVolumeOsd();
             MarkPlaybackActivity();
             e.Handled = true;
         }
@@ -1436,6 +1492,22 @@ namespace Aethra
             UpdateLoopButtonVisuals();
             RefreshSeekBarFill();
             UpdateLoopMarkers();
+        }
+
+        private void ToggleLoopFile()
+        {
+            _isLoopFileEnabled = !_isLoopFileEnabled;
+            _playbackOptions.ApplyStringProperty("loop-file", _isLoopFileEnabled ? "inf" : "no");
+            ShowTransientOsd(null, _isLoopFileEnabled ? "Loop file on" : "Loop file off", "Playback");
+            MarkPlaybackActivity();
+        }
+
+        private static bool IsLoopFileEnabledValue(string value)
+        {
+            return !string.IsNullOrWhiteSpace(value)
+                && !value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                && !value.Equals("0", StringComparison.OrdinalIgnoreCase)
+                && !value.Equals("false", StringComparison.OrdinalIgnoreCase);
         }
 
         private void UpdateLoopMarkers()
@@ -1583,26 +1655,71 @@ namespace Aethra
                         : "Set B loop point");
         }
 
-        private void ShowVolumeOsd()
+        private void ShowVolumeTransientOsd()
         {
-            if (VolumeOsd is null || VolumeOsdText is null)
-                return;
-
-            VolumeOsdText.Text = $"{Math.Round(_currentVolume):0}%";
-            VolumeOsd.Visibility = Visibility.Visible;
-
-            // Restart the linger timer on every call so a continuous scroll keeps the
-            // readout visible the whole time and only fades after the user stops.
-            _volumeOsdHideTimer.Stop();
-            _volumeOsdHideTimer.Start();
+            ShowTransientOsd(
+                VolumeGlyphFor(_currentVolume, _isMuted),
+                $"{Math.Round(_currentVolume):0}%",
+                "Volume");
         }
 
-        private void VolumeOsdHideTimer_Tick(object? sender, object e)
+        private void ShowTransientOsd(string? glyph, string primaryText, string? secondaryText)
         {
-            _volumeOsdHideTimer.Stop();
+            if (TransientOsd is null || TransientOsdPrimaryText is null)
+                return;
 
-            if (VolumeOsd is not null)
-                VolumeOsd.Visibility = Visibility.Collapsed;
+            TransientOsdIcon.Visibility = string.IsNullOrWhiteSpace(glyph) ? Visibility.Collapsed : Visibility.Visible;
+            if (!string.IsNullOrWhiteSpace(glyph))
+                TransientOsdIcon.Glyph = glyph;
+
+            TransientOsdPrimaryText.Text = primaryText;
+
+            if (TransientOsdSecondaryText is not null)
+            {
+                TransientOsdSecondaryText.Text = secondaryText ?? string.Empty;
+                TransientOsdSecondaryText.Visibility = string.IsNullOrWhiteSpace(secondaryText)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+            }
+
+            UpdateTransientOsdPlacement();
+            _transientOsdFadeOut?.Stop();
+            TransientOsd.Opacity = 1;
+            TransientOsd.Visibility = Visibility.Visible;
+
+            // Restart the linger timer on every call so repeated messages keep the
+            // readout visible and only fade after the user stops.
+            _transientOsdHideTimer.Stop();
+            _transientOsdHideTimer.Start();
+        }
+
+        private void TransientOsdHideTimer_Tick(object? sender, object e)
+        {
+            _transientOsdHideTimer.Stop();
+
+            if (TransientOsd is not null && TransientOsd.Visibility == Visibility.Visible)
+                _transientOsdFadeOut?.Begin();
+            else if (TransientOsd is not null)
+                TransientOsd.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateTransientOsdPlacement()
+        {
+            if (TransientOsd is null)
+                return;
+
+            var top = _isFullscreen ? TransientOsdInset : TopChromeHeight + TransientOsdInset;
+            var left = TransientOsdInset;
+
+            if (CommandRail is not null && CommandRail.Visibility == Visibility.Visible)
+            {
+                var railWidth = CommandRail.ActualWidth > 0
+                    ? CommandRail.ActualWidth
+                    : (_isCommandRailExpanded ? CommandRailExpandedWidth : CommandRailCollapsedWidth);
+                left += railWidth;
+            }
+
+            TransientOsd.Margin = new Thickness(left, top, 0, 0);
         }
 
         private void AutoplayReassertTimer_Tick(object? sender, object e)
@@ -1639,8 +1756,10 @@ namespace Aethra
                 return;
             }
 
-            MediaTitleText.Text = GetDisplayMediaName(path);
+            var displayName = GetDisplayMediaName(path);
+            MediaTitleText.Text = displayName;
             _lastLoadedMediaPath = path;
+            ShowTransientOsd("\uE768", displayName, "Now playing");
             ForEachPlayerBackend(player => player.LoadFile(path));
             if (ShouldAutoplayOnOpen())
             {
@@ -1688,6 +1807,20 @@ namespace Aethra
             isPaused
                 ? ("Play", "\uE768")
                 : ("Pause", "\uE769");
+
+        private static string VolumeGlyphFor(double volume, bool isMuted)
+        {
+            if (isMuted)
+                return "\uE74F";
+
+            return Math.Round(volume) switch
+            {
+                <= 0 => "\uE992",
+                <= 32 => "\uE993",
+                <= 65 => "\uE994",
+                _ => "\uE995"
+            };
+        }
 
         private void ApplyPlayPauseVisualState()
         {
@@ -1877,6 +2010,7 @@ namespace Aethra
 
             CommandRail.Visibility = shouldShowRail ? Visibility.Visible : Visibility.Collapsed;
             UpdateEmbeddedPanelOffset();
+            UpdateTransientOsdPlacement();
         }
 
         private void ClosePlayerShellCommandSurfacesForActivePlayback()
