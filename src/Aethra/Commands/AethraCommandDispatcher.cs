@@ -26,17 +26,53 @@ internal sealed class AethraCommandDispatcher
             case AethraCommandIds.TogglePlayPause:
                 _context.TogglePlayPause();
                 return true;
+            case AethraCommandIds.Quit:
+                _context.Quit();
+                return true;
+            case AethraCommandIds.QuitWatchLater:
+                _context.QuitWatchLater();
+                return true;
+            case AethraCommandIds.SeekBack5:
+                _context.SeekBack5();
+                return true;
+            case AethraCommandIds.SeekForward5:
+                _context.SeekForward5();
+                return true;
             case AethraCommandIds.SeekBack10:
                 _context.SeekBack10();
                 return true;
             case AethraCommandIds.SeekForward30:
                 _context.SeekForward30();
                 return true;
+            case AethraCommandIds.SeekBack60:
+                _context.SeekBack60();
+                return true;
+            case AethraCommandIds.SeekForward60:
+                _context.SeekForward60();
+                return true;
+            case AethraCommandIds.SeekBack300:
+                _context.SeekBack300();
+                return true;
+            case AethraCommandIds.SeekForward300:
+                _context.SeekForward300();
+                return true;
+            case AethraCommandIds.VolumeUp2:
+                _context.VolumeUp2();
+                return true;
+            case AethraCommandIds.VolumeDown2:
+                _context.VolumeDown2();
+                return true;
             case AethraCommandIds.VolumeUp5:
                 _context.VolumeUp5();
                 return true;
             case AethraCommandIds.VolumeDown5:
                 _context.VolumeDown5();
+                return true;
+            case AethraCommandIds.VolumeUp10:
+                _context.VolumeUp10();
+                return true;
+            case AethraCommandIds.VolumeDown10:
+                _context.VolumeDown10();
                 return true;
             case AethraCommandIds.ToggleMute:
                 _context.ToggleMute();

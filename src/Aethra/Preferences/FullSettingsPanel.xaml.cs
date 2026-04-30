@@ -41,6 +41,8 @@ public sealed partial class FullSettingsPanel : UserControl
     private bool _syncingAccentText;
     private bool _inputBindingsDirty;
     private bool _isHydratingPageControls;
+    private bool _isProgrammaticInputBindingUpdate;
+    private bool _isRefreshingInputBindingUi;
     private readonly HashSet<string> _conflictingGestures = new(StringComparer.OrdinalIgnoreCase);
 
     public event EventHandler? CloseRequested;
@@ -634,11 +636,18 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private void InitializeInputBindings()
     {
+        var loadResult = InputBindingSettingsStore.LoadWithMigration(
+            InputBindingCatalog.CreateDefaults(),
+            InputBindingCatalog.CreateLegacyDefaultsSnapshot());
         _inputBindings.Clear();
-        _inputBindings.AddRange(InputBindingSettingsStore.Load(InputBindingCatalog.CreateDefaults()));
+        _inputBindings.AddRange(loadResult.Bindings);
         _inputBindingsDirty = false;
-        InputBindingStatusText.Text = "Bindings loaded.";
+        var warningSuffix = loadResult.Warnings.Count == 0
+            ? string.Empty
+            : $" {loadResult.Warnings.Count} warning(s) flagged for review.";
+        InputBindingStatusText.Text = $"{loadResult.Summary}{warningSuffix}";
         RefreshInputBindingCategoriesAndList();
+        SyncPrimaryControlsFromBindings();
     }
 
     public void SetInputBindings(IEnumerable<InputBindingSetting> bindings)
@@ -654,24 +663,75 @@ public sealed partial class FullSettingsPanel : UserControl
         if (InputBindingStatusText is not null)
             InputBindingStatusText.Text = "Bindings synced from runtime.";
         RefreshInputBindingCategoriesAndList();
+        SyncPrimaryControlsFromBindings();
     }
 
     private void RefreshInputBindingCategoriesAndList()
     {
-        InputCategoryFilter.Items.Clear();
-        InputCategoryFilter.Items.Add("All");
+        if (InputCategoryFilter is null || InputBindingsList is null)
+            return;
 
-        foreach (var category in _inputBindings.Select(binding => binding.Category).Distinct().OrderBy(category => category))
-            InputCategoryFilter.Items.Add(category);
+        var previousCategory = InputCategoryFilter.SelectedItem as string;
+        _isRefreshingInputBindingUi = true;
+        try
+        {
+            InputCategoryFilter.Items.Clear();
+            InputCategoryFilter.Items.Add("All");
 
-        InputCategoryFilter.SelectedIndex = 0;
-        InputBindingsList.ItemsSource = _visibleInputBindings;
+            foreach (var category in _inputBindings.Select(binding => binding.Category).Distinct().OrderBy(category => category))
+                InputCategoryFilter.Items.Add(category);
+
+            if (!string.IsNullOrWhiteSpace(previousCategory) && InputCategoryFilter.Items.Contains(previousCategory))
+                InputCategoryFilter.SelectedItem = previousCategory;
+            else
+                InputCategoryFilter.SelectedItem = "All";
+
+            if (!ReferenceEquals(InputBindingsList.ItemsSource, _visibleInputBindings))
+                InputBindingsList.ItemsSource = _visibleInputBindings;
+        }
+        finally
+        {
+            _isRefreshingInputBindingUi = false;
+        }
+
         ApplyInputBindingFilters();
+    }
+
+    private void SyncPrimaryControlsFromBindings()
+    {
+        if (PrimarySpaceCommandBox is null
+            || PrimaryLeftClickCommandBox is null
+            || PrimaryDoubleLeftClickCommandBox is null)
+        {
+            return;
+        }
+
+        PrimarySpaceCommandBox.Text = GetCommandForGesture("SPACE");
+        PrimaryLeftClickCommandBox.Text = GetCommandForGesture("MBTN_LEFT");
+        PrimaryDoubleLeftClickCommandBox.Text = GetCommandForGesture("MBTN_LEFT_DBL");
+    }
+
+    private string GetCommandForGesture(string gesture)
+    {
+        if (!InputRuntimeService.TryNormalizeGestureKey(gesture, out var targetKey))
+            return string.Empty;
+
+        for (var index = _inputBindings.Count - 1; index >= 0; index--)
+        {
+            var binding = _inputBindings[index];
+            if (!InputRuntimeService.TryNormalizeGestureKey(binding.Gesture, out var key))
+                continue;
+
+            if (string.Equals(key, targetKey, StringComparison.Ordinal))
+                return binding.Command;
+        }
+
+        return string.Empty;
     }
 
     private void InputSearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!_isInitialized)
+        if (!_isInitialized || _isRefreshingInputBindingUi)
             return;
 
         ApplyInputBindingFilters();
@@ -679,7 +739,7 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private void InputFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_isInitialized)
+        if (!_isInitialized || _isRefreshingInputBindingUi)
             return;
 
         ApplyInputBindingFilters();
@@ -687,7 +747,7 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private void InputConflictsOnlyToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (!_isInitialized)
+        if (!_isInitialized || _isRefreshingInputBindingUi)
             return;
 
         ApplyInputBindingFilters();
@@ -708,8 +768,127 @@ public sealed partial class FullSettingsPanel : UserControl
 
     private void ResetInputBindingsButton_Click(object sender, RoutedEventArgs e)
     {
-        InitializeInputBindings();
-        PersistInputBindings();
+        try
+        {
+            _inputBindings.Clear();
+            _inputBindings.AddRange(CloneBindings(InputBindingCatalog.CreateDefaults()));
+            _inputBindingsDirty = true;
+            RefreshInputBindingCategoriesAndList();
+            MarkBindingsDirty("Bindings reset to defaults. Save bindings to apply.");
+            PrimaryControlsStatusText.Text = "Primary controls reset with list defaults.";
+            SyncPrimaryControlsFromBindings();
+        }
+        catch (Exception ex)
+        {
+            InputBindingStatusText.Text = $"Reset failed: {ex.Message}";
+        }
+    }
+
+    private void PrimaryControlsApplyButton_Click(object sender, RoutedEventArgs e)
+    {
+        var updated = 0;
+        updated += UpsertPrimaryBinding("General", "SPACE", PrimarySpaceCommandBox.Text, "Primary space action");
+        updated += UpsertPrimaryBinding("Mouse", "MBTN_LEFT", PrimaryLeftClickCommandBox.Text, "Primary click action");
+        updated += UpsertPrimaryBinding("Mouse", "MBTN_LEFT_DBL", PrimaryDoubleLeftClickCommandBox.Text, "Primary double-click action");
+
+        if (updated == 0)
+        {
+            PrimaryControlsStatusText.Text = "No primary-control changes were applied.";
+            return;
+        }
+
+        MarkBindingsDirty("Primary control changes pending save.");
+        PrimaryControlsStatusText.Text = $"Updated {updated} primary binding(s). Save bindings to persist.";
+        ApplyInputBindingFilters();
+        SyncPrimaryControlsFromBindings();
+    }
+
+    private void PrimaryControlsResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var defaultsByKey = BuildDefaultBindingsByNormalizedKey();
+
+            var updated = 0;
+            updated += ResetPrimaryBindingToDefault(defaultsByKey, "SPACE");
+            updated += ResetPrimaryBindingToDefault(defaultsByKey, "MBTN_LEFT");
+            updated += ResetPrimaryBindingToDefault(defaultsByKey, "MBTN_LEFT_DBL");
+
+            if (updated == 0)
+            {
+                PrimaryControlsStatusText.Text = "Primary controls already match defaults.";
+                return;
+            }
+
+            MarkBindingsDirty("Primary controls reset to defaults. Save to apply.");
+            PrimaryControlsStatusText.Text = $"Reset {updated} primary binding(s) to defaults.";
+            ApplyInputBindingFilters();
+            SyncPrimaryControlsFromBindings();
+        }
+        catch (Exception ex)
+        {
+            PrimaryControlsStatusText.Text = $"Reset failed: {ex.Message}";
+        }
+    }
+
+    private IReadOnlyDictionary<string, InputBindingSetting> BuildDefaultBindingsByNormalizedKey()
+    {
+        var byKey = new Dictionary<string, InputBindingSetting>(StringComparer.Ordinal);
+        foreach (var binding in InputBindingCatalog.CreateDefaults())
+        {
+            if (!InputRuntimeService.TryNormalizeGestureKey(binding.Gesture, out var key))
+                continue;
+
+            if (!byKey.ContainsKey(key))
+                byKey[key] = binding;
+        }
+
+        return byKey;
+    }
+
+    private int UpsertPrimaryBinding(string category, string gesture, string? command, string description)
+    {
+        var normalizedCommand = (command ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCommand))
+            return 0;
+
+        if (!InputRuntimeService.TryNormalizeGestureKey(gesture, out var targetKey))
+            return 0;
+
+        var existing = _inputBindings
+            .LastOrDefault(binding =>
+                InputRuntimeService.TryNormalizeGestureKey(binding.Gesture, out var key)
+                && string.Equals(key, targetKey, StringComparison.Ordinal));
+
+        if (existing is null)
+        {
+            _inputBindings.Add(new InputBindingSetting(category, gesture, normalizedCommand, description, "Primary"));
+            return 1;
+        }
+
+        if (string.Equals(existing.Command?.Trim(), normalizedCommand, StringComparison.Ordinal)
+            && string.Equals(existing.Category, category, StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        existing.Category = category;
+        existing.Gesture = gesture;
+        existing.Command = normalizedCommand;
+        existing.Description = description;
+        existing.Source = "Primary";
+        return 1;
+    }
+
+    private int ResetPrimaryBindingToDefault(IReadOnlyDictionary<string, InputBindingSetting> defaultsByKey, string gesture)
+    {
+        if (!InputRuntimeService.TryNormalizeGestureKey(gesture, out var key))
+            return 0;
+
+        if (!defaultsByKey.TryGetValue(key, out var defaultBinding))
+            return 0;
+
+        return UpsertPrimaryBinding(defaultBinding.Category, defaultBinding.Gesture, defaultBinding.Command, defaultBinding.Description);
     }
 
     private void SaveInputBindingsButton_Click(object sender, RoutedEventArgs e)
@@ -773,9 +952,19 @@ public sealed partial class FullSettingsPanel : UserControl
         foreach (var binding in bindings)
             _visibleInputBindings.Add(binding);
 
-        InputBindingCountText.Text = $"{_visibleInputBindings.Count} shown / {_inputBindings.Count} total";
+        UpdateInputBindingDiagnostics(syncPrimaryControls: false);
+    }
+
+    private void UpdateInputBindingDiagnostics(bool syncPrimaryControls)
+    {
+        if (InputBindingCountText is not null)
+            InputBindingCountText.Text = $"{_visibleInputBindings.Count} shown / {_inputBindings.Count} total";
+
         UpdateInputConflictStatus();
         UpdateInputCommandValidationStatus();
+
+        if (syncPrimaryControls)
+            SyncPrimaryControlsFromBindings();
     }
 
     private void UpdateInputConflictStatus()
@@ -891,8 +1080,17 @@ public sealed partial class FullSettingsPanel : UserControl
         if (!_isInitialized)
             return;
 
+        if (_isRefreshingInputBindingUi)
+            return;
+
+        if (_isProgrammaticInputBindingUpdate)
+            return;
+
+        if (sender is TextBox textBox && textBox.FocusState == FocusState.Unfocused)
+            return;
+
         MarkBindingsDirty("Binding changes pending save.");
-        ApplyInputBindingFilters();
+        UpdateInputBindingDiagnostics(syncPrimaryControls: true);
     }
 
     private void ClearBindingButton_Click(object sender, RoutedEventArgs e)
@@ -900,10 +1098,13 @@ public sealed partial class FullSettingsPanel : UserControl
         if (sender is not Button button || button.DataContext is not InputBindingSetting binding)
             return;
 
-        binding.Gesture = string.Empty;
-        binding.Command = string.Empty;
-        binding.Description = string.Empty;
-        binding.Source = "Custom";
+        RunProgrammaticInputBindingUpdate(() =>
+        {
+            binding.Gesture = string.Empty;
+            binding.Command = string.Empty;
+            binding.Description = string.Empty;
+            binding.Source = "Custom";
+        });
         MarkBindingsDirty("Binding cleared. Save to apply.");
         ApplyInputBindingFilters();
     }
@@ -968,10 +1169,13 @@ public sealed partial class FullSettingsPanel : UserControl
         if (string.IsNullOrWhiteSpace(gestureText))
             return;
 
-        binding.Gesture = gestureText;
-        textBox.Text = gestureText;
+        RunProgrammaticInputBindingUpdate(() =>
+        {
+            binding.Gesture = gestureText;
+            textBox.Text = gestureText;
+        });
         MarkBindingsDirty($"Captured {gestureText}. Save to apply.");
-        ApplyInputBindingFilters();
+        UpdateInputBindingDiagnostics(syncPrimaryControls: true);
         e.Handled = true;
     }
 
@@ -1001,10 +1205,13 @@ public sealed partial class FullSettingsPanel : UserControl
         if (IsModifierPressed(VirtualKey.Menu))
             gestureText = $"ALT+{gestureText}";
 
-        binding.Gesture = gestureText;
-        textBox.Text = gestureText;
+        RunProgrammaticInputBindingUpdate(() =>
+        {
+            binding.Gesture = gestureText;
+            textBox.Text = gestureText;
+        });
         MarkBindingsDirty($"Captured {gestureText}. Save to apply.");
-        ApplyInputBindingFilters();
+        UpdateInputBindingDiagnostics(syncPrimaryControls: true);
         e.Handled = true;
     }
 
@@ -1018,21 +1225,40 @@ public sealed partial class FullSettingsPanel : UserControl
             return;
 
         var gestureText = delta > 0 ? "WHEEL_UP" : "WHEEL_DOWN";
-        binding.Gesture = gestureText;
-        textBox.Text = gestureText;
+        RunProgrammaticInputBindingUpdate(() =>
+        {
+            binding.Gesture = gestureText;
+            textBox.Text = gestureText;
+        });
         MarkBindingsDirty($"Captured {gestureText}. Save to apply.");
-        ApplyInputBindingFilters();
+        UpdateInputBindingDiagnostics(syncPrimaryControls: true);
         e.Handled = true;
+    }
+
+    private void RunProgrammaticInputBindingUpdate(Action action)
+    {
+        _isProgrammaticInputBindingUpdate = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _isProgrammaticInputBindingUpdate = false;
+        }
     }
 
     private static string BuildKeyboardGestureText(VirtualKey key)
     {
         var parts = new List<string>(4);
-        if (IsModifierPressed(VirtualKey.Control))
+        var ctrlPressed = IsModifierPressed(VirtualKey.Control);
+        var shiftPressed = IsModifierPressed(VirtualKey.Shift);
+        var altPressed = IsModifierPressed(VirtualKey.Menu);
+        if (ctrlPressed)
             parts.Add("CTRL");
-        if (IsModifierPressed(VirtualKey.Shift))
+        if (shiftPressed)
             parts.Add("SHIFT");
-        if (IsModifierPressed(VirtualKey.Menu))
+        if (altPressed)
             parts.Add("ALT");
 
         var primary = key switch
@@ -1041,10 +1267,41 @@ public sealed partial class FullSettingsPanel : UserControl
             VirtualKey.PageDown => "PGDWN",
             VirtualKey.PageUp => "PGUP",
             VirtualKey.Back => "BS",
-            _ => key.ToString().ToUpperInvariant()
+            VirtualKey.NumberPad0 => "KP0",
+            VirtualKey.NumberPad1 => "KP1",
+            VirtualKey.NumberPad2 => "KP2",
+            VirtualKey.NumberPad3 => "KP3",
+            VirtualKey.NumberPad4 => "KP4",
+            VirtualKey.NumberPad5 => "KP5",
+            VirtualKey.NumberPad6 => "KP6",
+            VirtualKey.NumberPad7 => "KP7",
+            VirtualKey.NumberPad8 => "KP8",
+            VirtualKey.NumberPad9 => "KP9",
+            VirtualKey.Decimal => "KP_DEC",
+            VirtualKey.Subtract => "KP_SUBTRACT",
+            _ => BuildFallbackGestureToken(key)
         };
         parts.Add(primary);
         return string.Join('+', parts);
+    }
+
+    private static string BuildFallbackGestureToken(VirtualKey key)
+    {
+        if (key is >= VirtualKey.A and <= VirtualKey.Z)
+            return key.ToString().ToLowerInvariant();
+
+        if (key is >= VirtualKey.Number0 and <= VirtualKey.Number9)
+            return ((int)key - (int)VirtualKey.Number0).ToString();
+
+        var keyCode = (int)key;
+        return keyCode switch
+        {
+            188 => ",",
+            190 => ".",
+            219 => "[",
+            221 => "]",
+            _ => key.ToString().ToUpperInvariant()
+        };
     }
 
     private static bool IsModifierPressed(VirtualKey key)

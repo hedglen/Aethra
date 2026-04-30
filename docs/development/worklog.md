@@ -1200,6 +1200,33 @@ Active steps:
   - Verification gate:
     - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed.
     - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (105 tests).
+- 2026-04-29 completed native Input baseline + stability hardening increment:
+  - Native-first input defaults and migration:
+    - Added typed load result flow (`InputBindingLoadResult`) and migration-aware binding load path.
+    - Rebased shipped defaults to the new baseline and added explicit `MBTN_LEFT_DBL` fullscreen mapping.
+    - Enforced `SPACE` policy to `aethra:boss-key` in defaults and migration (forced upsert with summary text).
+  - Gesture/runtime parity:
+    - Hardened gesture parsing/normalization in `src/Aethra/Input/InputRuntimeService.cs` for case/shift semantics, punctuation tokens, and keypad aliases.
+    - Added `PrimaryClickTracker` and wired deferred single-click vs double-click dispatch in `src/Aethra/Views/MainWindow.xaml.cs` so double-click fullscreen suppresses single-click action.
+  - Preferences Input UX and freeze/crash hardening:
+    - Added/kept two-tier Input UX in full Preferences (`Primary controls` + `Advanced bindings`) in:
+      - `src/Aethra/Views/FullSettingsPanel.xaml`
+      - `src/Aethra/Preferences/FullSettingsPanel.xaml.cs`
+    - Removed re-entrant list-refresh behavior from row-edit paths and added lightweight diagnostics updates for edit-time status.
+    - Hardened reset flows:
+      - no auto-persist during `Reset list`,
+      - safe default-key mapping builder to avoid duplicate-normalized-key reset faults,
+      - refresh guards and reset exception containment to avoid app-terminating failures.
+  - Tests and verification:
+    - Added/expanded input/config regression tests:
+      - `tests/Aethra.Tests/Input/InputBindingCatalogTests.cs`
+      - `tests/Aethra.Tests/Input/PrimaryClickTrackerTests.cs`
+      - `tests/Aethra.Tests/Input/InputRuntimeServiceTests.cs`
+      - `tests/Aethra.Tests/Configuration/InputBindingSettingsStoreTests.cs`
+      - `tests/Aethra.Tests/Commands/AethraCommandDispatcherTests.cs`
+    - Validation passed:
+      - `dotnet test .\\tests\\Aethra.Tests\\Aethra.Tests.csproj -p:Platform=x64 --filter "FullyQualifiedName~Input|FullyQualifiedName~Configuration.InputBindingSettingsStoreTests"`
+      - `dotnet build .\\Aethra.slnx -p:Platform=x64`
 
 ## Roadmap
 

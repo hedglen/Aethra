@@ -40,7 +40,10 @@ namespace Aethra
         private readonly DispatcherTimer _cursorHideEnforcementTimer;
         private readonly DispatcherTimer _volumeOsdHideTimer;
         private readonly DispatcherTimer _autoplayReassertTimer;
+        private readonly DispatcherTimer _videoPrimaryClickTimer;
+        private readonly PrimaryClickTracker _videoPrimaryClickTracker;
         private static readonly TimeSpan VolumeOsdLingerDuration = TimeSpan.FromMilliseconds(1500);
+        private static readonly TimeSpan VideoDoubleClickWindow = TimeSpan.FromMilliseconds(250);
         private bool _useGpuVideoSurface = true;
         private static bool RunGpuSurfaceSmoke =>
             string.Equals(Environment.GetEnvironmentVariable("AETHRA_GPU_SURFACE_SMOKE"), "1", StringComparison.Ordinal);
@@ -131,6 +134,12 @@ namespace Aethra
                 Interval = TimeSpan.FromMilliseconds(250)
             };
             _autoplayReassertTimer.Tick += AutoplayReassertTimer_Tick;
+            _videoPrimaryClickTimer = new DispatcherTimer
+            {
+                Interval = VideoDoubleClickWindow
+            };
+            _videoPrimaryClickTimer.Tick += VideoPrimaryClickTimer_Tick;
+            _videoPrimaryClickTracker = new PrimaryClickTracker(VideoDoubleClickWindow);
 
             InitializeComponent();
             InitializeInputRuntime();
@@ -146,10 +155,22 @@ namespace Aethra
                 ToggleSettingsPanel,
                 ToggleFullscreen,
                 TogglePlayback,
+                CloseWindowFromCommand,
+                CloseWindowFromCommand,
+                () => SeekRelative(-5),
+                () => SeekRelative(5),
                 () => SeekRelative(-10),
                 () => SeekRelative(30),
+                () => SeekRelative(-60),
+                () => SeekRelative(60),
+                () => SeekRelative(-300),
+                () => SeekRelative(300),
+                () => AddVolume(2),
+                () => AddVolume(-2),
                 () => AddVolume(5),
                 () => AddVolume(-5),
+                () => AddVolume(10),
+                () => AddVolume(-10),
                 ToggleMute,
                 HandleEscapeCommand,
                 ToggleLoopPointA,
@@ -179,6 +200,7 @@ namespace Aethra
             _cursorHideEnforcementTimer.Stop();
             _volumeOsdHideTimer.Stop();
             _autoplayReassertTimer.Stop();
+            _videoPrimaryClickTimer.Stop();
             GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
             FullSettings.InputBindingsChanged -= FullSettings_InputBindingsChanged;
             PlaybackPersistenceStore.SaveVolume(_currentVolume);
@@ -530,6 +552,11 @@ namespace Aethra
         private void OpenFileFromCommand()
         {
             RailOpenFileButton_Click(this, new RoutedEventArgs());
+        }
+
+        private void CloseWindowFromCommand()
+        {
+            Close();
         }
 
         private void OpenFolderFromCommand()
@@ -932,6 +959,7 @@ namespace Aethra
             var point = e.GetCurrentPoint(VideoContainer);
             if (!point.Properties.IsLeftButtonPressed)
             {
+                CancelPendingVideoPrimaryClick();
                 if (TryExecuteRuntimePointerPress(point))
                 {
                     MarkPlaybackActivity();
@@ -1011,13 +1039,12 @@ namespace Aethra
             if (e.Pointer.PointerId != _videoPointerId)
                 return;
 
-            var shouldTogglePlayback = _isVideoPointerPressPending && !_isVideoPointerDraggingWindow;
+            var shouldDispatchPrimaryClick = _isVideoPointerPressPending && !_isVideoPointerDraggingWindow;
             ResetVideoPointerPress(e);
 
-            if (shouldTogglePlayback)
+            if (shouldDispatchPrimaryClick)
             {
-                MarkPlaybackActivity();
-                TogglePlayback();
+                QueueVideoPrimaryClickCommand();
             }
 
             e.Handled = true;
@@ -1037,6 +1064,46 @@ namespace Aethra
             _isVideoPointerPressPending = false;
             _isVideoPointerDraggingWindow = false;
             _videoPointerId = 0;
+        }
+
+        private void QueueVideoPrimaryClickCommand()
+        {
+            var decision = _videoPrimaryClickTracker.RegisterPrimaryClick(DateTimeOffset.UtcNow);
+            if (decision == PrimaryClickDecision.ExecuteDouble)
+            {
+                _videoPrimaryClickTimer.Stop();
+                if (ExecuteRuntimePointerCommand("MBTN_LEFT_DBL")
+                    || _commandDispatcher.Execute(AethraCommandIds.ToggleFullscreen))
+                {
+                    MarkPlaybackActivity();
+                }
+
+                return;
+            }
+
+            if (decision == PrimaryClickDecision.QueueSingle)
+            {
+                _videoPrimaryClickTimer.Stop();
+                _videoPrimaryClickTimer.Start();
+            }
+        }
+
+        private void CancelPendingVideoPrimaryClick()
+        {
+            _videoPrimaryClickTracker.CancelPendingSingleClick();
+            _videoPrimaryClickTimer.Stop();
+        }
+
+        private void VideoPrimaryClickTimer_Tick(object? sender, object e)
+        {
+            _videoPrimaryClickTimer.Stop();
+            if (!_videoPrimaryClickTracker.TryFlushPendingSingleClick(DateTimeOffset.UtcNow))
+                return;
+            if (ExecuteRuntimePointerCommand("MBTN_LEFT")
+                || _commandDispatcher.Execute(AethraCommandIds.TogglePlayPause))
+            {
+                MarkPlaybackActivity();
+            }
         }
 
         private void BeginWindowDrag()
@@ -2255,7 +2322,13 @@ namespace Aethra
 
         private void InitializeInputRuntime()
         {
-            var bindings = InputBindingSettingsStore.Load(InputBindingCatalog.CreateDefaults()).ToList();
+            var loadResult = InputBindingSettingsStore.LoadWithMigration(
+                InputBindingCatalog.CreateDefaults(),
+                InputBindingCatalog.CreateLegacyDefaultsSnapshot());
+            var bindings = loadResult.Bindings.ToList();
+            if (loadResult.WasMigrated || loadResult.Warnings.Count > 0)
+                Debug.WriteLine($"Input bindings load: {loadResult.Summary}");
+
             var portablePath = ScriptExtensionSettingsStore.PortableConfigPath;
             if (!string.IsNullOrWhiteSpace(portablePath) && Directory.Exists(portablePath))
             {
