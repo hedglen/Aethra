@@ -154,6 +154,7 @@
 
             <TextBlock x:Name="PreferencesFilterStatusText"
                        Grid.Column="2"
+                       Visibility="Collapsed"
                        VerticalAlignment="Center"
                        Foreground="{StaticResource GalleryMutedTextBrush}"
                        FontSize="12"/>
@@ -1059,48 +1060,85 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="Accent color" Style="{StaticResource GroupHeaderStyle}"/>
                                 <TextBlock Text="Aethra uses this accent throughout controls, selection, and transport highlights." Style="{StaticResource CardDescriptionStyle}"/>
-                                <Grid ColumnSpacing="12" MaxWidth="620" HorizontalAlignment="Left">
+                                <Grid ColumnSpacing="18" RowSpacing="12" MaxWidth="760" HorizontalAlignment="Left">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="260"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="250"/>
                                     </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
 
-                                    <Border Width="36"
-                                            Height="36"
-                                            CornerRadius="18"
-                                            Background="{StaticResource AethraAccentBrush}"
-                                            BorderBrush="{StaticResource AethraAccentSoftBrush}"
-                                            BorderThickness="2"
-                                            VerticalAlignment="Bottom"/>
+                                    <ColorPicker x:Name="AccentColorPicker"
+                                                 ColorSpectrumShape="Box"
+                                                 ColorChanged="AccentColorPicker_ColorChanged"
+                                                 IsAlphaEnabled="False"
+                                                 IsAlphaSliderVisible="False"
+                                                 IsAlphaTextInputVisible="False"
+                                                 IsColorChannelTextInputVisible="True"
+                                                 IsColorSliderVisible="True"
+                                                 IsHexInputVisible="True"
+                                                 IsMoreButtonVisible="False"/>
 
-                                    <TextBox x:Name="FullAccentHexBox"
-                                             Grid.Column="1"
-                                             Header="Hex"
-                                             PlaceholderText="#7B2FFF"
-                                             TextChanged="FullAccentHexBox_TextChanged"
-                                             Foreground="White"/>
+                                    <StackPanel Grid.Column="1" Spacing="12">
+                                        <RadioButtons x:Name="ColorSpectrumShapeRadioButtons"
+                                                      Header="Colorspectrum shape"
+                                                      SelectedIndex="0"
+                                                      SelectionChanged="ColorSpectrumShapeRadioButtons_SelectionChanged"
+                                                      Foreground="White">
+                                            <x:String>Box</x:String>
+                                            <x:String>Ring</x:String>
+                                        </RadioButtons>
 
-                                    <Button Grid.Column="2"
-                                            Click="FullApplyAccentButton_Click"
-                                            Style="{StaticResource PrimaryCommandButtonStyle}"
-                                            VerticalAlignment="Bottom">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE73E;" FontSize="12"/>
-                                            <TextBlock Text="Apply"/>
+                                        <StackPanel>
+                                            <TextBlock Text="ColorPicker applied on accent preview"
+                                                       Foreground="{StaticResource GalleryMutedTextBrush}"
+                                                       FontSize="12"/>
+                                            <Rectangle Height="100"
+                                                       Margin="0,12,0,0"
+                                                       Stroke="{ThemeResource TextControlBorderBrush}"
+                                                       StrokeThickness="1">
+                                                <Rectangle.Fill>
+                                                    <SolidColorBrush Color="{Binding Color, ElementName=AccentColorPicker}"/>
+                                                </Rectangle.Fill>
+                                            </Rectangle>
                                         </StackPanel>
-                                    </Button>
+                                    </StackPanel>
 
-                                    <Button Grid.Column="3"
-                                            Click="FullResetAccentButton_Click"
-                                            Style="{StaticResource SecondaryCommandButtonStyle}"
-                                            VerticalAlignment="Bottom">
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
-                                            <TextBlock Text="Reset"/>
-                                        </StackPanel>
-                                    </Button>
+                                    <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="260"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox x:Name="FullAccentHexBox"
+                                                 Header="Hex"
+                                                 PlaceholderText="#7B2FFF"
+                                                 TextChanged="FullAccentHexBox_TextChanged"
+                                                 Foreground="White"/>
+
+                                        <Button Grid.Column="1"
+                                                Click="FullApplyAccentButton_Click"
+                                                Style="{StaticResource PrimaryCommandButtonStyle}"
+                                                VerticalAlignment="Bottom">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE73E;" FontSize="12"/>
+                                                <TextBlock Text="Apply"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button Grid.Column="2"
+                                                Click="FullResetAccentButton_Click"
+                                                Style="{StaticResource SecondaryCommandButtonStyle}"
+                                                VerticalAlignment="Bottom">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE72C;" FontSize="12"/>
+                                                <TextBlock Text="Reset"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
                                 </Grid>
 
                                 <TextBlock x:Name="FullAccentStatusText"

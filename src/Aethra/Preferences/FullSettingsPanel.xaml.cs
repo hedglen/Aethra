@@ -11,6 +11,7 @@ using Aethra.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
+using Windows.UI;
 
 namespace Aethra.Preferences;
 
@@ -195,9 +196,37 @@ public sealed partial class FullSettingsPanel : UserControl
             return;
 
         var text = FullAccentHexBox.Text;
-        FullAccentStatusText.Text = AccentColorService.TryParseHexColor(text, out _, out var normalizedHex)
-            ? $"Ready to apply {normalizedHex}"
-            : "Enter a hex color like #7B2FFF or #A0F.";
+        if (AccentColorService.TryParseHexColor(text, out var color, out var normalizedHex))
+        {
+            SyncAccentPickerColor(color);
+            FullAccentStatusText.Text = $"Ready to apply {normalizedHex}";
+            return;
+        }
+
+        FullAccentStatusText.Text = "Enter a hex color like #7B2FFF or #A0F.";
+    }
+
+    private void AccentColorPicker_ColorChanged(ColorPicker sender, ColorChangedEventArgs args)
+    {
+        if (_syncingAccentText)
+            return;
+
+        var normalizedHex = ToHex(args.NewColor);
+        SyncAccentText(normalizedHex);
+        FullAccentStatusText.Text = $"Ready to apply {normalizedHex}";
+    }
+
+    private void ColorSpectrumShapeRadioButtons_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        switch (ColorSpectrumShapeRadioButtons.SelectedItem)
+        {
+            case "Box":
+                AccentColorPicker.ColorSpectrumShape = ColorSpectrumShape.Box;
+                break;
+            default:
+                AccentColorPicker.ColorSpectrumShape = ColorSpectrumShape.Ring;
+                break;
+        }
     }
 
     private void FullApplyAccentButton_Click(object sender, RoutedEventArgs e)
@@ -270,11 +299,31 @@ public sealed partial class FullSettingsPanel : UserControl
         try
         {
             FullAccentHexBox.Text = hex;
+            if (AccentColorService.TryParseHexColor(hex, out var color, out _))
+                AccentColorPicker.Color = color;
         }
         finally
         {
             _syncingAccentText = false;
         }
+    }
+
+    private void SyncAccentPickerColor(Color color)
+    {
+        _syncingAccentText = true;
+        try
+        {
+            AccentColorPicker.Color = color;
+        }
+        finally
+        {
+            _syncingAccentText = false;
+        }
+    }
+
+    private static string ToHex(Color color)
+    {
+        return $"#{color.R:X2}{color.G:X2}{color.B:X2}";
     }
 
     private void InitializePageProfiles()
