@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Aethra.Native;
 
-internal sealed class AngleEglContext : IDisposable
+internal sealed partial class AngleEglContext : IDisposable
 {
     private readonly IntPtr _display;
     private readonly IntPtr _surface;

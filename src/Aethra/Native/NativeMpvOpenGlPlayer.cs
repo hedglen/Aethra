@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Aethra.Native;
 
-internal sealed class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
+internal sealed partial class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
 {
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Action<Exception> _failed;
@@ -180,13 +180,12 @@ internal sealed class NativeMpvOpenGlPlayer : INativeMpvPlayerBackend
             renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
             renderer.Create();
 
-            Action<MpvNative.MpvEvent> eventHandler = mpvEvent => HandleMpvEvent(context, mpvEvent);
             while (!cancellationToken.IsCancellationRequested)
             {
                 ApplyPendingResize();
 
                 DrainCommands(context);
-                context.DrainEvents(eventHandler);
+                context.DrainEvents(HandleMpvEvent);
 
                 if (Interlocked.Exchange(ref _frameRequested, 0) == 1)
                     RenderFrame(renderer, requireFrameUpdate: false);

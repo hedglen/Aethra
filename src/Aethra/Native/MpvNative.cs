@@ -183,7 +183,7 @@ internal static class MpvNative
     [DllImport(LibMpv, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mpv_render_context_set_update_callback")]
     internal static extern void RenderContextSetUpdateCallback(
         IntPtr renderContext,
-        MpvRenderUpdateCallback callback,
+        MpvRenderUpdateCallback? callback,
         IntPtr callbackContext);
 
     [DllImport(LibMpv, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mpv_render_context_update")]

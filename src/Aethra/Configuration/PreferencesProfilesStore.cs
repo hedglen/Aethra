@@ -65,14 +65,8 @@ public static class PreferencesProfilesStore
     private static void NormalizeSubtitleFontSizes(PreferencesPageProfiles profiles)
     {
         var bundles = profiles.Profiles.Bundles;
-        if (bundles is null)
-            return;
-
         foreach (var bundle in bundles)
         {
-            if (bundle?.Subtitles is null)
-                continue;
-
             var fontSize = bundle.Subtitles.FontSize;
             if (!double.IsFinite(fontSize))
             {

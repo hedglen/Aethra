@@ -53,14 +53,14 @@ internal static class NativeMpvOpenGlSmokeRunner
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            context.DrainEvents(mpvEvent =>
+            while (context.WaitEvent(0) is { EventId: not MpvNative.MpvEventId.None } mpvEvent)
             {
                 if (mpvEvent.EventId == MpvNative.MpvEventId.FileLoaded)
                     fileLoaded = true;
 
                 if (mpvEvent.EventId == MpvNative.MpvEventId.Shutdown)
                     shutdownReceived = true;
-            });
+            }
 
             if (shutdownReceived)
                 break;

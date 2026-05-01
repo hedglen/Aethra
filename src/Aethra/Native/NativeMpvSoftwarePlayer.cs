@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Aethra.Native;
 
-internal sealed class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
+internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
 {
     private const int FrameWidth = 640;
     private const int FrameHeight = 360;
@@ -154,11 +154,10 @@ internal sealed class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
             renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
             renderer.Create();
 
-            Action<MpvNative.MpvEvent> eventHandler = mpvEvent => HandleMpvEvent(context, mpvEvent);
             while (!cancellationToken.IsCancellationRequested)
             {
                 DrainCommands(context);
-                context.DrainEvents(eventHandler);
+                context.DrainEvents(HandleMpvEvent);
 
                 if (Interlocked.Exchange(ref _frameRequested, 0) == 1 && renderer.Render(frame))
                 {

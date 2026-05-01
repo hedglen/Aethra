@@ -26,7 +26,7 @@ using Windows.System;
 
 namespace Aethra
 {
-    public sealed partial class MainWindow : Window
+    public sealed partial class MainWindow
     {
         private enum RepeatMode
         {

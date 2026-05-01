@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Aethra.Native;
 
-internal sealed class NativeMpvContext : IDisposable
+internal sealed partial class NativeMpvContext : IDisposable
 {
     private IntPtr _context;
     private MpvNative.MpvWakeupCallback? _wakeupCallback;
@@ -125,6 +125,21 @@ internal sealed class NativeMpvContext : IDisposable
                 return;
 
             eventHandler(mpvEvent.Value);
+        }
+    }
+
+    internal void DrainEvents(Action<NativeMpvContext, MpvNative.MpvEvent> eventHandler)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(eventHandler);
+
+        while (true)
+        {
+            var mpvEvent = WaitEvent(0);
+            if (mpvEvent is not { EventId: not MpvNative.MpvEventId.None })
+                return;
+
+            eventHandler(this, mpvEvent.Value);
         }
     }
 

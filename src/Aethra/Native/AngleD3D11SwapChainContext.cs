@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Aethra.Native;
 
-internal sealed class AngleD3D11SwapChainContext : IDisposable
+internal sealed partial class AngleD3D11SwapChainContext : IDisposable
 {
     private readonly D3D11SwapChainPanelHost _d3dHost;
     private readonly IntPtr _eglDevice;

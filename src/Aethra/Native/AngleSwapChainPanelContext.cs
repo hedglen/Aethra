@@ -6,7 +6,7 @@ using WinRT;
 
 namespace Aethra.Native;
 
-internal sealed class AngleSwapChainPanelContext : IDisposable
+internal sealed partial class AngleSwapChainPanelContext : IDisposable
 {
     private readonly IntPtr _display;
     private readonly IntPtr _surface;

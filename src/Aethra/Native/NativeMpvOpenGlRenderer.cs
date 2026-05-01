@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Aethra.Native;
 
-internal sealed class NativeMpvOpenGlRenderer : IDisposable
+internal sealed partial class NativeMpvOpenGlRenderer : IDisposable
 {
     private readonly NativeMpvContext _context;
     private IntPtr _renderContext;
@@ -18,7 +18,7 @@ internal sealed class NativeMpvOpenGlRenderer : IDisposable
 
     ~NativeMpvOpenGlRenderer()
     {
-        Dispose(false);
+        DisposeCore();
     }
 
     internal event EventHandler? FrameRequested;
@@ -146,18 +146,18 @@ internal sealed class NativeMpvOpenGlRenderer : IDisposable
 
     public void Dispose()
     {
-        Dispose(true);
+        DisposeCore();
         GC.SuppressFinalize(this);
     }
 
-    private void Dispose(bool disposing)
+    private void DisposeCore()
     {
         if (_disposed)
             return;
 
         if (_renderContext != IntPtr.Zero)
         {
-            MpvNative.RenderContextSetUpdateCallback(_renderContext, _ => { }, IntPtr.Zero);
+            MpvNative.RenderContextSetUpdateCallback(_renderContext, callback: null, IntPtr.Zero);
             MpvNative.RenderContextFree(_renderContext);
             _renderContext = IntPtr.Zero;
         }

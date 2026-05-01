@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml;
 
 namespace Aethra.Services;
 
-internal sealed class VideoAdjustmentBatcher : IDisposable
+internal sealed partial class VideoAdjustmentBatcher : IDisposable
 {
     private readonly Dictionary<string, double> _pending = new(StringComparer.Ordinal);
     private readonly DispatcherTimer _timer;
