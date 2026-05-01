@@ -1,9 +1,13 @@
-version: "1.0"
-linter: qodana-dotnet
-withinDocker: false
+﻿####################################################################################################################
+# WARNING: Do not store sensitive information in this file, as its contents will be included in the Qodana report. #
+####################################################################################################################
 
+version: "1.0"
+linter: jetbrains/qodana-dotnet:2026.1
 profile:
-  name: qodana.starter
+  name: qodana.recommended
+include:
+  - name: CheckDependencyLicenses
 
 dotnet:
   solution: Aethra.slnx
