@@ -92,9 +92,6 @@ internal sealed class AethraCommandDispatcher
             case AethraCommandIds.CycleRepeat:
                 _context.CycleRepeat();
                 return true;
-            case AethraCommandIds.ToggleLoopFile:
-                _context.CycleRepeat();
-                return true;
             case AethraCommandIds.ToggleSubtitles:
                 _context.ToggleSubtitles();
                 return true;
@@ -106,6 +103,12 @@ internal sealed class AethraCommandDispatcher
                 return true;
             case AethraCommandIds.OpenRecent:
                 _context.OpenRecent();
+                return true;
+            case AethraCommandIds.PreviousFile:
+                _context.PreviousFile();
+                return true;
+            case AethraCommandIds.NextFile:
+                _context.NextFile();
                 return true;
             case AethraCommandIds.ShowPlaylist:
                 _context.ShowPlaylist();

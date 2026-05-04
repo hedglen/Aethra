@@ -79,6 +79,12 @@ internal sealed partial class NativeMpvContext : IDisposable
         ThrowIfError(CallCommand(args, argv => MpvNative.Command(_context, argv)), $"command '{GetCommandName(args)}'");
     }
 
+    internal int TryCommand(params string[] args)
+    {
+        ThrowIfDisposed();
+        return CallCommand(args, argv => MpvNative.Command(_context, argv));
+    }
+
     internal void CommandAsync(ulong replyUserData, params string[] args)
     {
         ThrowIfDisposed();

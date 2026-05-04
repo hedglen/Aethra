@@ -28,11 +28,12 @@ internal static class AethraCommandIds
     internal const string MarkLoopB = "aethra:ab-loop-mark-b";
     internal const string ResetLoop = "aethra:ab-loop-reset";
     internal const string CycleRepeat = "aethra:cycle-repeat";
-    internal const string ToggleLoopFile = "aethra:toggle-loop-file";
     internal const string ToggleSubtitles = "aethra:toggle-subtitles";
     internal const string OpenFile = "aethra:open-file";
     internal const string OpenFolder = "aethra:open-folder";
     internal const string OpenRecent = "aethra:recent";
+    internal const string PreviousFile = "aethra:previous-file";
+    internal const string NextFile = "aethra:next-file";
     internal const string ShowPlaylist = "aethra:playlist";
     internal const string ShowTools = "aethra:tools";
     internal const string ShowHelp = "aethra:help";

@@ -723,14 +723,16 @@
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xEB9D;" FontSize="15"/>
                     </Button>
 
-                    <Button Style="{StaticResource TransportIconButtonStyle}"
-                            IsEnabled="False"
+                    <Button x:Name="PreviousButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="PreviousButton_Click"
                             ToolTipService.ToolTip="Previous">
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE892;" FontSize="16"/>
                     </Button>
 
-                    <Button Style="{StaticResource TransportIconButtonStyle}"
-                            IsEnabled="False"
+                    <Button x:Name="NextButton"
+                            Style="{StaticResource TransportIconButtonStyle}"
+                            Click="NextButton_Click"
                             ToolTipService.ToolTip="Next">
                         <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE893;" FontSize="16"/>
                     </Button>

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using Aethra.Commands;
 using Aethra.Input;
@@ -103,7 +102,7 @@ public static class InputBindingSettingsStore
             .Where(binding => !string.IsNullOrWhiteSpace(binding.Gesture) && !string.IsNullOrWhiteSpace(binding.Command))
             .ToList();
         var json = JsonSerializer.Serialize(rows, JsonOptions);
-        File.WriteAllText(GetBindingsFilePath(), json, Encoding.UTF8);
+        AtomicFile.WriteAllText(GetBindingsFilePath(), json);
     }
 
     public static string ExportToInputConf(IEnumerable<InputBindingSetting> bindings)
@@ -112,7 +111,7 @@ public static class InputBindingSettingsStore
         var lines = bindings
             .Where(binding => !string.IsNullOrWhiteSpace(binding.Gesture) && !string.IsNullOrWhiteSpace(binding.Command))
             .Select(binding => $"{binding.Gesture.Trim()} {binding.Command.Trim()}");
-        File.WriteAllLines(path, lines);
+        AtomicFile.WriteAllLines(path, lines);
         return path;
     }
 

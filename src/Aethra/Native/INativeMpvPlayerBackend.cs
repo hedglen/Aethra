@@ -9,6 +9,8 @@ internal interface INativeMpvPlayerBackend : IDisposable
     event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
     event EventHandler<bool>? PlaybackPausedChanged;
     event EventHandler<IReadOnlyList<MpvChapter>>? ChaptersChanged;
+    event EventHandler<int>? PlaylistCountChanged;
+    event EventHandler? PlaybackEnded;
 
     void LoadFile(string path);
     void TogglePause();

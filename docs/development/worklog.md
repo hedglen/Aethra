@@ -1247,6 +1247,69 @@ Active steps:
   - Verification:
     - verified the new sitemap is linked from the expected entrypoint docs,
     - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed.
+- 2026-05-01 completed folder-aware next/previous navigation increment:
+  - Added native folder navigation support so next/previous works for local files even without a meaningful mpv playlist.
+  - Added `src/Aethra/Services/FolderMediaNavigator.cs`:
+    - central supported-media predicate,
+    - deterministic same-folder ordering by filename,
+    - first/previous/next/boundary results for local media navigation.
+  - Promoted file navigation into first-class Aethra commands:
+    - added `aethra:previous-file` and `aethra:next-file`,
+    - extended `AethraCommandContext` and `AethraCommandDispatcher`,
+    - routed transport next/previous through shared native navigation logic instead of direct raw playlist commands.
+  - Extended runtime aliasing and backend state:
+    - `playlist-prev` / `playlist-next` now resolve through native input alias handling, so existing PGUP/PGDWN and Scimitar bindings gain folder-aware behavior without rebinding,
+    - `INativeMpvPlayerBackend` now surfaces `PlaylistCountChanged` and `PlaybackEnded`,
+    - both native backends now observe `playlist/count` and `eof-reached` so the shell can decide when to prefer playlist navigation and when to advance within the current folder.
+  - Updated `src/Aethra/Views/MainWindow.xaml.cs` behavior:
+    - if playlist count is greater than one, keep playlist navigation first,
+    - otherwise navigate supported files in the current folder,
+    - stop cleanly at first/last file with folder-specific OSD feedback,
+    - reuse the same folder-navigation path for `PlaybackEndOfFileAction.PlayNextInFolder`,
+    - keep manual next/previous preserving the paused-vs-playing state of the current session.
+  - Updated the open-folder flow to use the same folder-sorting helper for the initially selected file.
+  - Added/updated managed coverage:
+    - `tests/Aethra.Tests/Services/FolderMediaNavigatorTests.cs`
+    - `tests/Aethra.Tests/Input/InputCommandSupportTests.cs`
+    - `tests/Aethra.Tests/Commands/AethraCommandDispatcherTests.cs`
+  - Verification:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with 0 warnings and 0 errors.
+    - `dotnet test .\\tests\\Aethra.Tests\\Aethra.Tests.csproj -p:Platform=x64 --no-build` passed (162 tests).
+- 2026-05-04 completed Phase A architectural safety-net implementation:
+  - Dead native diagnostics cleanup:
+    - Deleted the unreferenced ANGLE swap-chain panel context, native mpv smoke runners/results, and render API probe from `src/Aethra/Native/`.
+    - Updated `docs/architecture/agent-sitemap.md` to point native readers at `AngleD3D11SwapChainContext` instead of the removed panel context.
+  - Startup-media privacy/debug override:
+    - Replaced the hard-coded developer test video path with `AETHRA_STARTUP_MEDIA`.
+    - Added startup-env-var tests and documented the debug override beside `AETHRA_GPU_SURFACE_SMOKE`.
+  - Atomic persistence:
+    - Added `src/Aethra/Configuration/AtomicFile.cs`.
+    - Routed preferences profiles, input-binding JSON, exported `input.conf`, and profile-bundle export writes through sibling temp-file + flushed atomic rename.
+    - Added managed coverage in `tests/Aethra.Tests/Configuration/AtomicFileTests.cs`.
+  - Command surface fixes:
+    - Removed unused `aethra:toggle-loop-file`; repeat cycling remains available through `aethra:cycle-repeat`.
+    - Behavior change: `aethra:quit` now suppresses saved resume media and clears the last-media marker, while `aethra:quit-watch-later` keeps the normal close/watch-later path. Window X close remains preference-gated as before.
+    - Split raw mpv-style `quit` and `quit-watch-later` native aliases so imported bindings follow the same discard-vs-save distinction.
+  - Software fallback allocation:
+    - Added a reusable software-frame scratch buffer guarded by the existing single-frame-in-flight presentation gate.
+  - Verification:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with 0 warnings and 0 errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (170 tests).
+    - Manual app smoke/perf trace were not run in this terminal pass; verify `q`, `Shift+q`, window X close, and software-backend allocation behavior in a real playback session before release.
+- 2026-05-04 fixed startup resume seek first-chance mpv command exceptions:
+  - Symptom:
+    - Startup resume worked, but Visual Studio reported a caught `Aethra.Native.MpvNativeException` and the backend logged `Ignored mpv command failure ... seek <seconds> absolute (error -12)`.
+  - Root cause:
+    - `TryLoadStartupMedia()` loaded the persisted media and immediately queued an absolute seek before mpv had reported a duration/progress state for the new file.
+    - Backend command drains used throw/catch around recoverable mpv command return codes, so ignored command failures still appeared as first-chance exceptions under the debugger.
+  - Fix:
+    - Startup resume now stores a pending resume target and applies it after the first progress/duration callback for the loaded file.
+    - Resume targets are normalized and clamped just short of the known duration to avoid invalid EOF seeks.
+    - Added `NativeMpvContext.TryCommand(...)` and switched GPU/software backend drains to check mpv return codes directly instead of throwing `MpvNativeException` for ignored command failures.
+  - Verification:
+    - `dotnet build .\\Aethra.slnx -p:Platform=x64` passed with 0 warnings and 0 errors.
+    - `dotnet test .\\Aethra.slnx -p:Platform=x64 --no-build` passed (176 tests).
+    - Manual confirmation still needed: restart with a persisted watch-later position and verify no first-chance `MpvNativeException` appears for the resume seek.
 
 ## Roadmap
 

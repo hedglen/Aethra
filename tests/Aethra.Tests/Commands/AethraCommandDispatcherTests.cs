@@ -32,6 +32,20 @@ public sealed class AethraCommandDispatcherTests
             Assert.Equal(1, invocations.GetValueOrDefault(expected));
     }
 
+    [Fact]
+    public void Execute_QuitAndQuitWatchLater_RouteToDistinctActions()
+    {
+        var invocations = new Dictionary<string, int>(StringComparer.Ordinal);
+        var dispatcher = new AethraCommandDispatcher(CreateContext(invocations));
+
+        dispatcher.Execute(AethraCommandIds.Quit);
+        dispatcher.Execute(AethraCommandIds.QuitWatchLater);
+
+        Assert.Equal(1, invocations.GetValueOrDefault("Quit"));
+        Assert.Equal(1, invocations.GetValueOrDefault("QuitWatchLater"));
+        Assert.Equal(2, invocations.Values.Sum());
+    }
+
     [Theory]
     [InlineData("aethra:settings", true)]
     [InlineData("script-binding stats/display-stats-toggle", false)]
@@ -68,11 +82,12 @@ public sealed class AethraCommandDispatcherTests
         yield return new object[] { AethraCommandIds.MarkLoopB, new[] { "MarkLoopB" } };
         yield return new object[] { AethraCommandIds.ResetLoop, new[] { "ResetLoop" } };
         yield return new object[] { AethraCommandIds.CycleRepeat, new[] { "CycleRepeat" } };
-        yield return new object[] { AethraCommandIds.ToggleLoopFile, new[] { "CycleRepeat" } };
         yield return new object[] { AethraCommandIds.ToggleSubtitles, new[] { "ToggleSubtitles" } };
         yield return new object[] { AethraCommandIds.OpenFile, new[] { "OpenFile" } };
         yield return new object[] { AethraCommandIds.OpenFolder, new[] { "OpenFolder" } };
         yield return new object[] { AethraCommandIds.OpenRecent, new[] { "OpenRecent" } };
+        yield return new object[] { AethraCommandIds.PreviousFile, new[] { "PreviousFile" } };
+        yield return new object[] { AethraCommandIds.NextFile, new[] { "NextFile" } };
         yield return new object[] { AethraCommandIds.ShowPlaylist, new[] { "ShowPlaylist" } };
         yield return new object[] { AethraCommandIds.ShowTools, new[] { "ShowTools" } };
         yield return new object[] { AethraCommandIds.ShowHelp, new[] { "ShowHelp" } };
@@ -121,6 +136,8 @@ public sealed class AethraCommandDispatcherTests
             () => Mark("OpenFile"),
             () => Mark("OpenFolder"),
             () => Mark("OpenRecent"),
+            () => Mark("PreviousFile"),
+            () => Mark("NextFile"),
             () => Mark("ShowPlaylist"),
             () => Mark("ShowTools"),
             () => Mark("ShowHelp"),

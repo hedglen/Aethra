@@ -69,6 +69,39 @@ public sealed class MainWindowStartupTests
         Assert.False(shouldResumePersistedPosition);
     }
 
+    [Fact]
+    public void PreferredStartupMediaPath_ReturnsEnvVarValue_WhenSet()
+    {
+        var sentinel = @"C:\fake\override.mp4";
+        var previous = Environment.GetEnvironmentVariable("AETHRA_STARTUP_MEDIA");
+        try
+        {
+            Environment.SetEnvironmentVariable("AETHRA_STARTUP_MEDIA", sentinel);
+
+            Assert.Equal(sentinel, MainWindow.PreferredStartupMediaPathForTests);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AETHRA_STARTUP_MEDIA", previous);
+        }
+    }
+
+    [Fact]
+    public void PreferredStartupMediaPath_ReturnsNull_WhenEnvVarUnset()
+    {
+        var previous = Environment.GetEnvironmentVariable("AETHRA_STARTUP_MEDIA");
+        try
+        {
+            Environment.SetEnvironmentVariable("AETHRA_STARTUP_MEDIA", null);
+
+            Assert.Null(MainWindow.PreferredStartupMediaPathForTests);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AETHRA_STARTUP_MEDIA", previous);
+        }
+    }
+
     [Theory]
     [InlineData(null, null)]
     [InlineData("", null)]
@@ -88,6 +121,18 @@ public sealed class MainWindowStartupTests
     public void IsPlayableMediaTarget_HandlesUriSchemes(string target, bool expected)
     {
         Assert.Equal(expected, MainWindow.IsPlayableMediaTarget(target));
+    }
+
+    [Theory]
+    [InlineData(null, 100, null)]
+    [InlineData(0.0, 100.0, null)]
+    [InlineData(-1.0, 100.0, null)]
+    [InlineData(30.0, 100.0, 30.0)]
+    [InlineData(120.0, 100.0, 99.75)]
+    [InlineData(30.0, 0.0, 30.0)]
+    public void NormalizeResumeSeekTarget_ClampsToSafePlayableRange(double? seconds, double durationSeconds, double? expected)
+    {
+        Assert.Equal(expected, MainWindow.NormalizeResumeSeekTarget(seconds, durationSeconds));
     }
 
     private static string CreateTempMediaPath()

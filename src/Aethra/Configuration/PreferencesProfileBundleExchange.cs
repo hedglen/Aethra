@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Aethra.Profiles;
@@ -40,7 +39,7 @@ public static class PreferencesProfileBundleExchange
             document.Bundles.Add(NamedPreferencesProfileBundle.CreateDefault());
 
         var json = JsonSerializer.Serialize(document, JsonOptions);
-        File.WriteAllText(path, json, Encoding.UTF8);
+        AtomicFile.WriteAllText(path, json);
     }
 
     public static bool TryImportFromPath(string path, out ProfilesPreferencesProfile profiles, out string error)

@@ -24,7 +24,10 @@ internal static class InputCommandSupport
         ShowPlaylist,
         ShowFavorites,
         ToggleSettings,
-        Quit
+        PreviousFile,
+        NextFile,
+        Quit,
+        QuitWatchLater
     }
 
     private static readonly HashSet<string> DeniedCommandVerbs = new(StringComparer.OrdinalIgnoreCase)
@@ -125,10 +128,15 @@ internal static class InputCommandSupport
         if (argv.Count == 0)
             return false;
 
-        if (string.Equals(argv[0], "quit", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(argv[0], "quit-watch-later", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(argv[0], "quit", StringComparison.OrdinalIgnoreCase))
         {
             alias = NativeAlias.Quit;
+            return true;
+        }
+
+        if (string.Equals(argv[0], "quit-watch-later", StringComparison.OrdinalIgnoreCase))
+        {
+            alias = NativeAlias.QuitWatchLater;
             return true;
         }
 
@@ -171,6 +179,17 @@ internal static class InputCommandSupport
             }
         }
 
+        if (string.Equals(argv[0], "playlist-prev", StringComparison.OrdinalIgnoreCase))
+        {
+            alias = NativeAlias.PreviousFile;
+            return true;
+        }
+
+        if (string.Equals(argv[0], "playlist-next", StringComparison.OrdinalIgnoreCase))
+        {
+            alias = NativeAlias.NextFile;
+            return true;
+        }
         if (string.Equals(argv[0], "script-binding", StringComparison.OrdinalIgnoreCase) && argv.Count > 1)
         {
             if (string.Equals(argv[1], "playlistmanager/showplaylist", StringComparison.OrdinalIgnoreCase))

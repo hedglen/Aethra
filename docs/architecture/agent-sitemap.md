@@ -122,6 +122,7 @@ Use these documents for the corresponding decisions:
   - `src/Aethra/Input/InputRuntimeService.cs`
   - `src/Aethra/Input/InputBindingSetting.cs`
 - Persistence and import/export:
+  - `src/Aethra/Configuration/AtomicFile.cs`
   - `src/Aethra/Configuration/PreferencesProfilesStore.cs`
   - `src/Aethra/Configuration/InputBindingSettingsStore.cs`
   - `src/Aethra/Configuration/PlaybackPersistenceStore.cs`
@@ -132,7 +133,7 @@ Use these documents for the corresponding decisions:
   - `src/Aethra/Native/NativeMpvOpenGlPlayer.cs`
   - `src/Aethra/Native/NativeMpvSoftwarePlayer.cs`
   - `src/Aethra/Native/AngleEglContext.cs`
-  - `src/Aethra/Native/AngleSwapChainPanelContext.cs`
+  - `src/Aethra/Native/AngleD3D11SwapChainContext.cs`
 - Automated tests:
   - `tests/Aethra.Tests/`
   - Use the folder names there to find coverage by domain: `Commands`, `Configuration`, `Input`, `Profiles`, `Services`, `Views`.

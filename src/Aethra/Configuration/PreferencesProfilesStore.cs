@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Aethra.Profiles;
@@ -54,7 +53,7 @@ public static class PreferencesProfilesStore
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path) ?? string.Empty);
         var json = JsonSerializer.Serialize(profiles, JsonOptions);
-        File.WriteAllText(path, json, Encoding.UTF8);
+        AtomicFile.WriteAllText(path, json);
     }
 
     private static string GetStorePath()

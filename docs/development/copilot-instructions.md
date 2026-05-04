@@ -200,6 +200,11 @@ Run from the solution folder:
 dotnet build .\Aethra.slnx -p:Platform=x64
 ```
 
+## Debug Overrides
+
+- `AETHRA_STARTUP_MEDIA`: optional full path or supported URL to force the startup media target. When unset, startup falls back to the user's last-played file.
+- `AETHRA_GPU_SURFACE_SMOKE`: set to `1` to run the GPU surface smoke at MainWindow startup.
+
 ## Worklog Requirement
 
 Always keep `docs/development/worklog.md` current. Add a concise summary after each completed step:

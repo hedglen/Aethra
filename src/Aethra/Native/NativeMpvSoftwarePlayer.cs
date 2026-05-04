@@ -29,6 +29,7 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
     private int _presentationQueued;
     private bool _disposed;
     private WriteableBitmap? _bitmap;
+    private byte[]? _frameScratch;
     private double _position;
     private double _duration;
 
@@ -42,6 +43,8 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
     public event EventHandler<NativeMpvPlaybackProgress>? ProgressChanged;
     public event EventHandler<bool>? PlaybackPausedChanged;
     public event EventHandler<IReadOnlyList<MpvChapter>>? ChaptersChanged;
+    public event EventHandler<int>? PlaylistCountChanged;
+    public event EventHandler? PlaybackEnded;
 
     public void LoadFile(string path)
     {
@@ -150,6 +153,8 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
             context.ObserveProperty(2, "duration", MpvNative.MpvFormat.Double);
             context.ObserveProperty(3, "pause", MpvNative.MpvFormat.Flag);
             context.ObserveProperty(4, "chapter-list/count", MpvNative.MpvFormat.Int64);
+            context.ObserveProperty(5, "playlist/count", MpvNative.MpvFormat.Int64);
+            context.ObserveProperty(6, "eof-reached", MpvNative.MpvFormat.Flag);
 
             renderer.FrameRequested += (_, _) => Interlocked.Exchange(ref _frameRequested, 1);
             renderer.Create();
@@ -178,6 +183,7 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
         if (mpvEvent.EventId == MpvNative.MpvEventId.FileLoaded)
         {
             RefreshChapters(context);
+            RefreshPlaylistCount(context);
             return;
         }
 
@@ -196,6 +202,22 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
 
         if (property.Data == IntPtr.Zero)
             return;
+
+        if (mpvEvent.ReplyUserData == 5 && property.Format == MpvNative.MpvFormat.Int64)
+        {
+            var playlistCount = (int)Math.Max(0, Marshal.PtrToStructure<long>(property.Data));
+            QueuePlaylistCountChanged(playlistCount);
+            return;
+        }
+
+        if (mpvEvent.ReplyUserData == 6 && property.Format == MpvNative.MpvFormat.Flag)
+        {
+            var reachedEndOfFile = Marshal.PtrToStructure<int>(property.Data) != 0;
+            if (reachedEndOfFile)
+                QueuePlaybackEnded();
+
+            return;
+        }
 
         if (mpvEvent.ReplyUserData == 3 && property.Format == MpvNative.MpvFormat.Flag)
         {
@@ -247,6 +269,15 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
         QueueChaptersChanged(chapters);
     }
 
+    private void RefreshPlaylistCount(NativeMpvContext context)
+    {
+        var countText = context.GetPropertyString("playlist/count");
+        if (!int.TryParse(countText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) || count < 0)
+            count = 0;
+
+        QueuePlaylistCountChanged(count);
+    }
+
     private void EnqueueCommand(params string[] args)
     {
         if (_disposed)
@@ -260,15 +291,12 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
     {
         while (_commands.TryDequeue(out var command))
         {
-            try
-            {
-                context.Command(command);
-            }
-            catch (MpvNativeException ex)
+            var result = context.TryCommand(command);
+            if (result < 0)
             {
                 var commandText = command.Length == 0 ? "<empty>" : string.Join(" ", command);
                 System.Diagnostics.Debug.WriteLine(
-                    $"Ignored mpv command failure in software backend: {commandText} (error {ex.ErrorCode}).");
+                    $"Ignored mpv command failure in software backend: {commandText} (error {result}).");
             }
         }
     }
@@ -320,10 +348,25 @@ internal sealed partial class NativeMpvSoftwarePlayer : INativeMpvPlayerBackend
         _dispatcherQueue.TryEnqueue(() => ChaptersChanged?.Invoke(this, chapters));
     }
 
-    private static byte[] CopyFrame(NativeMpvSoftwareFrame frame)
+    private void QueuePlaylistCountChanged(int playlistCount)
+    {
+        _dispatcherQueue.TryEnqueue(() => PlaylistCountChanged?.Invoke(this, playlistCount));
+    }
+
+    private void QueuePlaybackEnded()
+    {
+        _dispatcherQueue.TryEnqueue(() => PlaybackEnded?.Invoke(this, EventArgs.Empty));
+    }
+
+    // Reuse is safe because QueueFramePresentation's _presentationQueued gate keeps
+    // only one frame in flight until PresentFrame finishes reading the buffer.
+    private byte[] CopyFrame(NativeMpvSoftwareFrame frame)
     {
         var rowBytes = frame.Width * BytesPerPixel;
-        var pixels = new byte[rowBytes * frame.Height];
+        var required = rowBytes * frame.Height;
+        var pixels = _frameScratch ??= new byte[required];
+        if (pixels.Length < required)
+            pixels = _frameScratch = new byte[required];
 
         for (var row = 0; row < frame.Height; row++)
         {

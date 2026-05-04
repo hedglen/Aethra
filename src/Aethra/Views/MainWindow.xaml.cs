@@ -77,6 +77,10 @@ namespace Aethra
         private readonly PlaybackPersistenceSnapshot _playbackPersistence;
         private bool _persistedPreferencesAppliedToRuntime;
         private string? _pendingMediaPath;
+        private bool? _pendingMediaAutoplayOverride;
+        private bool _pendingMediaShowDefaultOsd = true;
+        private double? _pendingMediaResumeSeekSeconds;
+        private double? _pendingResumeSeekSeconds;
         // True means playback is paused. Visual surfaces route through
         // PlayPauseVisualFor so the transport button and context menu stay aligned.
         private bool _isPlaybackPaused = true;
@@ -110,12 +114,17 @@ namespace Aethra
         private uint _videoPointerId;
         private bool _isVideoPointerPressPending;
         private bool _isVideoPointerDraggingWindow;
+        private int _currentPlaylistCount;
         private string? _lastLoadedMediaPath;
         private bool _startupMediaLoaded;
+        private bool _suppressResumePersistenceOnClose;
         private Storyboard? _gearSpinIn;
         private Storyboard? _gearSpinOut;
         private Storyboard? _transientOsdFadeOut;
-        private const string PreferredStartupMediaPath = @"C:\Users\rjh\Videos\test.mp4";
+        // Optional debug override. Normal startup resumes the user's last-played file.
+        private static string? PreferredStartupMediaPath =>
+            Environment.GetEnvironmentVariable("AETHRA_STARTUP_MEDIA");
+        internal static string? PreferredStartupMediaPathForTests => PreferredStartupMediaPath;
         private const double CommandRailCollapsedWidth = 64;
         private const double CommandRailExpandedWidth = 252;
         private const double TransportBarHeight = 70;
@@ -180,7 +189,7 @@ namespace Aethra
                 ToggleSettingsPanel,
                 ToggleFullscreen,
                 TogglePlayback,
-                CloseWindowFromCommand,
+                QuitDiscardingResumeFromCommand,
                 CloseWindowFromCommand,
                 () => SeekRelative(-5),
                 () => SeekRelative(5),
@@ -206,6 +215,8 @@ namespace Aethra
                 OpenFileFromCommand,
                 OpenFolderFromCommand,
                 OpenRecentFromCommand,
+                NavigatePreviousFileFromCommand,
+                NavigateNextFileFromCommand,
                 ShowPlaylistFromCommand,
                 ShowToolsFromCommand,
                 ShowHelpFromCommand,
@@ -231,10 +242,10 @@ namespace Aethra
             GpuVideoSurface.SizeChanged -= GpuVideoSurface_PreInitSizeChanged;
             FullSettings.InputBindingsChanged -= FullSettings_InputBindingsChanged;
             PlaybackPersistenceStore.SaveVolume(_currentVolume);
-            if (ShouldRememberRecentFiles())
-                PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
-            else
+            if (_suppressResumePersistenceOnClose || !ShouldRememberRecentFiles())
                 PlaybackPersistenceStore.ClearLastMedia();
+            else
+                PlaybackPersistenceStore.SaveLastMedia(_lastLoadedMediaPath, _currentPlaybackPosition);
             try
             {
                 PlaybackPersistenceStore.SaveWindow(
@@ -592,6 +603,12 @@ namespace Aethra
             Close();
         }
 
+        private void QuitDiscardingResumeFromCommand()
+        {
+            _suppressResumePersistenceOnClose = true;
+            CloseWindowFromCommand();
+        }
+
         private void OpenFolderFromCommand()
         {
             RailOpenFolderButton_Click(this, new RoutedEventArgs());
@@ -600,6 +617,16 @@ namespace Aethra
         private void OpenRecentFromCommand()
         {
             RailRecentButton_Click(this, new RoutedEventArgs());
+        }
+
+        private void NavigatePreviousFileFromCommand()
+        {
+            NavigateRelative(FolderMediaNavigationDirection.Previous, autoplayOnLoad: !_isPlaybackPaused, triggeredByPlaybackEnd: false);
+        }
+
+        private void NavigateNextFileFromCommand()
+        {
+            NavigateRelative(FolderMediaNavigationDirection.Next, autoplayOnLoad: !_isPlaybackPaused, triggeredByPlaybackEnd: false);
         }
 
         private void ShowPlaylistFromCommand()
@@ -664,15 +691,14 @@ namespace Aethra
             if (folder is null)
                 return;
 
-            var files = await folder.GetFilesAsync();
-            var mediaFile = files.FirstOrDefault(file => IsSupportedMediaPath(file.Path));
-            if (mediaFile is null)
+            var firstMediaResult = FolderMediaNavigator.GetFirstInFolder(folder.Path);
+            if (!firstMediaResult.HasPath)
             {
                 EmbeddedPanelSubtitle.Text = "No supported media files were found in that folder.";
                 return;
             }
 
-            LoadMedia(mediaFile.Path);
+            LoadMedia(firstMediaResult.Path!);
         }
 
         private void RailRecentButton_Click(object sender, RoutedEventArgs e)
@@ -745,12 +771,6 @@ namespace Aethra
                 _mainHwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
 
             return _mainHwnd;
-        }
-
-        private static bool IsSupportedMediaPath(string path)
-        {
-            var extension = Path.GetExtension(path).ToLowerInvariant();
-            return extension is ".mp4" or ".mkv" or ".mov" or ".avi" or ".webm" or ".m4v" or ".mp3" or ".flac" or ".wav" or ".m4a";
         }
 
         private static void SetTaggedVisibility(DependencyObject root, string tag, Visibility visibility)
@@ -968,6 +988,16 @@ namespace Aethra
             ToggleFullscreen();
         }
 
+        private void PreviousButton_Click(object sender, RoutedEventArgs e)
+        {
+            _commandDispatcher.Execute(AethraCommandIds.PreviousFile);
+        }
+
+        private void NextButton_Click(object sender, RoutedEventArgs e)
+        {
+            _commandDispatcher.Execute(AethraCommandIds.NextFile);
+        }
+
         private void ToggleFullscreen()
         {
             if (_isFullscreen)
@@ -1019,6 +1049,8 @@ namespace Aethra
             _softwarePlayer.ProgressChanged += Player_ProgressChanged;
             _softwarePlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
             _softwarePlayer.ChaptersChanged += Player_ChaptersChanged;
+            _softwarePlayer.PlaylistCountChanged += Player_PlaylistCountChanged;
+            _softwarePlayer.PlaybackEnded += Player_PlaybackEnded;
             RegisterPlayerBackend(_softwarePlayer);
         }
 
@@ -1028,6 +1060,8 @@ namespace Aethra
             _gpuPlayer.ProgressChanged += Player_ProgressChanged;
             _gpuPlayer.PlaybackPausedChanged += Player_PlaybackPausedChanged;
             _gpuPlayer.ChaptersChanged += Player_ChaptersChanged;
+            _gpuPlayer.PlaylistCountChanged += Player_PlaylistCountChanged;
+            _gpuPlayer.PlaybackEnded += Player_PlaybackEnded;
             GpuVideoSurface.SizeChanged += GpuVideoSurface_SizeChanged;
             RegisterPlayerBackend(_gpuPlayer);
         }
@@ -1284,6 +1318,7 @@ namespace Aethra
         private void Player_ProgressChanged(object? sender, NativeMpvPlaybackProgress progress)
         {
             UpdateProgress(progress.Position, progress.Duration);
+            ApplyPendingResumeSeek();
         }
 
         private void Player_PlaybackPausedChanged(object? sender, bool isPaused)
@@ -1292,6 +1327,19 @@ namespace Aethra
             ClosePlayerShellCommandSurfacesForActivePlayback();
             ApplyPlayPauseVisualState();
             RefreshPlaybackActivityState();
+        }
+
+        private void Player_PlaylistCountChanged(object? sender, int playlistCount)
+        {
+            _currentPlaylistCount = Math.Max(0, playlistCount);
+        }
+
+        private void Player_PlaybackEnded(object? sender, EventArgs e)
+        {
+            if (!ShouldPlayNextInFolderOnEndOfFile())
+                return;
+
+            NavigateRelative(FolderMediaNavigationDirection.Next, autoplayOnLoad: true, triggeredByPlaybackEnd: true);
         }
 
         private void GpuVideoSurface_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1333,6 +1381,97 @@ namespace Aethra
         private void SeekToPercent(double percent)
         {
             ForEachPlayerBackend(player => player.SeekToPercent(percent));
+        }
+
+        private void ApplyPendingResumeSeek()
+        {
+            var target = NormalizeResumeSeekTarget(_pendingResumeSeekSeconds, _lastKnownDurationSeconds);
+            if (!target.HasValue)
+            {
+                _pendingResumeSeekSeconds = null;
+                return;
+            }
+
+            _pendingResumeSeekSeconds = null;
+            ForEachPlayerBackend(player => player.SeekToTime(target.Value));
+        }
+
+        private void NavigateRelative(FolderMediaNavigationDirection direction, bool autoplayOnLoad, bool triggeredByPlaybackEnd)
+        {
+            if (ShouldPreferPlaylistNavigation())
+            {
+                _ = ExecutePlaylistNavigation(direction);
+                return;
+            }
+
+            var folderResult = FolderMediaNavigator.GetAdjacentFile(_lastLoadedMediaPath, direction);
+            if (folderResult.HasPath)
+            {
+                LoadMedia(folderResult.Path!, autoplayOnLoad, showDefaultOsd: false);
+                ShowTransientOsd(
+                    NavigationGlyphFor(direction),
+                    GetDisplayMediaName(folderResult.Path!),
+                    "Folder");
+                MarkPlaybackActivity();
+                return;
+            }
+
+            if (folderResult.Kind == FolderMediaNavigationKind.BoundaryBeforeFirst
+                || folderResult.Kind == FolderMediaNavigationKind.BoundaryAfterLast)
+            {
+                ShowTransientOsd(
+                    NavigationGlyphFor(direction),
+                    direction == FolderMediaNavigationDirection.Previous ? "First file reached" : "Last file reached",
+                    "Folder");
+                MarkPlaybackActivity();
+                return;
+            }
+
+            if (!FolderMediaNavigator.IsSupportedMediaPath(_lastLoadedMediaPath))
+            {
+                if (ExecutePlaylistNavigation(direction))
+                    return;
+
+                ShowTransientOsd(
+                    NavigationGlyphFor(direction),
+                    direction == FolderMediaNavigationDirection.Previous ? "No previous file" : "No next file",
+                    "Playback");
+                MarkPlaybackActivity();
+                return;
+            }
+
+            if (triggeredByPlaybackEnd)
+            {
+                ShowTransientOsd(NavigationGlyphFor(direction), "Last file reached", "Folder");
+                MarkPlaybackActivity();
+                return;
+            }
+
+            ShowTransientOsd(
+                NavigationGlyphFor(direction),
+                direction == FolderMediaNavigationDirection.Previous ? "No previous folder file" : "No next folder file",
+                "Folder");
+            MarkPlaybackActivity();
+        }
+
+        private bool ExecutePlaylistNavigation(FolderMediaNavigationDirection direction)
+        {
+            if (_activeBackends.Count == 0 || _currentPlaylistCount <= 0)
+                return false;
+
+            if (direction == FolderMediaNavigationDirection.Previous)
+            {
+                ForEachPlayerBackend(player => player.ExecuteCommand("playlist-prev"));
+                ShowTransientOsd("\uE892", "Previous", "Playlist");
+            }
+            else
+            {
+                ForEachPlayerBackend(player => player.ExecuteCommand("playlist-next"));
+                ShowTransientOsd("\uE893", "Next", "Playlist");
+            }
+
+            MarkPlaybackActivity();
+            return true;
         }
 
         private void AddVolume(int amount)
@@ -1831,7 +1970,11 @@ namespace Aethra
             UpdateSubtitleButtonVisualState();
         }
 
-        private void LoadMedia(string path)
+        private void LoadMedia(
+            string path,
+            bool? autoplayOverride = null,
+            bool showDefaultOsd = true,
+            double? resumeSeekSeconds = null)
         {
             if (string.IsNullOrWhiteSpace(path))
                 return;
@@ -1839,6 +1982,9 @@ namespace Aethra
             if (ShouldQueueMediaLoad(_activeBackends.Count))
             {
                 _pendingMediaPath = path;
+                _pendingMediaAutoplayOverride = autoplayOverride;
+                _pendingMediaShowDefaultOsd = showDefaultOsd;
+                _pendingMediaResumeSeekSeconds = NormalizeResumeSeekTarget(resumeSeekSeconds, durationSeconds: 0);
                 // A user/requested load takes precedence over startup autoload.
                 _startupMediaLoaded = true;
                 EnsureVisiblePlayerInitialization();
@@ -1848,9 +1994,13 @@ namespace Aethra
             var displayName = GetDisplayMediaName(path);
             MediaTitleText.Text = displayName;
             _lastLoadedMediaPath = path;
-            ShowTransientOsd("\uE768", displayName, "Now playing");
+            _lastKnownDurationSeconds = 0;
+            _pendingResumeSeekSeconds = NormalizeResumeSeekTarget(resumeSeekSeconds, durationSeconds: 0);
+            if (showDefaultOsd)
+                ShowTransientOsd("\uE768", displayName, "Now playing");
             ForEachPlayerBackend(player => player.LoadFile(path));
-            if (ShouldAutoplayOnOpen())
+            var shouldAutoplay = autoplayOverride ?? ShouldAutoplayOnOpen();
+            if (shouldAutoplay)
             {
                 ForEachPlayerBackend(player => player.SetProperty("pause", "no"));
                 // Startup/watch-later can reapply pause post-load; reassert shortly after.
@@ -1887,8 +2037,14 @@ namespace Aethra
                 return;
 
             var path = _pendingMediaPath;
+            var autoplayOverride = _pendingMediaAutoplayOverride;
+            var showDefaultOsd = _pendingMediaShowDefaultOsd;
+            var resumeSeekSeconds = _pendingMediaResumeSeekSeconds;
             _pendingMediaPath = null;
-            LoadMedia(path);
+            _pendingMediaAutoplayOverride = null;
+            _pendingMediaShowDefaultOsd = true;
+            _pendingMediaResumeSeekSeconds = null;
+            LoadMedia(path, autoplayOverride, showDefaultOsd, resumeSeekSeconds);
         }
 
         // Play/pause surfaces show the action available to the user.
@@ -1926,6 +2082,11 @@ namespace Aethra
                 RepeatMode.All => "Repeat all",
                 _ => "Repeat off"
             };
+
+        private static string NavigationGlyphFor(FolderMediaNavigationDirection direction)
+        {
+            return direction == FolderMediaNavigationDirection.Previous ? "\uE892" : "\uE893";
+        }
 
         private void UpdateRepeatButtonVisualState()
         {
@@ -2767,9 +2928,17 @@ namespace Aethra
                 case InputCommandSupport.NativeAlias.ToggleSettings:
                     return _commandDispatcher.Execute(AethraCommandIds.ToggleSettings);
 
+                case InputCommandSupport.NativeAlias.PreviousFile:
+                    return _commandDispatcher.Execute(AethraCommandIds.PreviousFile);
+
+                case InputCommandSupport.NativeAlias.NextFile:
+                    return _commandDispatcher.Execute(AethraCommandIds.NextFile);
+
                 case InputCommandSupport.NativeAlias.Quit:
-                    Close();
-                    return true;
+                    return _commandDispatcher.Execute(AethraCommandIds.Quit);
+
+                case InputCommandSupport.NativeAlias.QuitWatchLater:
+                    return _commandDispatcher.Execute(AethraCommandIds.QuitWatchLater);
 
                 default:
                     return false;
@@ -2842,16 +3011,18 @@ namespace Aethra
             if (_startupMediaLoaded)
                 return;
 
-            var startupPath = ResolveStartupMediaCandidate(PreferredStartupMediaPath, _lastLoadedMediaPath, out var shouldResumePersistedPosition);
+            var startupPath = ResolveStartupMediaCandidate(
+                PreferredStartupMediaPath ?? string.Empty,
+                _lastLoadedMediaPath,
+                out var shouldResumePersistedPosition);
             if (string.IsNullOrWhiteSpace(startupPath))
                 return;
 
             _startupMediaLoaded = true;
-            LoadMedia(startupPath);
-            if (shouldResumePersistedPosition && _playbackPersistence.LastPositionSeconds > 0)
-            {
-                ForEachPlayerBackend(player => player.SeekToTime(_playbackPersistence.LastPositionSeconds));
-            }
+            double? resumeSeekSeconds = shouldResumePersistedPosition
+                ? _playbackPersistence.LastPositionSeconds
+                : null;
+            LoadMedia(startupPath, resumeSeekSeconds: resumeSeekSeconds);
         }
 
         internal static string? ResolveStartupMediaCandidate(string preferredPath, string? persistedPath, out bool shouldResumePersistedPosition)
@@ -2895,6 +3066,24 @@ namespace Aethra
                 return File.Exists(uri.LocalPath);
 
             return uri.Scheme is "http" or "https" or "rtsp";
+        }
+
+        internal static double? NormalizeResumeSeekTarget(double? seconds, double durationSeconds)
+        {
+            if (!seconds.HasValue || double.IsNaN(seconds.Value) || double.IsInfinity(seconds.Value) || seconds.Value <= 0)
+                return null;
+
+            var target = seconds.Value;
+            if (double.IsFinite(durationSeconds) && durationSeconds > 0)
+            {
+                var maxSeek = Math.Max(0, durationSeconds - 0.25);
+                if (maxSeek <= 0)
+                    return null;
+
+                target = Math.Min(target, maxSeek);
+            }
+
+            return Math.Max(0, target);
         }
 
         private bool HandleLegacyKeyDown(VirtualKey key)
@@ -2949,6 +3138,8 @@ namespace Aethra
                 return;
 
             _activeBackends.Remove(player);
+            if (_activeBackends.Count == 0)
+                _currentPlaylistCount = 0;
         }
 
         private void ForEachPlayerBackend(Action<INativeMpvPlayerBackend> action)
@@ -2996,6 +3187,24 @@ namespace Aethra
             {
                 return true;
             }
+        }
+
+        private static bool ShouldPlayNextInFolderOnEndOfFile()
+        {
+            try
+            {
+                return PreferencesProfilesStore.Load().Playback.EndOfFileAction
+                    == Aethra.Profiles.PlaybackEndOfFileAction.PlayNextInFolder;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool ShouldPreferPlaylistNavigation()
+        {
+            return _activeBackends.Count > 0 && _currentPlaylistCount > 1;
         }
     }
 }

@@ -36,6 +36,8 @@ internal sealed class AethraCommandContext
         Action openFile,
         Action openFolder,
         Action openRecent,
+        Action previousFile,
+        Action nextFile,
         Action showPlaylist,
         Action showTools,
         Action showHelp,
@@ -74,6 +76,8 @@ internal sealed class AethraCommandContext
         OpenFile = openFile;
         OpenFolder = openFolder;
         OpenRecent = openRecent;
+        PreviousFile = previousFile;
+        NextFile = nextFile;
         ShowPlaylist = showPlaylist;
         ShowTools = showTools;
         ShowHelp = showHelp;
@@ -143,6 +147,10 @@ internal sealed class AethraCommandContext
     internal Action OpenFolder { get; }
 
     internal Action OpenRecent { get; }
+
+    internal Action PreviousFile { get; }
+
+    internal Action NextFile { get; }
 
     internal Action ShowPlaylist { get; }
 
